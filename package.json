@@ -4,9 +4,16 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "pnpm build:wasm && node scripts/frontend.mjs browser dev",
+    "build": "pnpm build:web",
+    "build:wasm": "wasm-pack build crates/save-wasm --target web --out-dir ../../static/wasm --release",
+    "build:web": "pnpm build:wasm && node scripts/frontend.mjs browser build",
+    "dev:desktop": "node scripts/frontend.mjs desktop dev",
+    "build:desktop": "node scripts/frontend.mjs desktop build",
+    "test:core": "cargo test -p gk2-save-core",
+    "test:wasm": "node scripts/verify-wasm.mjs",
+    "test:browser": "pnpm build:web && playwright test",
+    "preview": "node scripts/frontend.mjs browser preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -18,13 +25,16 @@
     "@tauri-apps/plugin-opener": "^2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.65.1",
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tauri-apps/cli": "^2",
+    "@types/node": "^22.20.3",
     "svelte": "^5.56.3",
     "svelte-check": "^4.6.0",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "wasm-pack": "^0.15.0"
   }
 }

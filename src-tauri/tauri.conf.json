@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.netroscript.gk2-savegame-editor",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev:desktop",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../build"
+    "beforeBuildCommand": "pnpm build:desktop",
+    "frontendDist": "../build/desktop"
   },
   "app": {
     "windows": [

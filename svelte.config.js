@@ -10,6 +10,8 @@ const config = {
   preprocess: vitePreprocess(),
   kit: {
     adapter: adapter({
+      pages: process.env.SAVE_BUILD_TARGET === "desktop" ? "build/desktop" : "build/web",
+      assets: process.env.SAVE_BUILD_TARGET === "desktop" ? "build/desktop" : "build/web",
       fallback: "index.html",
     }),
   },

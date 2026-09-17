@@ -1304,6 +1304,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "gk2-save-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "glib"
 version = "0.18.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1371,6 +1379,7 @@ dependencies = [
 name = "graveyard-keeper-2-savegame-editor"
 version = "0.1.0"
 dependencies = [
+ "gk2-save-core",
  "serde",
  "serde_json",
  "tauri",
