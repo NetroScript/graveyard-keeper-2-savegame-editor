@@ -1,0 +1,9 @@
+[workspace]
+members = ["crates/save-core", "crates/save-wasm"]
+exclude = ["src-tauri"]
+resolver = "2"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "s"
