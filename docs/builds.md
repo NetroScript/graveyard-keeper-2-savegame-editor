@@ -24,6 +24,7 @@ flowchart TD
 | `src/lib/save-worker.ts` | Ordered WebAssembly requests off the UI thread                                                               |
 | `scripts/frontend.mjs`   | Cross-platform build-target environment and Vite mode selection                                              |
 | `static/wasm`            | Generated browser module and `.wasm`, ignored by Git                                                         |
+| `desktop-static`         | Minimal static assets embedded only in the Tauri frontend                                                    |
 | `build/web`              | Deployable static browser site                                                                               |
 | `build/desktop`          | Frontend embedded by Tauri                                                                                   |
 
@@ -59,7 +60,9 @@ pnpm tauri build --no-bundle # native application only
 
 `wasm-pack` is a project development dependency, not a required global installation. Its first build downloads helper tools. `pnpm build:wasm` regenerates the module after Rust changes; browser development currently does not watch/rebuild Rust automatically. `tauri dev` handles native rebuilding.
 
-`frontend.mjs` sets `SAVE_BUILD_TARGET` and Vite's `--mode` consistently on Windows/macOS/Linux. Svelte's static adapter writes the appropriate output directory. The TypeScript facade selects the backend at build time using that mode. Run the documented scripts rather than invoking bare Vite with an unrelated mode. `pnpm preview` intentionally rebuilds the browser target first because SvelteKit's preview server uses its most recent intermediate output; otherwise a preceding desktop build could expose Tauri-only calls to a normal browser. Desktop builds do not need a WASM build, although existing generated files under `static/wasm` may also be copied as unused assets by Svelte's static adapter.
+`frontend.mjs` sets `SAVE_BUILD_TARGET` and Vite's `--mode` consistently on Windows/macOS/Linux. Svelte's static adapter writes the appropriate output directory. The TypeScript facade selects the backend at build time using that mode. Run the documented scripts rather than invoking bare Vite with an unrelated mode. `pnpm preview` intentionally rebuilds the browser target first because SvelteKit's preview server uses its most recent intermediate output; otherwise a preceding desktop build could expose Tauri-only calls to a normal browser.
+
+The browser build reads static assets from `static`, including the generated WebAssembly package. The desktop build reads from `desktop-static`, so Tauri embeds only its favicon and compiled JavaScript/CSS. Its save codec is the native `gk2-save-core` Rust dependency; no `.wasm` file is included or loaded.
 
 Deploy all of `build/web` on a static HTTP(S) host, including the `wasm` directory. Opening `index.html` through `file://` is not supported. For deployment under a subdirectory, configure SvelteKit `kit.paths.base`; the worker's module URL is passed from the frontend using that base. Root-path hosting is covered by current browser tests; subdirectory deployment has not been tested. Browser and desktop outputs are separate, but `.svelte-kit` is a shared intermediate directory: run the two frontend builds sequentially.
 
