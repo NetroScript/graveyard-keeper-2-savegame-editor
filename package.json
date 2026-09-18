@@ -13,7 +13,7 @@
     "test:core": "cargo test -p gk2-save-core",
     "test:wasm": "node scripts/verify-wasm.mjs",
     "test:browser": "pnpm build:web && playwright test",
-    "preview": "node scripts/frontend.mjs browser preview",
+    "preview": "pnpm build:web && node scripts/frontend.mjs browser preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

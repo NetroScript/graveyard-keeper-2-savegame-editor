@@ -51,7 +51,7 @@ pnpm install
 rustup target add wasm32-unknown-unknown
 pnpm dev                    # browser, builds WASM first
 pnpm build:web              # build/web, static hosting
-pnpm preview                # serve the browser production build
+pnpm preview                # rebuild and serve the browser production build
 pnpm tauri dev              # native development application
 pnpm tauri build            # native application and installers
 pnpm tauri build --no-bundle # native application only
@@ -59,7 +59,7 @@ pnpm tauri build --no-bundle # native application only
 
 `wasm-pack` is a project development dependency, not a required global installation. Its first build downloads helper tools. `pnpm build:wasm` regenerates the module after Rust changes; browser development currently does not watch/rebuild Rust automatically. `tauri dev` handles native rebuilding.
 
-`frontend.mjs` sets `SAVE_BUILD_TARGET` and Vite's `--mode` consistently on Windows/macOS/Linux. Svelte's static adapter writes the appropriate output directory. The TypeScript facade selects the backend at build time using that mode. Run the documented scripts rather than invoking bare Vite with an unrelated mode. Desktop builds do not need a WASM build, although existing generated files under `static/wasm` may also be copied as unused assets by Svelte's static adapter.
+`frontend.mjs` sets `SAVE_BUILD_TARGET` and Vite's `--mode` consistently on Windows/macOS/Linux. Svelte's static adapter writes the appropriate output directory. The TypeScript facade selects the backend at build time using that mode. Run the documented scripts rather than invoking bare Vite with an unrelated mode. `pnpm preview` intentionally rebuilds the browser target first because SvelteKit's preview server uses its most recent intermediate output; otherwise a preceding desktop build could expose Tauri-only calls to a normal browser. Desktop builds do not need a WASM build, although existing generated files under `static/wasm` may also be copied as unused assets by Svelte's static adapter.
 
 Deploy all of `build/web` on a static HTTP(S) host, including the `wasm` directory. Opening `index.html` through `file://` is not supported. For deployment under a subdirectory, configure SvelteKit `kit.paths.base`; the worker's module URL is passed from the frontend using that base. Root-path hosting is covered by current browser tests; subdirectory deployment has not been tested. Browser and desktop outputs are separate, but `.svelte-kit` is a shared intermediate directory: run the two frontend builds sequentially.
 
