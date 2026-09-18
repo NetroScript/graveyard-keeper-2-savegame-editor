@@ -20,6 +20,14 @@
   let row = $state<HTMLDivElement>();
   let isExpanded = $derived(expanded.has(node.id));
   let presentation = $derived(matchTree(node));
+  let title = $derived(
+    node.name ?? node.typeName?.split(",")[0].split(".").pop() ?? node.kind,
+  );
+  let typeLabel = $derived(
+    presentation?.typeLabel?.toLocaleLowerCase() === title.toLocaleLowerCase()
+      ? undefined
+      : presentation?.typeLabel,
+  );
   let canExpand = $derived(
     Boolean(node.childCount && (!presentation?.compact || isExpanded)),
   );
@@ -65,12 +73,7 @@
     >
     <button class="tree-label" onclick={() => void onselect(node)}
       ><span class="tree-title"
-        ><span
-          >{node.name ??
-            node.typeName?.split(",")[0].split(".").pop() ??
-            node.kind}</span
-        >{#if presentation?.typeLabel}<em>{presentation.typeLabel}</em
-          >{/if}</span
+        ><span>{title}</span>{#if typeLabel}<em>{typeLabel}</em>{/if}</span
       ><small class="tree-summary"
         >{#if presentation}{#each presentation.badges as badge}<span
               class:tree-key={badge.tone === "key"}

@@ -7,6 +7,7 @@
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
   let { doc }: { doc: SaveDocument } = $props();
   let roots = $state<NodeView[]>([]);
+  let treeRevision = $state(-1);
   let selected = $state<number | null>(null);
   let node = $state<NodeView>();
   let children = $state<NodeView[]>([]);
@@ -27,7 +28,8 @@
   let widget = $derived(node ? matchWidget(node, children) : undefined);
   async function refresh() {
     try {
-      roots = (
+      const revision = doc.summary!.revision;
+      const refreshedRoots = (
         await doc.query<{ nodes: NodeView[] }>({
           op: "children",
           parent: null,
@@ -35,6 +37,8 @@
           limit: 200,
         })
       ).nodes;
+      roots = refreshedRoots;
+      treeRevision = revision;
       if (selected !== null) {
         node = (await doc.nodes([selected]))[0];
         children = (
@@ -118,6 +122,7 @@
   async function transaction(operations: Operation[]) {
     try {
       await doc.transact(operations);
+      await refresh();
       error = "";
     } catch (e) {
       error = String(e);
@@ -145,7 +150,7 @@
   <div class="panel tree-pane">
     <h3 class="strip">Save structure</h3>
     <ul class="tree">
-      {#each roots as root (root.id)}<TreeNode
+      {#each roots as root (`${treeRevision}:${root.id}`)}<TreeNode
           {doc}
           node={root}
           {selected}

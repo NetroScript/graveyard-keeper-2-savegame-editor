@@ -86,6 +86,9 @@ function fixture() {
         ]),
       ],
     ),
+    objectNode("uniqueId", 5, "SGuid, Assembly-CSharp", 11, [
+      textScalar("id", "12345678-1234-1234-1234-123456789abc"),
+    ]),
   ]);
 }
 async function open(page: Page, name = "one.dat") {
@@ -162,15 +165,14 @@ test("General insertion and Inspector share values; vector registration is activ
 }) => {
   await page.goto("/");
   await open(page);
-  await page
-    .getByRole("spinbutton", { name: "Money · base units", exact: true })
-    .fill("12345");
+  await page.getByRole("spinbutton", { name: "Gold coins" }).fill("1");
+  await page.getByRole("spinbutton", { name: "Silver coins" }).fill("23");
+  await page.getByRole("spinbutton", { name: "Bronze coins" }).fill("45");
   await page
     .locator("form")
     .filter({
       has: page.getByRole("spinbutton", {
-        name: "Money · base units",
-        exact: true,
+        name: "Gold coins",
       }),
     })
     .getByRole("button", { name: "Apply", exact: true })
@@ -216,16 +218,40 @@ test("General insertion and Inspector share values; vector registration is activ
       .locator(".tree-row")
       .filter({ hasText: "sceneGameSceneDataidVillage" }),
   ).toBeVisible();
-  await expect(
-    page
-      .locator(".tree-row")
-      .filter({ hasText: "itemItemidsimple_iron_partscount12" }),
-  ).toBeVisible();
+  const itemRow = page
+    .locator(".tree-row")
+    .filter({ hasText: "itemidsimple_iron_partscount12" });
+  await expect(itemRow).toBeVisible();
+  await expect(itemRow.locator(".tree-title em")).toHaveCount(0);
+  const itemTitle = await itemRow.locator(".tree-title").boundingBox();
+  const itemSummary = await itemRow.locator(".tree-summary").boundingBox();
+  expect(itemTitle).not.toBeNull();
+  expect(itemSummary).not.toBeNull();
+  expect(itemSummary!.x - itemTitle!.x - itemTitle!.width).toBeLessThan(20);
   await expect(
     page
       .locator(".tree-row")
       .filter({ hasText: "resourceGameResAtomtypemoneyvalue12.5" }),
   ).toBeVisible();
+  const guidRow = page.locator(".tree-row").filter({
+    has: page.locator(".tree-title > span", { hasText: "uniqueId" }),
+  });
+  await expect(guidRow.locator(".tree-summary")).toHaveText(
+    "12345678-1234-1234-1234-123456789abc",
+  );
+  await guidRow.locator(".tree-label").click();
+  const guid = page.getByRole("textbox", { name: "GUID", exact: true });
+  await expect(guid).toHaveValue("12345678-1234-1234-1234-123456789abc");
+  await guid.fill("not-a-guid");
+  await expect(page.getByText("Enter a GUID in the form")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Apply GUID", exact: true }),
+  ).toBeDisabled();
+  await guid.fill("abcdefab-cdef-abcd-efab-cdefabcdefab");
+  await page.getByRole("button", { name: "Apply GUID", exact: true }).click();
+  await expect(guidRow.locator(".tree-summary")).toHaveText(
+    "abcdefab-cdef-abcd-efab-cdefabcdefab",
+  );
   await vectorRow.locator(".tree-label").click();
   await expect(
     page.getByRole("spinbutton", { name: "Vector X", exact: true }),
@@ -245,8 +271,14 @@ test("General insertion and Inspector share values; vector registration is activ
   ).toHaveValue("5");
   await page.getByRole("button", { name: "Save Editor", exact: true }).click();
   await expect(
-    page.getByRole("spinbutton", { name: "Money · base units", exact: true }),
-  ).toHaveValue("12345");
+    page.getByRole("spinbutton", { name: "Gold coins" }),
+  ).toHaveValue("1");
+  await expect(
+    page.getByRole("spinbutton", { name: "Silver coins" }),
+  ).toHaveValue("23");
+  await expect(
+    page.getByRole("spinbutton", { name: "Bronze coins" }),
+  ).toHaveValue("45");
 });
 test("drop files, copy guidance, malformed sidecar, narrow navigation and settings", async ({
   page,

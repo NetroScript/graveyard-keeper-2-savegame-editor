@@ -16,7 +16,7 @@ Use an 8 px spacing rhythm: 8 px between actions, 16 px between related fields, 
 
 ## Navigation and hierarchy
 
-The wide layout has a labeled left rail: Load Saves, open documents and Settings at the bottom. An ochre band distinguishes Save Editor and Save Inspector. Category navigation sits below it. The active item uses a distinct full background, a brighter border around the complete control and gold text. Do not use a thick line on one edge as the selection indicator. Unsaved changes have a dot and an accessible label.
+The wide layout has a labeled left rail: Load Saves, open documents and Settings at the bottom. Save-view and category tabs sit in compact dark recessed groups on their raised ochre or charcoal navigation surfaces. Tabs use transparent backgrounds, short centered separators and a slightly lighter depressed surface for the active item. The active label is gold. Do not use a thick line on one edge as the selection indicator. Unsaved changes have a dot and an accessible label.
 
 Each open save retains its mounted view, local drafts and scroll containers. Hidden views use the HTML `hidden` attribute so they leave both layout and keyboard navigation. Future categories display an explicit Coming later label and an explanatory empty state.
 

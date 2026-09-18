@@ -69,24 +69,28 @@
     </p>
   </details>{/if}
 <nav class="main-tabs" aria-label="Save views">
-  <button class:active={view === "editor"} onclick={() => (view = "editor")}
-    >Save Editor</button
-  ><button
-    class:active={view === "inspector"}
-    onclick={() => {
-      view = "inspector";
-      inspectorVisited = true;
-    }}>Save Inspector</button
-  >
+  <div class="tab-group">
+    <button class:active={view === "editor"} onclick={() => (view = "editor")}
+      >Save Editor</button
+    ><button
+      class:active={view === "inspector"}
+      onclick={() => {
+        view = "inspector";
+        inspectorVisited = true;
+      }}>Save Inspector</button
+    >
+  </div>
 </nav>
 {#if doc.error}<p class="error-banner" role="alert">{doc.error}</p>{/if}
 <div hidden={view !== "editor"} class="editor-view">
   <nav class="category-tabs" aria-label="Editor categories">
-    {#each ["General", "Inventory", "Relationships", "Technologies"] as tab}<button
-        class:active={category === tab}
-        onclick={() => (category = tab)}
-        >{tab}{#if tab !== "General"}<small>Not available</small>{/if}</button
-      >{/each}
+    <div class="tab-group">
+      {#each ["General", "Inventory", "Relationships", "Technologies"] as tab}<button
+          class:active={category === tab}
+          onclick={() => (category = tab)}
+          >{tab}{#if tab !== "General"}<small>Not available</small>{/if}</button
+        >{/each}
+    </div>
   </nav>
   <div class="view-content">
     <div hidden={category !== "General"}><General {doc} /></div>

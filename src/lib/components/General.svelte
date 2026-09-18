@@ -3,13 +3,13 @@
   let { doc }: { doc: SaveDocument } = $props();
   let fields = $state<GeneralField[]>([]);
   let drafts = $state<Record<string, string>>({});
+  let moneyDraft = $state<{ gold: string; silver: string; bronze: string }>();
   let message = $state("");
   const labels: Record<string, string> = {
     hp: "Current health",
     max_hp: "Maximum health",
     energy: "Energy",
     stamina: "Stamina",
-    money: "Money · base units",
     tech_red: "Red points",
     tech_green: "Green points",
     tech_blue: "Blue points",
@@ -46,14 +46,38 @@
     try {
       await doc.transact([{ op: "general", values }]);
       for (const key of keys) delete drafts[key];
+      if (keys.includes("money")) moneyDraft = undefined;
       message = "Changes applied";
     } catch {}
   }
-  function money(value: string) {
+  function splitMoney(value: string) {
     const amount = Number(value);
-    return Number.isFinite(amount)
-      ? `${Math.floor(amount / 10000)} gold · ${Math.floor((amount % 10000) / 100)} silver · ${(amount % 100).toFixed(2).replace(/\.00$/, "")} bronze`
-      : "";
+    if (!Number.isFinite(amount) || amount < 0)
+      return { gold: "0", silver: "0", bronze: "0" };
+    return {
+      gold: String(Math.floor(amount / 10000)),
+      silver: String(Math.floor((amount % 10000) / 100)),
+      bronze: String(amount % 100),
+    };
+  }
+  function editMoney(part: "gold" | "silver" | "bronze", value: string) {
+    const field = fields.find((entry) => entry.key === "money");
+    moneyDraft = {
+      ...(moneyDraft ?? splitMoney(field?.value ?? "0")),
+      [part]: value,
+    };
+    const gold = Number(moneyDraft.gold);
+    const silver = Number(moneyDraft.silver);
+    const bronze = Number(moneyDraft.bronze);
+    drafts.money =
+      [gold, silver, bronze].every(Number.isFinite) &&
+      gold >= 0 &&
+      silver >= 0 &&
+      silver < 100 &&
+      bronze >= 0 &&
+      bronze < 100
+        ? String(gold * 10000 + silver * 100 + bronze)
+        : "";
   }
 </script>
 
@@ -76,21 +100,41 @@
       <div class="panel-body">
         {#each group.keys as key}
           {@const field = fields.find((f) => f.key === key)}
-          <label class="field"
-            ><span>{labels[key]}</span><input
-              aria-label={labels[key]}
-              type="number"
-              step={key === "hp" || key === "max_hp" ? "1" : "any"}
-              min={key === "max_hp" ? "1" : "0"}
-              disabled={!field || !!field.error || doc.busy}
-              value={drafts[key] ?? field?.value ?? ""}
-              oninput={(e) => (drafts[key] = e.currentTarget.value)}
-            /></label
-          >
+          {#if key === "money"}
+            {@const parts = moneyDraft ?? splitMoney(field?.value ?? "0")}
+            <div class="money-fields">
+              {#each ["gold", "silver", "bronze"] as part}
+                <label
+                  ><span>{part[0].toUpperCase() + part.slice(1)}</span><input
+                    aria-label={`${part[0].toUpperCase() + part.slice(1)} coins`}
+                    type="number"
+                    required
+                    min="0"
+                    max={part === "gold" ? undefined : "99"}
+                    step={part === "bronze" ? "any" : "1"}
+                    disabled={!field || !!field.error || doc.busy}
+                    value={parts[part as keyof typeof parts]}
+                    oninput={(event) =>
+                      editMoney(
+                        part as "gold" | "silver" | "bronze",
+                        event.currentTarget.value,
+                      )}
+                  /></label
+                >
+              {/each}
+            </div>
+          {:else}<label class="field"
+              ><span>{labels[key]}</span><input
+                aria-label={labels[key]}
+                type="number"
+                step={key === "hp" || key === "max_hp" ? "1" : "any"}
+                min={key === "max_hp" ? "1" : "0"}
+                disabled={!field || !!field.error || doc.busy}
+                value={drafts[key] ?? field?.value ?? ""}
+                oninput={(e) => (drafts[key] = e.currentTarget.value)}
+              /></label
+            >{/if}
           {#if field?.error}<p class="hint warning">{field.error}</p>{/if}
-          {#if key === "money"}<p class="coin-preview">
-              {money(drafts[key] ?? field?.value ?? "0")}
-            </p>{/if}
         {/each}
         <div class="form-actions">
           {#if group.name === "Vitals"}<button

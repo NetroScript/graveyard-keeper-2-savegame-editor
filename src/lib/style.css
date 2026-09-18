@@ -526,6 +526,20 @@ main {
   text-align: center;
   font-size: 12px;
 }
+.money-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.money-fields label {
+  min-width: 0;
+}
+.money-fields span {
+  display: block;
+  margin-bottom: 6px;
+  color: #aaa59b;
+  font-size: 11px;
+}
 .empty-state {
   text-align: center;
   padding: 70px 30px;
@@ -706,7 +720,7 @@ dd {
 }
 .tree-label small {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 7px;
   min-width: 0;
   flex: 1;
@@ -1316,10 +1330,9 @@ select {
 }
 
 .main-tabs {
-  border-color: #967145;
-  gap: 0;
+  border-color: #38291e;
   padding: 6px 28px;
-  background: #6d4d33;
+  background: #785536;
 }
 
 .coin-preview,
@@ -1344,6 +1357,15 @@ summary:focus-visible {
   border-color: #8f7448;
 }
 
+.main-tabs .tab-group,
+.category-tabs .tab-group {
+  display: flex;
+  gap: 0;
+  padding: 3px;
+  background: #191b21;
+  border: 1px solid #41434b;
+}
+
 .main-tabs button,
 .category-tabs button {
   min-width: 140px;
@@ -1351,40 +1373,47 @@ summary:focus-visible {
 
 .main-tabs button {
   color: #c9bba9;
-  background: #4b4037;
-  border: 1px solid #786047;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
-.main-tabs button + button,
-.category-tabs button + button {
-  margin-left: -1px;
+.main-tabs button,
+.category-tabs button {
+  position: relative;
+}
+
+.tab-group button + button::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: #4b4d56;
 }
 
 .main-tabs button.active {
   color: #f2c64a;
-  background: #936d42;
-  border-color: #c09350;
-  position: relative;
+  background: #36373a;
+  border-color: #55565c;
   z-index: 1;
 }
 
 .category-tabs {
-  gap: 0;
-  padding: 7px 0;
-  background: #1e2028;
+  padding: 8px 0;
+  background: #292b34;
 }
 
 .category-tabs button {
   color: #aaa8a4;
-  background: #252831;
-  border: 1px solid #454750;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .category-tabs button.active {
   color: #f0c32f;
-  background: #3c3e47;
-  border-color: #897248;
-  position: relative;
+  background: #34353a;
+  border-color: #51525a;
   z-index: 1;
 }
 
