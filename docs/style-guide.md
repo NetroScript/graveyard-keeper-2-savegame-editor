@@ -6,7 +6,7 @@ The editor follows the game's interface palette and construction: blue-gray pane
 
 Shared tokens live in `src/lib/style.css`. Use `--surface` (#292a33) for panels, `--deep` (#20232c) for recessed inputs, `--metal` (#66636a) for outer frames, `--gold` (#d8a91f) for active controls, `--cream` (#ddd2bd) for prominent text and `--red` (#a62824) for destructive actions. Header bands use the game's muted brown around #795735. Secondary text must remain readable against its surface; disabled controls also retain their labels.
 
-Frames use a black outer edge, a thin gray metal line and a restrained inner highlight. Corners are square. Very low-opacity repeating CSS textures add depth without competing with content. Avoid glossy effects, rounded cards, bright saturated backgrounds and ornamental graphics copied from the game.
+Frames use one thin border in a slightly brighter tone than their background. Corners are square. Components do not combine outlines and shadows, and the interface does not use drop or inset shadows. Very low-opacity repeating CSS textures add depth without competing with content. Avoid glossy effects, rounded cards, bright saturated backgrounds and ornamental graphics copied from the game.
 
 ## Typography and spacing
 
@@ -16,7 +16,7 @@ Use an 8 px spacing rhythm: 8 px between actions, 16 px between related fields, 
 
 ## Navigation and hierarchy
 
-The wide layout has a labeled left rail: Load Saves, open documents and Settings at the bottom. An ochre band distinguishes Save Editor and Save Inspector. Category navigation sits below it. The active item has both a colored surface and a visible edge/underline; color alone does not communicate selection. Unsaved changes have a dot and an accessible label.
+The wide layout has a labeled left rail: Load Saves, open documents and Settings at the bottom. An ochre band distinguishes Save Editor and Save Inspector. Category navigation sits below it. The active item uses a distinct full background, a brighter border around the complete control and gold text. Do not use a thick line on one edge as the selection indicator. Unsaved changes have a dot and an accessible label.
 
 Each open save retains its mounted view, local drafts and scroll containers. Hidden views use the HTML `hidden` attribute so they leave both layout and keyboard navigation. Future categories display an explicit Coming later label and an explanatory empty state.
 
@@ -24,7 +24,7 @@ Each open save retains its mounted view, local drafts and scroll containers. Hid
 
 Inputs are recessed charcoal with a metal edge. Primary actions use muted gold; destructive actions use red. Use short verbs such as Apply, Save, Remove and Reload. Grouped edits submit on Enter or Apply as one transaction. Draft text remains local until applied, and saving remains a separate action.
 
-Focus-visible outlines are 2 px gold with a 3 px offset. Every icon-only action needs an accessible name. Hover brightens borders, pressed controls shift one pixel, and disabled controls retain a clear shape. Modal decisions use native dialogs to provide focus containment and Escape behavior. Inline errors describe the reason an operation was rejected.
+Keyboard focus uses the same full-border, background and text-color change as other interaction states. Every icon-only action needs an accessible name. Hover brightens borders, pressed controls shift one pixel, and disabled controls retain a clear shape. Modal decisions use native dialogs to provide focus containment and Escape behavior. Inline errors describe the reason an operation was rejected.
 
 ## Icons
 

@@ -37,9 +37,6 @@ button {
   background: linear-gradient(#393e4a, #303440);
   border: 1px solid #64636b;
   border-radius: 3px;
-  box-shadow:
-    inset 0 1px #ffffff12,
-    0 1px 2px #0008;
   cursor: pointer;
 }
 button:hover:not(:disabled) {
@@ -72,8 +69,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 summary:focus-visible {
-  outline: 2px solid #edbd63;
-  outline-offset: 3px;
+  outline: none;
+  border-color: #edbd63;
 }
 input,
 select {
@@ -85,7 +82,6 @@ select {
   border-radius: 2px;
   min-height: 36px;
   padding: 7px 10px;
-  box-shadow: inset 0 2px 4px #0006;
 }
 input:disabled {
   opacity: 0.5;
@@ -146,7 +142,6 @@ small,
   flex-direction: column;
   background: linear-gradient(100deg, #242834, #1e222d);
   border-right: 3px double #555460;
-  box-shadow: 4px 0 15px #0003;
   min-height: 0;
   padding: 28px 14px 18px;
   z-index: 10;
@@ -196,7 +191,6 @@ small,
   background: linear-gradient(90deg, #6e553340, #85684220);
   border: 1px solid #8e744c80;
   color: #e5c28a;
-  box-shadow: inset 3px 0 #bd9452;
 }
 .rail-caption {
   font-size: 10px;
@@ -282,23 +276,15 @@ main {
 }
 .panel {
   border: 1px solid #62606a;
-  outline: 1px solid #11151d;
-  outline-offset: 2px;
   border-radius: 3px;
   background:
     linear-gradient(115deg, #ffffff02, transparent 65%), var(--surface);
-  box-shadow:
-    inset 0 0 0 2px #363a47,
-    0 6px 16px #0002;
   overflow: hidden;
 }
 .strip {
   font-family: Georgia, serif;
   background: linear-gradient(90deg, #6e5234, #7f603b 50%, #6e5234);
   border-bottom: 1px solid #b08b5266;
-  box-shadow:
-    inset 0 1px #e7c58f24,
-    inset 0 -2px #352b24;
   padding: 11px 20px;
   font-size: 17px;
   letter-spacing: 0.025em;
@@ -352,7 +338,6 @@ main {
   place-items: center;
   background: #252833;
   border: 1px solid #887149;
-  box-shadow: inset 0 0 0 4px #30323b;
   margin-bottom: 10px;
   transform: rotate(45deg);
 }
@@ -448,7 +433,6 @@ main {
   background: linear-gradient(#795a37, #694d31);
   padding: 0 32px;
   border-bottom: 3px double #ab8b59;
-  box-shadow: inset 0 1px #d1b07555;
 }
 .main-tabs button {
   border: 0;
@@ -462,7 +446,6 @@ main {
 .main-tabs button.active {
   color: #ffebc5;
   background: #c19a4525;
-  box-shadow: inset 0 -3px #e2b568;
 }
 .category-tabs {
   display: flex;
@@ -484,7 +467,6 @@ main {
 .category-tabs button.active {
   background: #303540;
   color: #e1c28f;
-  box-shadow: inset 0 -2px #af884b;
 }
 .category-tabs small {
   font-size: 8px;
@@ -995,11 +977,6 @@ button {
   color: #c9c5bd;
   background: #2a2d36;
   border: 1px solid #11131a;
-  outline: 1px solid #55555e;
-  outline-offset: -2px;
-  box-shadow:
-    inset 0 1px #717078,
-    inset 0 -1px #191b22;
 }
 
 button:hover:not(:disabled) {
@@ -1012,14 +989,12 @@ button.primary {
   color: #f0c32f;
   background: #30333c;
   border-color: #15161c;
-  outline-color: #6d665b;
 }
 
 button.danger {
   color: #f0d4bd;
   background: #9f2926;
   border-color: #3a1112;
-  outline-color: #d26350;
 }
 
 input,
@@ -1027,9 +1002,6 @@ select {
   color: #efc21f;
   background: #20232b;
   border: 1px solid #11131a;
-  outline: 1px solid #555760;
-  outline-offset: -2px;
-  box-shadow: inset 0 2px 3px #111218;
 }
 
 .workspace {
@@ -1043,9 +1015,6 @@ select {
   padding: 18px 12px 12px;
   background: #242630;
   border-right: 1px solid #15161c;
-  outline: 2px solid #55545c;
-  outline-offset: -3px;
-  box-shadow: 4px 0 #0d0e13;
 }
 
 .brand {
@@ -1065,22 +1034,13 @@ select {
   color: #efc027;
   background: #35343a;
   border: 1px solid #17181e;
-  outline: 1px solid #705634;
-  outline-offset: -2px;
-  box-shadow: inset 3px 0 #bc8528;
 }
 
 .panel {
   border: 1px solid #15161c;
-  outline: 2px solid #5e5c64;
-  outline-offset: -3px;
   background:
     repeating-linear-gradient(0deg, #ffffff02 0 1px, transparent 1px 3px),
     #292a33;
-  box-shadow:
-    0 0 0 1px #111219,
-    inset 0 0 0 4px #343640,
-    0 4px 8px #0007;
 }
 
 .strip {
@@ -1094,9 +1054,6 @@ select {
     #765335;
   border: 1px solid #35291f;
   border-bottom-color: #9e7945;
-  box-shadow:
-    inset 0 1px #a88455,
-    inset 0 -2px #4a3526;
   text-shadow: 1px 1px #2d231c;
 }
 
@@ -1108,7 +1065,6 @@ select {
   padding: 20px 28px;
   background: #242630;
   border-bottom: 1px solid #11131a;
-  box-shadow: inset 0 -2px #4f4e56;
 }
 
 .main-tabs {
@@ -1117,9 +1073,6 @@ select {
   background: #785536;
   border: 1px solid #38291e;
   border-bottom: 2px solid #ad8750;
-  box-shadow:
-    inset 0 1px #a47e4c,
-    inset 0 -2px #463224;
 }
 
 .main-tabs button {
@@ -1132,7 +1085,6 @@ select {
   color: #efe2c8;
   background: #89623c;
   border-color: #b2874b;
-  box-shadow: inset 0 -3px #d4a42c;
 }
 
 .category-tabs {
@@ -1140,7 +1092,6 @@ select {
   padding-top: 8px;
   background: #292b34;
   border-bottom: 2px solid #16171d;
-  box-shadow: inset 0 -1px #56545c;
 }
 
 .category-tabs button {
@@ -1150,7 +1101,6 @@ select {
 .category-tabs button.active {
   color: #efc22a;
   background: #373840;
-  box-shadow: inset 0 -3px #c58e27;
 }
 
 .page-content,
@@ -1176,15 +1126,12 @@ select {
 .drop-zone:hover,
 .drop-zone.hovering {
   background: #30313a !important;
-  border-color: #17181f;
-  outline-color: #bd8d32;
+  border-color: #bd8d32;
 }
 
 .upload-emblem {
   background: #20232c;
   border-color: #12141a;
-  outline: 1px solid #68646a;
-  box-shadow: none;
 }
 
 .upload-emblem svg,
@@ -1197,8 +1144,6 @@ select {
 .copy-path code {
   background: #20222a;
   border: 1px solid #14161c;
-  outline: 1px solid #4b4c54;
-  outline-offset: -2px;
 }
 
 .save-card {
@@ -1219,8 +1164,6 @@ select {
 .error-banner {
   background: #572725;
   border: 1px solid #2c1011;
-  outline: 1px solid #a9483e;
-  outline-offset: -2px;
 }
 
 .modal-backdrop {
@@ -1236,4 +1179,110 @@ dialog.modal {
   color: #c8c3ba;
   background: #292a33;
   border-radius: 0;
+}
+
+button {
+  border-color: #51535d;
+}
+
+input,
+select {
+  border-color: #4f515b;
+}
+
+.panel {
+  border-color: #555760;
+}
+
+.rail {
+  border-right-color: #4d4f58;
+}
+
+.strip {
+  border-color: #927047;
+}
+
+.document-header,
+.category-tabs,
+.save-metadata {
+  border-bottom-color: #4b4d56;
+}
+
+.main-tabs {
+  border-color: #967145;
+  gap: 0;
+  padding: 6px 28px;
+  background: #6d4d33;
+}
+
+.coin-preview,
+.copy-path code,
+.upload-emblem {
+  border-color: #484a53;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: none;
+  color: #f0c32f;
+  background-color: #383a43;
+  border-color: #c99732;
+}
+
+.rail .active {
+  color: #efc027;
+  background: #3b3b43;
+  border-color: #8f7448;
+}
+
+.main-tabs button,
+.category-tabs button {
+  min-width: 140px;
+}
+
+.main-tabs button {
+  color: #c9bba9;
+  background: #4b4037;
+  border: 1px solid #786047;
+}
+
+.main-tabs button + button,
+.category-tabs button + button {
+  margin-left: -1px;
+}
+
+.main-tabs button.active {
+  color: #f2c64a;
+  background: #936d42;
+  border-color: #c09350;
+  position: relative;
+  z-index: 1;
+}
+
+.category-tabs {
+  gap: 0;
+  padding: 7px 0;
+  background: #1e2028;
+}
+
+.category-tabs button {
+  color: #aaa8a4;
+  background: #252831;
+  border: 1px solid #454750;
+}
+
+.category-tabs button.active {
+  color: #f0c32f;
+  background: #3c3e47;
+  border-color: #897248;
+  position: relative;
+  z-index: 1;
+}
+
+.tree-row.selected {
+  color: #f0c32f;
+  background: #40382f;
+  border-color: #8f7448;
 }
