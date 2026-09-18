@@ -99,6 +99,6 @@
       </section>{/if}
   </div>
 </div>
-<div hidden={view !== "inspector"} class="view-content">
+<div hidden={view !== "inspector"} class="inspector-view">
   {#if inspectorVisited}<Inspector {doc} />{/if}
 </div>

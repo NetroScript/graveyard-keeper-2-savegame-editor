@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { SvelteSet } from "svelte/reactivity";
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView, Operation } from "../save-api";
   import TreeNode from "./TreeNode.svelte";
   import { matchWidget } from "./widgets";
+  import DotsSixVertical from "~icons/ph/dots-six-vertical";
   let { doc }: { doc: SaveDocument } = $props();
   let roots = $state<NodeView[]>([]);
   let selected = $state<number | null>(null);
@@ -19,6 +21,9 @@
   let target = $state("");
   let position = $state("0");
   let templates = $state<{ id: string; typeName: string }[]>([]);
+  let layout = $state<HTMLDivElement>();
+  let treeWidth = $state<number | null>(null);
+  const expanded = new SvelteSet<number>();
   let widget = $derived(node ? matchWidget(node, children) : undefined);
   async function refresh() {
     try {
@@ -59,10 +64,56 @@
     const id = selected;
     void refresh();
   });
-  function select(n: NodeView) {
+  async function select(n: NodeView) {
     selected = n.id;
     raw = false;
     error = "";
+    try {
+      let cursor = n;
+      while (cursor.parent !== null) {
+        expanded.add(cursor.parent);
+        cursor = (await doc.nodes([cursor.parent]))[0];
+      }
+    } catch (e) {
+      error = String(e);
+    }
+  }
+  function boundedTreeWidth(width: number, total: number) {
+    return Math.max(220, Math.min(width, total - 320));
+  }
+  function resizeStart(event: PointerEvent) {
+    if (!layout) return;
+    event.preventDefault();
+    const bounds = layout.getBoundingClientRect();
+    const move = (moveEvent: PointerEvent) => {
+      treeWidth = boundedTreeWidth(
+        moveEvent.clientX - bounds.left,
+        bounds.width,
+      );
+    };
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+    move(event);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  }
+  function resizeKey(event: KeyboardEvent) {
+    if (!layout || !["ArrowLeft", "ArrowRight", "Home"].includes(event.key))
+      return;
+    event.preventDefault();
+    const total = layout.getBoundingClientRect().width;
+    if (event.key === "Home") treeWidth = null;
+    else {
+      const current = treeWidth ?? total * 0.38;
+      treeWidth = boundedTreeWidth(
+        current + (event.key === "ArrowLeft" ? -24 : 24),
+        total,
+      );
+    }
   }
   async function transaction(operations: Operation[]) {
     try {
@@ -86,13 +137,11 @@
   }
 </script>
 
-<div class="section-intro">
-  <div>
-    <h2>Save Inspector</h2>
-    <p>View and edit the complete serialized save structure.</p>
-  </div>
-</div>
-<div class="inspector-layout">
+<div
+  bind:this={layout}
+  class="inspector-layout"
+  style:--tree-width={treeWidth === null ? "38%" : `${treeWidth}px`}
+>
   <div class="panel tree-pane">
     <h3 class="strip">Save structure</h3>
     <ul class="tree">
@@ -101,15 +150,24 @@
           node={root}
           {selected}
           onselect={select}
+          {expanded}
         />{/each}
     </ul>
   </div>
+  <button
+    class="pane-grabber"
+    aria-label="Resize inspector panes"
+    title="Drag to resize panes; press Home to reset"
+    onpointerdown={resizeStart}
+    onkeydown={resizeKey}
+    ondblclick={() => (treeWidth = null)}><DotsSixVertical /></button
+  >
   <section class="panel details-pane">
     <h3 class="strip">{node?.name ?? "Record details"}</h3>
     <div class="panel-body">
       {#if node}
         <nav class="breadcrumbs" aria-label="Record path">
-          {#each breadcrumbs as crumb}<button onclick={() => select(crumb)}
+          {#each breadcrumbs as crumb}<button onclick={() => void select(crumb)}
               >{crumb.name ?? crumb.kind}</button
             ><span>/</span>{/each}
         </nav>
@@ -160,7 +218,7 @@
                   node?.referenceTarget !== null &&
                   node?.referenceTarget !== undefined
                 )
-                  select((await doc.nodes([node.referenceTarget]))[0]);
+                  await select((await doc.nodes([node.referenceTarget]))[0]);
               }}>Go to referenced object</button
             >
             <form
@@ -181,7 +239,8 @@
               ><button>Retarget reference</button>
             </form>{/if}
           {#if node.childCount}<div class="child-links">
-              {#each children as child}<button onclick={() => select(child)}
+              {#each children as child}<button
+                  onclick={() => void select(child)}
                   >{child.name ?? child.kind}<small>{child.value}</small
                   ></button
                 >{/each}

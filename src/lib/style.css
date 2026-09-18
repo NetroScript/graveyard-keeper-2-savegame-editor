@@ -253,12 +253,28 @@ main {
 .page-content,
 .document-workspace {
   height: 100%;
-  overflow: auto;
 }
 .page-content {
+  width: 100%;
   padding: 50px clamp(24px, 5vw, 80px);
-  max-width: 1500px;
-  margin: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.document-workspace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.editor-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.inspector-view {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 .page-heading {
   margin-bottom: 32px;
@@ -577,13 +593,60 @@ dd {
 }
 .inspector-layout {
   display: grid;
-  grid-template-columns: minmax(240px, 0.85fr) minmax(320px, 1.15fr);
-  gap: 22px;
-  align-items: start;
+  grid-template-columns: minmax(220px, var(--tree-width)) 10px minmax(
+      320px,
+      1fr
+    );
+  gap: 0;
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
+  padding: 12px;
 }
 .tree-pane {
-  max-height: 68vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+.tree-pane > .tree {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+.details-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.details-pane > .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.pane-grabber {
+  width: 10px;
+  min-width: 10px;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #555760;
+  background: #1d1f27;
+  color: #a98752;
+  cursor: col-resize;
+  touch-action: none;
+}
+.pane-grabber:hover,
+.pane-grabber:focus-visible {
+  color: #f0c32f;
+  background: #30323a;
+  border-color: #8f7448;
+}
+.pane-grabber svg {
+  width: 16px;
+  height: 24px;
 }
 .tree {
   padding: 12px !important;
@@ -770,8 +833,7 @@ dd {
   .workspace {
     grid-template-columns: 210px minmax(0, 1fr);
   }
-  .general-grid,
-  .inspector-layout {
+  .general-grid {
     grid-template-columns: 1fr;
   }
   .document-header {
@@ -785,9 +847,6 @@ dd {
   .category-tabs button {
     padding-left: 12px;
     padding-right: 12px;
-  }
-  .tree-pane {
-    max-height: 40vh;
   }
 }
 @media (max-width: 700px) {
@@ -879,9 +938,23 @@ dd {
   }
   .inspector-layout {
     display: block;
+    height: auto;
+  }
+  .inspector-view {
+    overflow: auto;
+  }
+  .inspector-layout {
+    padding-top: 20px;
   }
   .tree-pane {
+    height: 42vh;
     margin-bottom: 24px;
+  }
+  .details-pane {
+    min-height: 45vh;
+  }
+  .pane-grabber {
+    display: none;
   }
   .save-grid {
     grid-template-columns: 1fr;
@@ -1103,7 +1176,6 @@ select {
   background: #373840;
 }
 
-.page-content,
 .view-content {
   max-width: 1320px;
 }

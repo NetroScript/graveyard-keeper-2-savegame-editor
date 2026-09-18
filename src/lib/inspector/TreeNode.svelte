@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView } from "../save-api";
   import TreeNode from "./TreeNode.svelte";
@@ -7,13 +8,16 @@
     node,
     selected,
     onselect,
+    expanded,
   }: {
     doc: SaveDocument;
     node: NodeView;
     selected: number | null;
-    onselect: (node: NodeView) => void;
+    onselect: (node: NodeView) => void | Promise<void>;
+    expanded: Set<number>;
   } = $props();
-  let expanded = $state(false);
+  let row = $state<HTMLDivElement>();
+  let isExpanded = $derived(expanded.has(node.id));
   let children = $state<NodeView[]>([]);
   let total = $state(0);
   let error = $state("");
@@ -33,20 +37,28 @@
   }
   $effect(() => {
     const revision = doc.summary!.revision;
-    if (expanded) void load();
+    if (isExpanded) void load();
+  });
+  $effect(() => {
+    if (selected === node.id && row) {
+      void tick().then(() =>
+        row?.scrollIntoView({ block: "nearest", inline: "nearest" }),
+      );
+    }
   });
 </script>
 
 <li>
-  <div class:selected={selected === node.id} class="tree-row">
+  <div bind:this={row} class:selected={selected === node.id} class="tree-row">
     <button
       class="expander"
-      aria-label={`${expanded ? "Collapse" : "Expand"} ${node.name ?? node.kind}`}
+      aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name ?? node.kind}`}
       disabled={!node.childCount}
-      onclick={() => (expanded = !expanded)}
-      >{node.childCount ? (expanded ? "▾" : "▸") : "·"}</button
+      onclick={() =>
+        isExpanded ? expanded.delete(node.id) : expanded.add(node.id)}
+      >{node.childCount ? (isExpanded ? "▾" : "▸") : "·"}</button
     >
-    <button class="tree-label" onclick={() => onselect(node)}
+    <button class="tree-label" onclick={() => void onselect(node)}
       ><span
         >{node.name ??
           node.typeName?.split(",")[0].split(".").pop() ??
@@ -54,12 +66,13 @@
       ><small>{node.value ?? `${node.childCount} fields`}</small></button
     >
   </div>
-  <ul hidden={!expanded}>
+  <ul hidden={!isExpanded}>
     {#each children as child (child.id)}<TreeNode
         {doc}
         node={child}
         {selected}
         {onselect}
+        {expanded}
       />{/each}{#if children.length < total}<li>
         <button onclick={() => load(children.length)}
           >Load more ({total - children.length})</button

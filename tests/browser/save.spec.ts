@@ -136,6 +136,20 @@ test("General insertion and Inspector share values; vector registration is activ
   await page
     .getByRole("button", { name: "Save Inspector", exact: true })
     .click();
+  const treePane = page.locator(".tree-pane");
+  const grabber = page.getByRole("button", {
+    name: "Resize inspector panes",
+  });
+  const beforeResize = await treePane.boundingBox();
+  const divider = await grabber.boundingBox();
+  expect(beforeResize).not.toBeNull();
+  expect(divider).not.toBeNull();
+  await page.mouse.move(divider!.x + divider!.width / 2, divider!.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(divider!.x + 80, divider!.y + 20);
+  await page.mouse.up();
+  const afterResize = await treePane.boundingBox();
+  expect(afterResize!.width).toBeGreaterThan(beforeResize!.width + 50);
   await page
     .getByRole("button", { name: "Expand struct", exact: true })
     .click();
@@ -151,6 +165,10 @@ test("General insertion and Inspector share values; vector registration is activ
   await page.getByRole("button", { name: "Apply vector", exact: true }).click();
   await page.getByLabel("Show raw structure").check();
   await page.getByRole("button", { name: "f32 5", exact: true }).click();
+  await expect(page.locator(".tree-row.selected .tree-label")).toContainText(
+    "f32",
+  );
+  await expect(page.locator(".tree-row.selected")).toBeInViewport();
   await expect(
     page.getByRole("textbox", { name: "Record value", exact: true }),
   ).toHaveValue("5");
@@ -165,6 +183,13 @@ test("drop files, copy guidance, malformed sidecar, narrow navigation and settin
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
+  const loadPage = await page
+    .locator(".page-content:not([hidden])")
+    .boundingBox();
+  const viewport = page.viewportSize();
+  expect(loadPage).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(loadPage!.x + loadPage!.width).toBeCloseTo(viewport!.width, 0);
   await page.getByRole("button", { name: "Copy save location" }).click();
   await expect(
     page.getByRole("button", { name: "Copy save location" }),
