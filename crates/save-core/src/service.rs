@@ -13,6 +13,15 @@ pub struct Summary {
 }
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct TreeField {
+    pub id: usize,
+    pub name: Option<String>,
+    pub kind: String,
+    pub tag: u8,
+    pub value: String,
+}
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct NodeView {
     pub id: usize,
     pub parent: Option<usize>,
@@ -23,6 +32,7 @@ pub struct NodeView {
     pub value: Option<String>,
     pub reference_target: Option<usize>,
     pub child_count: usize,
+    pub tree_fields: Vec<TreeField>,
     /// Input-file offset; does not change after variable-length edits.
     pub original_offset: usize,
     pub editable: bool,
@@ -299,6 +309,20 @@ pub(crate) fn view(doc: &Document, id: usize) -> NodeView {
         _ => "end",
     }
     .to_owned();
+    let tree_fields = record
+        .children
+        .iter()
+        .filter_map(|child_id| {
+            let child = &doc.records[*child_id];
+            scalar_display(child).map(|(kind, value)| TreeField {
+                id: *child_id,
+                name: child.name.as_ref().map(|name| name.display()),
+                kind,
+                tag: child.tag,
+                value,
+            })
+        })
+        .collect();
     NodeView {
         id,
         parent: record.parent,
@@ -309,10 +333,57 @@ pub(crate) fn view(doc: &Document, id: usize) -> NodeView {
         value,
         reference_target,
         child_count: record.children.len(),
+        tree_fields,
         original_offset: record.offset,
         editable: matches!(
             base_tag(record.tag),
             16 | 18 | 20 | 22 | 24 | 26 | 28 | 30 | 32 | 34 | 40 | 44
         ),
     }
+}
+
+fn scalar_display(record: &crate::wire::Record) -> Option<(String, String)> {
+    let base = base_tag(record.tag);
+    let kind = match base {
+        16 => "i8",
+        18 => "u8",
+        20 => "i16",
+        22 => "u16",
+        24 => "i32",
+        26 => "u32",
+        28 => "i64",
+        30 => "u64",
+        32 => "f32",
+        34 => "f64",
+        40 => "string",
+        44 => "bool",
+        _ => return None,
+    }
+    .to_owned();
+    let value = match &record.payload {
+        Payload::Text(text) if base == 40 => text.display(),
+        Payload::Fixed(bytes) => {
+            macro_rules! number {
+                ($ty:ty) => {
+                    <$ty>::from_le_bytes(bytes.as_slice().try_into().ok()?).to_string()
+                };
+            }
+            match base {
+                16 => number!(i8),
+                18 => number!(u8),
+                20 => number!(i16),
+                22 => number!(u16),
+                24 => number!(i32),
+                26 => number!(u32),
+                28 => number!(i64),
+                30 => number!(u64),
+                32 => number!(f32),
+                34 => number!(f64),
+                44 if bytes.len() == 1 => (bytes[0] == 1).to_string(),
+                _ => return None,
+            }
+        }
+        _ => return None,
+    };
+    Some((kind, value))
 }

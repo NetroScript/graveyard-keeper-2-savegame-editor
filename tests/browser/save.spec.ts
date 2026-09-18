@@ -15,11 +15,32 @@ function i32(n: number) {
 function scalar(name: string, n: number) {
   return Buffer.concat([Buffer.from([23]), str(name), i32(n)]);
 }
+function textScalar(name: string, value: string) {
+  return Buffer.concat([Buffer.from([39]), str(name), str(value)]);
+}
 function node(name: string, children: Buffer[]) {
   return Buffer.concat([
     Buffer.from([name ? 3 : 4]),
     ...(name ? [str(name)] : []),
     Buffer.from([46]),
+    ...children,
+    Buffer.from([5]),
+  ]);
+}
+function objectNode(
+  name: string,
+  typeId: number,
+  typeName: string,
+  objectId: number,
+  children: Buffer[],
+) {
+  return Buffer.concat([
+    Buffer.from([1]),
+    str(name),
+    Buffer.from([47]),
+    i32(typeId),
+    str(typeName),
+    i32(objectId),
     ...children,
     Buffer.from([5]),
   ]);
@@ -41,6 +62,30 @@ function fixture() {
       str("UnityEngine.Vector3, UnityEngine.CoreModule"),
       Buffer.from([32, 0, 0, 128, 63, 32, 0, 0, 0, 64, 32, 0, 0, 64, 64, 5]),
     ]),
+    objectNode("wgo", 1, "WgoData, Assembly-CSharp", 7, [
+      textScalar("id", "graveyard_gate"),
+    ]),
+    objectNode("scene", 2, "GameSceneData, Assembly-CSharp", 8, [
+      textScalar("id", "Village"),
+    ]),
+    objectNode("item", 3, "Item, Assembly-CSharp", 9, [
+      textScalar("id", "simple_iron_parts"),
+      scalar("count", 12),
+    ]),
+    objectNode(
+      "resource",
+      4,
+      "LazyBearTechnology.GameResAtom, LazyBearTechnology",
+      10,
+      [
+        textScalar("type", "money"),
+        Buffer.concat([
+          Buffer.from([31]),
+          str("value"),
+          Buffer.from([0, 0, 72, 65]),
+        ]),
+      ],
+    ),
   ]);
 }
 async function open(page: Page, name = "one.dat") {
@@ -153,9 +198,35 @@ test("General insertion and Inspector share values; vector registration is activ
   await page
     .getByRole("button", { name: "Expand struct", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "position 3 fields", exact: true })
-    .click();
+  const vectorRow = page.locator(".tree-row").filter({
+    has: page.locator(".tree-title > span", { hasText: "position" }),
+  });
+  await expect(vectorRow.locator(".tree-title em")).toHaveText("Vector3");
+  await expect(vectorRow.locator(".tree-summary")).toContainText("x1");
+  await expect(vectorRow.locator(".tree-summary")).toContainText("y2");
+  await expect(vectorRow.locator(".tree-summary")).toContainText("z3");
+  await expect(vectorRow.locator(".expander")).toBeDisabled();
+  await expect(
+    page
+      .locator(".tree-row")
+      .filter({ hasText: "wgoWgoDataobject #7idgraveyard_gate" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".tree-row")
+      .filter({ hasText: "sceneGameSceneDataidVillage" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".tree-row")
+      .filter({ hasText: "itemItemidsimple_iron_partscount12" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator(".tree-row")
+      .filter({ hasText: "resourceGameResAtomtypemoneyvalue12.5" }),
+  ).toBeVisible();
+  await vectorRow.locator(".tree-label").click();
   await expect(
     page.getByRole("spinbutton", { name: "Vector X", exact: true }),
   ).toHaveValue("1");

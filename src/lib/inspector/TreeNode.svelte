@@ -2,6 +2,7 @@
   import { tick } from "svelte";
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView } from "../save-api";
+  import { matchTree } from "./widgets";
   import TreeNode from "./TreeNode.svelte";
   let {
     doc,
@@ -18,6 +19,10 @@
   } = $props();
   let row = $state<HTMLDivElement>();
   let isExpanded = $derived(expanded.has(node.id));
+  let presentation = $derived(matchTree(node));
+  let canExpand = $derived(
+    Boolean(node.childCount && (!presentation?.compact || isExpanded)),
+  );
   let children = $state<NodeView[]>([]);
   let total = $state(0);
   let error = $state("");
@@ -53,17 +58,28 @@
     <button
       class="expander"
       aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name ?? node.kind}`}
-      disabled={!node.childCount}
+      disabled={!canExpand}
       onclick={() =>
         isExpanded ? expanded.delete(node.id) : expanded.add(node.id)}
-      >{node.childCount ? (isExpanded ? "▾" : "▸") : "·"}</button
+      >{canExpand ? (isExpanded ? "▾" : "▸") : "·"}</button
     >
     <button class="tree-label" onclick={() => void onselect(node)}
-      ><span
-        >{node.name ??
-          node.typeName?.split(",")[0].split(".").pop() ??
-          node.kind}</span
-      ><small>{node.value ?? `${node.childCount} fields`}</small></button
+      ><span class="tree-title"
+        ><span
+          >{node.name ??
+            node.typeName?.split(",")[0].split(".").pop() ??
+            node.kind}</span
+        >{#if presentation?.typeLabel}<em>{presentation.typeLabel}</em
+          >{/if}</span
+      ><small class="tree-summary"
+        >{#if presentation}{#each presentation.badges as badge}<span
+              class:tree-key={badge.tone === "key"}
+              class:tree-type={badge.tone === "type"}
+              class:tree-value={badge.tone === "value"}
+              >{#if badge.label}<b>{badge.label}</b>{/if}{badge.value}</span
+            >{/each}{:else}{node.value ??
+            `${node.childCount} fields`}{/if}</small
+      ></button
     >
   </div>
   <ul hidden={!isExpanded}>

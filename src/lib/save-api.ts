@@ -23,8 +23,16 @@ export interface NodeView {
   value: string | null;
   referenceTarget: number | null;
   childCount: number;
+  treeFields: TreeField[];
   originalOffset: number;
   editable: boolean;
+}
+export interface TreeField {
+  id: number;
+  name: string | null;
+  kind: string;
+  tag: number;
+  value: string;
 }
 export type Operation = { op: string; [key: string]: unknown };
 export interface SaveBackend {

@@ -35,9 +35,11 @@ New game classes or fields do not require schema regeneration for raw preservati
 
 ## Add an Inspector widget
 
-Place a `*.registration.ts` module alongside a Svelte component in `src/lib/inspector/widgets/`. The module's default export satisfies `Registration`: stable `id`, numeric `priority`, `matches(node, children)` and `component`. Vite's eager build-time glob discovers registrations automatically; no central list changes are needed. Restart/rebuild the frontend after adding a module.
+Place a `*.registration.ts` module alongside an optional Svelte component in `src/lib/inspector/widgets/`. The module's default export satisfies `Registration`: stable `id`, numeric `priority`, and one or both of an editor (`matches` plus `component`) and a `tree(node)` presentation. Vite's eager build-time glob discovers registrations automatically; no central list changes are needed. Restart/rebuild the frontend after adding a module.
 
 Matchers must validate both the full type/assembly identity and the actual child layout. Highest priority wins; tied top matches deliberately fall back to the generic Inspector. The built-in vectors handle verified Unity Vector2/3/4 and Vector2Int/3Int layouts, including unnamed positional scalars. They reject partial or incompatible layouts. Components receive `node`, `children` and `transact(operations)` and must apply grouped changes atomically. They do not receive mutable Rust state. Show raw structure remains available even when a widget matches.
+
+`tree(node)` can add a colored type label and labeled summary values to the corresponding tree row. It may set `compact` to hide ordinary child expansion, as the vector registration does. Selecting a hidden raw child from the details pane temporarily expands its parent so tree and details selection remain synchronized. `node.treeFields` contains the node's direct scalar children as read-only display data; it avoids an IPC request for every visible tree row. Tree presentations only affect display and never bypass transactions.
 
 ## Add a complex-value template
 
