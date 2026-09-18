@@ -1,166 +1,284 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
-  import { createBackend, type SaveBackend, type Summary, type NodeView } from "$lib/save-api";
-
-  let backend: SaveBackend | undefined;
-  let summary = $state<Summary | null>(null);
-  let filename = $state("");
-  let busy = $state(false);
+  import { onMount } from "svelte";
+  import { createBackend, type SaveBackend, type Summary } from "$lib/save-api";
+  import {
+    SaveDocument,
+    desktop,
+    native,
+    download,
+    defaultSettings,
+    type Settings,
+    type Preview,
+  } from "$lib/document.svelte";
+  import LoadSaves from "$lib/components/LoadSaves.svelte";
+  import SettingsView from "$lib/components/Settings.svelte";
+  import DocumentView from "$lib/components/DocumentView.svelte";
+  import FolderOpen from "~icons/ph/folder-open";
+  import Gear from "~icons/ph/gear-six";
+  import File from "~icons/ph/file-text";
+  import X from "~icons/ph/x";
+  import List from "~icons/ph/list";
+  import Book from "~icons/ph/book-open";
+  import "@fontsource/roboto/latin-400.css";
+  import "@fontsource/roboto/latin-500.css";
+  import "@fontsource/roboto/latin-700.css";
+  import "$lib/style.css";
+  let backend: SaveBackend;
+  let ready = $state(false);
+  let documents = $state<SaveDocument[]>([]);
+  let active = $state<number | "load" | "settings">("load");
+  let settings = $state<Settings>({ ...defaultSettings });
+  let drawer = $state(false);
   let error = $state("");
-  let message = $state("");
-  let nodes = $state<NodeView[]>([]);
-  let total = $state(0);
-  let offset = $state(0);
-  let path = $state<{ id: number | null; label: string }[]>([{ id: null, label: "Save" }]);
-  let selected = $state<NodeView | null>(null);
-  let value = $state("");
-  const pageSize = 100;
-  onDestroy(() => backend?.dispose());
-
-  async function run(action: () => Promise<void>) {
-    if (busy) return;
-    busy = true;
-    error = "";
-    try { await action(); } catch (e) { error = String(e); } finally { busy = false; }
+  let conflict = $state<SaveDocument>();
+  let closing = $state<SaveDocument>();
+  onMount(() => {
+    let alive = true;
+    createBackend()
+      .then(async (b) => {
+        backend = b;
+        if (desktop) settings = await native<Settings>("settings_get");
+        else {
+          try {
+            settings = {
+              ...defaultSettings,
+              ...JSON.parse(localStorage.getItem("gk2-settings") ?? "{}"),
+            };
+          } catch {}
+        }
+        if (alive) ready = true;
+      })
+      .catch((e) => (error = String(e)));
+    return () => {
+      alive = false;
+      backend?.dispose();
+    };
+  });
+  async function onsettings(value: Settings) {
+    if (
+      !Number.isFinite(value.interfaceScale) ||
+      value.interfaceScale < 0.75 ||
+      value.interfaceScale > 1.5
+    )
+      throw new Error("Invalid scale");
+    if (desktop) await native("settings_set", { settings: value });
+    else localStorage.setItem("gk2-settings", JSON.stringify(value));
+    settings = value;
   }
-  async function refresh() {
-    if (!backend) return;
-    const response = await backend.request({ op: "children", parent: path.at(-1)!.id, offset, limit: pageSize });
-    if (response.op === "children") { nodes = response.data.nodes; total = response.data.total; }
+  function activate(id: typeof active) {
+    active = id;
+    drawer = false;
   }
-  async function open(event: Event) {
-    const input = event.currentTarget as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    await run(async () => {
-      if (file.size > 128 * 1024 * 1024) throw new Error("Save exceeds the 128 MiB limit");
-      backend ??= await createBackend();
-      const opened = await backend.open(new Uint8Array(await file.arrayBuffer()));
-      summary = opened;
-      filename = file.name;
-      path = [{ id: null, label: "Save" }]; offset = 0; selected = null;
-      message = "Loaded. Export without edits preserves the original bytes.";
-      await refresh();
-    });
+  async function onfiles(files: File[]) {
+    const infos = new Map(
+      files
+        .filter((f) => f.name.toLowerCase().endsWith(".info"))
+        .map((f) => [f.name.slice(0, -5).toLowerCase(), f]),
+    );
+    const saves = files.filter((f) => f.name.toLowerCase().endsWith(".dat"));
+    if (!saves.length)
+      throw new Error(
+        "Choose at least one .dat file, optionally with its matching .info.",
+      );
+    const failures = [];
+    for (const file of saves) {
+      try {
+        const companion = infos.get(file.name.slice(0, -4).toLowerCase());
+        const infoBytes = companion
+          ? new Uint8Array(await companion.arrayBuffer())
+          : undefined;
+        let metadata = null;
+        try {
+          if (infoBytes)
+            metadata = JSON.parse(new TextDecoder().decode(infoBytes));
+        } catch {}
+        const summary = await backend.open(
+          new Uint8Array(await file.arrayBuffer()),
+        );
+        const doc = new SaveDocument(
+          backend,
+          summary,
+          { name: file.name, metadata },
+          infoBytes,
+        );
+        documents.push(doc);
+        activate(doc.id);
+      } catch (e) {
+        failures.push(`${file.name}: ${e}`);
+      }
+    }
+    if (failures.length) throw new Error(failures.join("\n"));
   }
-  async function enter(node: NodeView) {
-    await run(async () => {
-      path = [...path, { id: node.referenceTarget ?? node.id, label: node.name ?? node.typeName ?? `#${node.id}` }];
-      offset = 0; selected = null; await refresh();
-    });
+  async function onpath(path: string) {
+    try {
+      const result = await native<{ summary: Summary; preview: Preview }>(
+        "save_open_path",
+        { path },
+      );
+      if (!documents.some((d) => d.id === result.summary.documentId))
+        documents.push(
+          new SaveDocument(backend, result.summary, result.preview),
+        );
+      activate(result.summary.documentId);
+    } catch (e) {
+      error = String(e);
+    }
   }
-  async function navigate(index: number) {
-    await run(async () => { path = path.slice(0, index + 1); offset = 0; selected = null; await refresh(); });
+  async function save(doc: SaveDocument, as: boolean) {
+    try {
+      if (desktop) {
+        const destination =
+          as || !doc.path
+            ? await native<string | null>("save_dialog", {
+                kind: "save",
+                document: doc.id,
+              })
+            : null;
+        if ((as || !doc.path) && !destination) return;
+        const result = await native<{ summary: Summary; preview: Preview }>(
+          "save_write",
+          { document: doc.id, revision: doc.summary!.revision, destination },
+        );
+        doc.summary = result.summary;
+        doc.updatePreview(result.preview);
+      } else {
+        const revision = doc.summary!.revision;
+        download(await backend.export(doc.id), doc.name);
+        if (doc.infoBytes)
+          download(doc.infoBytes, doc.name.replace(/\.dat$/i, ".info"));
+        doc.summary = await doc.query<Summary>({ op: "mark_saved", revision });
+      }
+      conflict = undefined;
+      doc.error = "";
+    } catch (e) {
+      if (String(e).includes("EXTERNAL_CHANGE")) conflict = doc;
+      else doc.error = String(e);
+    }
   }
-  async function page(delta: number) {
-    await run(async () => { offset += delta * pageSize; selected = null; await refresh(); });
+  async function close(doc: SaveDocument) {
+    await doc.query({ op: "close" });
+    documents = documents.filter((d) => d.id !== doc.id);
+    if (active === doc.id) activate("load");
+    closing = undefined;
   }
-  async function apply(event: SubmitEvent) {
-    event.preventDefault();
-    await run(async () => {
-      if (!backend || !selected || !summary) return;
-      const response = await backend.request({ op: "set_value", edit: {
-        node: selected.id, expectedTag: selected.tag, revision: summary.revision, value,
-      } });
-      if (response.op === "set_value") summary = response.data;
-      message = `Updated ${selected.name ?? selected.kind} in memory. Export to save a copy.`;
-      selected = null; await refresh();
-    });
+  function showModal(node: HTMLDialogElement) {
+    node.showModal();
+    return { destroy: () => node.close() };
   }
-  async function download() {
-    await run(async () => {
-      const bytes = await backend!.export();
-      const url = URL.createObjectURL(new Blob([bytes.slice().buffer], { type: "application/octet-stream" }));
-      const link = document.createElement("a");
-      link.href = url; link.download = filename.replace(/\.dat$/i, "") + ".edited.dat";
-      document.body.append(link); link.click(); link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      message = "Exported a copy. The original save has not been overwritten.";
-    });
+  async function reload(doc: SaveDocument) {
+    const path = doc.path;
+    if (path) {
+      await close(doc);
+      await onpath(path);
+    }
+    conflict = undefined;
   }
 </script>
 
-<svelte:head><title>Graveyard Keeper 2 · Save inspector</title></svelte:head>
-<main>
-  <header>
-    <p class="eyebrow">GRAVEYARD KEEPER 2</p>
-    <h1>Save inspector</h1>
-    <p>Open a .dat save to inspect its fields and edit existing scalar values.</p>
-    <div class="toolbar">
-      <label class="file">Open save <input aria-label="Open save" type="file" accept=".dat" onchange={open} disabled={busy} /></label>
-      <button onclick={download} disabled={!summary || busy}>Export copy</button>
-      {#if busy}<span role="status">Working…</span>{/if}
+<svelte:head
+  ><title>Graveyard Keeper 2 Save Editor</title><meta
+    name="description"
+    content="Save editor for Graveyard Keeper 2."
+  /></svelte:head
+>
+<div class="workspace" style={`--interface-scale:${settings.interfaceScale}`}>
+  <button
+    class="mobile-menu"
+    aria-label="Toggle navigation"
+    onclick={() => (drawer = !drawer)}><List /></button
+  >
+  {#if drawer}<button
+      class="drawer-scrim"
+      aria-label="Close navigation"
+      onclick={() => (drawer = false)}
+    ></button>{/if}
+  <aside class:open={drawer} class="rail">
+    <div class="brand">
+      <Book />
+      <div>GRAVEYARD KEEPER <b>2</b><small>SAVE EDITOR</small></div>
     </div>
-  </header>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
-  {#if message}<p role="status">{message}</p>{/if}
-  {#if summary}
-    <section class="summary">
-      <strong>{filename}</strong>
-      <span>{summary.encodedBytes.toLocaleString()} bytes</span>
-      <span>{summary.records.toLocaleString()} records</span>
-      <span>{summary.types} types</span>
-    </section>
-    <p class="hint">Raw field edits do not apply game rules or update the companion .info metadata. Container and reference changes are read-only.</p>
-    <nav aria-label="Save path">
-      {#each path as part, index}<button disabled={busy} onclick={() => navigate(index)}>{part.label}</button>{/each}
+    <nav aria-label="Workspace">
+      <button class:active={active === "load"} onclick={() => activate("load")}
+        ><FolderOpen /><span>Load Saves</span></button
+      >
+      <div class="rail-caption">OPEN SAVES <span>{documents.length}</span></div>
+      {#each documents as doc (doc.id)}<div
+          class="rail-document"
+          class:active={active === doc.id}
+        >
+          <button onclick={() => activate(doc.id)} title={doc.name}
+            ><File /><span>{doc.name}</span>{#if doc.summary?.dirty}<i
+                aria-label="Unsaved changes">●</i
+              >{/if}</button
+          ><button
+            class="close-save"
+            aria-label={`Close ${doc.name}`}
+            onclick={() => (doc.summary?.dirty ? (closing = doc) : close(doc))}
+            ><X /></button
+          >
+        </div>{/each}
     </nav>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Field</th><th>Type</th><th>Value</th><th>Action</th></tr></thead>
-        <tbody>
-          {#each nodes as node (node.id)}
-            <tr>
-              <td title={`Node ${node.id}; original byte offset ${node.originalOffset}`}>{node.name ?? `[${node.id}]`}</td>
-              <td title={node.typeName ?? node.kind}>{node.typeName?.split(",")[0] ?? node.kind}</td>
-              <td class="value" title={node.value ?? ""}>{node.value ?? "—"}</td>
-              <td>
-                {#if node.childCount > 0 || node.referenceTarget !== null}
-                  <button disabled={busy} onclick={() => enter(node)}>{node.referenceTarget !== null ? "Follow reference" : `Open (${node.childCount})`}</button>
-                {:else if node.editable}
-                  <button disabled={busy} onclick={() => { selected = node; value = node.value ?? ""; }}>Edit</button>
-                {/if}
-              </td>
-            </tr>
-          {:else}<tr><td colspan="4">No child fields.</td></tr>{/each}
-        </tbody>
-      </table>
-    </div>
-    <div class="toolbar">
-      <button disabled={busy || offset === 0} onclick={() => page(-1)}>Previous</button>
-      <span>{total ? offset + 1 : 0}–{Math.min(offset + pageSize, total)} of {total}</span>
-      <button disabled={busy || offset + pageSize >= total} onclick={() => page(1)}>Next</button>
-    </div>
-    {#if selected}
-      <form onsubmit={apply}>
-        <label for="edit-value">{selected.name ?? selected.kind} ({selected.kind})</label>
-        <textarea id="edit-value" bind:value disabled={busy} rows="3"></textarea>
-        <div class="toolbar"><button disabled={busy} type="submit">Apply edit</button><button disabled={busy} type="button" onclick={() => selected = null}>Cancel</button></div>
-      </form>
-    {/if}
-  {/if}
-</main>
-
-<style>
-  :global(body) { margin: 0; background: #171c1b; color: #e5e9e2; font-family: system-ui, sans-serif; }
-  main { max-width: 1150px; padding: 2.5rem 1.5rem; margin: auto; }
-  h1 { margin: .4rem 0; font-size: 2.2rem; }
-  .eyebrow { color: #c9b984; letter-spacing: .15em; font-size: .75rem; }
-  p { color: #b8c2b8; }
-  .toolbar, nav, .summary { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin: 1rem 0; }
-  .summary { padding: 1rem; background: #242d28; border-radius: .5rem; }
-  button, .file { border: 1px solid #697765; border-radius: .35rem; background: #303c31; color: #f1f3eb; padding: .5rem .8rem; font: inherit; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: default; }
-  button:hover:not(:disabled) { background: #465442; }
-  input { max-width: 15rem; margin-left: .5rem; }
-  .hint { font-size: .85rem; }
-  .error { color: #ffb5a8; white-space: pre-wrap; }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; text-align: left; font-size: .9rem; }
-  th, td { padding: .7rem; border-bottom: 1px solid #344037; }
-  th { color: #c9b984; }
-  .value { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  form { padding: 1rem; background: #242d28; border-radius: .5rem; }
-  textarea { box-sizing: border-box; width: 100%; margin-top: .5rem; background: #171c1b; color: #e5e9e2; border: 1px solid #697765; padding: .75rem; }
-</style>
+    <button
+      class="settings-link"
+      class:active={active === "settings"}
+      onclick={() => activate("settings")}><Gear />Settings</button
+    >
+  </aside>
+  <main>
+    {#if error}<p class="error-banner" role="alert">
+        {error}
+      </p>{/if}{#if ready}<div class="page-content" hidden={active !== "load"}>
+        <LoadSaves {onfiles} {onpath} {settings} {onsettings} />
+      </div>
+      <div class="page-content" hidden={active !== "settings"}>
+        <SettingsView {settings} {onsettings} />
+      </div>
+      {#each documents as doc (doc.id)}<div
+          class="document-workspace"
+          hidden={active !== doc.id}
+        >
+          <DocumentView {doc} onsave={save} />
+        </div>{/each}{:else}<p class="page-content">Loading editor…</p>{/if}
+  </main>
+</div>
+{#if conflict}<div class="modal-backdrop">
+    <dialog
+      use:showModal
+      class="panel modal"
+      aria-label="Save changed on disk"
+      oncancel={() => (conflict = undefined)}
+    >
+      <h2 class="strip">Save changed on disk</h2>
+      <div class="panel-body">
+        <p>
+          Another process changed {conflict.name}. Reload the disk version, or
+          save your edits to another file.
+        </p>
+        <div class="form-actions">
+          <button onclick={() => conflict && reload(conflict)}>Reload</button
+          ><button
+            class="primary"
+            onclick={() => conflict && save(conflict, true)}>Save As</button
+          ><button onclick={() => (conflict = undefined)}>Cancel</button>
+        </div>
+      </div>
+    </dialog>
+  </div>{/if}
+{#if closing}<div class="modal-backdrop">
+    <dialog
+      use:showModal
+      class="panel modal"
+      aria-label="Close unsaved document"
+      oncancel={() => (closing = undefined)}
+    >
+      <h2 class="strip">Unsaved changes</h2>
+      <div class="panel-body">
+        <p>Close {closing.name} and discard its edits?</p>
+        <div class="form-actions">
+          <button class="danger" onclick={() => closing && close(closing)}
+            >Discard and close</button
+          ><button onclick={() => (closing = undefined)}>Keep editing</button>
+        </div>
+      </div>
+    </dialog>
+  </div>{/if}

@@ -1,0 +1,17 @@
+{
+  "id": "game-res-atom",
+  "typeName": "LazyBearTechnology.GameResAtom, LazyBearTechnology",
+  "reference": true,
+  "fields": [
+    {
+      "name": "type",
+      "kind": "string",
+      "value": ""
+    },
+    {
+      "name": "value",
+      "kind": "f32",
+      "value": "0"
+    }
+  ]
+}

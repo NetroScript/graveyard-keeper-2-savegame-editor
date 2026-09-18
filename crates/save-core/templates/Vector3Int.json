@@ -1,0 +1,19 @@
+{
+  "id": "Vector3Int",
+  "typeName": "UnityEngine.Vector3Int, UnityEngine.CoreModule",
+  "reference": false,
+  "fields": [
+    {
+      "kind": "i32",
+      "value": "0"
+    },
+    {
+      "kind": "i32",
+      "value": "0"
+    },
+    {
+      "kind": "i32",
+      "value": "0"
+    }
+  ]
+}

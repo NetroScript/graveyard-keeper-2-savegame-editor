@@ -175,7 +175,7 @@ fn payload_size(payload: &Payload) -> usize {
         _ => 0,
     }
 }
-fn replacement(tag: u8, payload: &Payload, value: &str) -> Result<Payload, Error> {
+pub(crate) fn replacement(tag: u8, payload: &Payload, value: &str) -> Result<Payload, Error> {
     let invalid = || Error("Invalid value or value outside the original wire type's range".into());
     macro_rules! integer {
         ($ty:ty) => {
@@ -226,7 +226,7 @@ fn replacement(tag: u8, payload: &Payload, value: &str) -> Result<Payload, Error
         _ => return Err(Error("This wire value is read-only".into())),
     })
 }
-fn view(doc: &Document, id: usize) -> NodeView {
+pub(crate) fn view(doc: &Document, id: usize) -> NodeView {
     let record = &doc.records[id];
     let mut type_name = None;
     let mut reference_target = None;

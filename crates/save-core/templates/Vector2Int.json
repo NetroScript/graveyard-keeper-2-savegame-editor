@@ -1,0 +1,15 @@
+{
+  "id": "Vector2Int",
+  "typeName": "UnityEngine.Vector2Int, UnityEngine.CoreModule",
+  "reference": false,
+  "fields": [
+    {
+      "kind": "i32",
+      "value": "0"
+    },
+    {
+      "kind": "i32",
+      "value": "0"
+    }
+  ]
+}

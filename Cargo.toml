@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/save-core", "crates/save-wasm"]
+members = ["crates/save-core", "crates/save-wasm", "crates/save-desktop"]
 exclude = ["src-tauri"]
 resolver = "2"
 

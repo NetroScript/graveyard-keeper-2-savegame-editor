@@ -1,11 +1,12 @@
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
+import Icons from "unplugin-icons/vite";
 import process from "node:process";
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(), Icons({ compiler: "svelte" })],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

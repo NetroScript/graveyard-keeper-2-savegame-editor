@@ -1,7 +1,7 @@
 interface WasmSession {
   open(bytes: Uint8Array): string;
-  request(json: string): string;
-  export(): Uint8Array;
+  request(document: number, json: string): string;
+  export(document: number): Uint8Array;
 }
 // Generated into static/wasm, not required for desktop compilation.
 async function load(url: string): Promise<WasmSession> {
@@ -17,14 +17,27 @@ self.onmessage = ({ data }) => {
       const core = await (session ??= load(data.moduleUrl));
       let result: unknown;
       switch (data.op) {
-        case "open": result = JSON.parse(core.open(data.payload)); break;
-        case "request": result = JSON.parse(core.request(JSON.stringify(data.payload))); break;
+        case "open":
+          result = JSON.parse(core.open(data.payload));
+          break;
+        case "request":
+          result = JSON.parse(
+            core.request(
+              data.payload.document,
+              JSON.stringify(data.payload.request),
+            ),
+          );
+          break;
         case "export": {
-          const bytes = core.export().slice();
-          self.postMessage({ id: data.id, result: bytes.buffer }, { transfer: [bytes.buffer] });
+          const bytes = core.export(data.payload).slice();
+          self.postMessage(
+            { id: data.id, result: bytes.buffer },
+            { transfer: [bytes.buffer] },
+          );
           return;
         }
-        default: throw new Error("Unknown backend operation");
+        default:
+          throw new Error("Unknown backend operation");
       }
       self.postMessage({ id: data.id, result });
     } catch (error) {

@@ -28,7 +28,7 @@ impl Default for Limits {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct WireString {
     pub wide: bool,
     pub bytes: Vec<u8>,
@@ -66,13 +66,13 @@ impl WireString {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum TypeInfo {
     None,
     Definition(i32, WireString),
     Reference(i32),
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Payload {
     Empty,
     Node {
@@ -88,7 +88,7 @@ pub(crate) enum Payload {
     Fixed(Vec<u8>),
     Text(WireString),
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Record {
     pub tag: u8,
     pub name: Option<WireString>,
@@ -139,6 +139,7 @@ impl Record {
 }
 
 /// Owns parsed records, not the original file. Encoding reconstructs every header and payload.
+#[derive(Clone)]
 pub struct Document {
     pub(crate) records: Vec<Record>,
     pub(crate) roots: Vec<usize>,
@@ -370,10 +371,130 @@ impl Document {
     }
     pub fn encode(&self) -> Vec<u8> {
         let mut output = Vec::with_capacity(self.encoded_size);
-        for record in &self.records {
-            record.write(&mut output);
+        let definitions: HashMap<_, _> = self
+            .records
+            .iter()
+            .filter_map(|r| match &r.payload {
+                Payload::Node {
+                    ty: TypeInfo::Definition(id, name),
+                    ..
+                } => Some((*id, name)),
+                _ => None,
+            })
+            .collect();
+        let mut emitted = HashSet::new();
+        let mut stack: Vec<(usize, bool)> =
+            self.roots.iter().rev().map(|id| (*id, false)).collect();
+        while let Some((id, end)) = stack.pop() {
+            let record = &self.records[id];
+            if end {
+                output.push(if record.tag == 6 { 7 } else { 5 });
+                continue;
+            }
+            let mut header = record.clone();
+            header.children.clear();
+            if let Payload::Node { ty, .. } = &mut header.payload {
+                let type_id = match ty {
+                    TypeInfo::Definition(id, _) | TypeInfo::Reference(id) => Some(*id),
+                    _ => None,
+                };
+                if let Some(type_id) = type_id {
+                    if emitted.insert(type_id) {
+                        if let Some(name) = definitions.get(&type_id) {
+                            *ty = TypeInfo::Definition(type_id, (*name).clone());
+                        }
+                    } else {
+                        *ty = TypeInfo::Reference(type_id);
+                    }
+                }
+            }
+            header.write(&mut output);
+            if matches!(record.tag, 1..=4 | 6) {
+                stack.push((id, true));
+                stack.extend(record.children.iter().rev().map(|child| (*child, false)));
+            }
+        }
+        if self.records.iter().any(|r| r.tag == 49) {
+            output.push(49);
         }
         output
+    }
+
+    pub(crate) fn reachable(&self) -> Result<Vec<usize>> {
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        let mut stack: Vec<_> = self.roots.iter().map(|id| (*id, 0)).collect();
+        while let Some((id, depth)) = stack.pop() {
+            if depth > Limits::default().max_depth || !seen.insert(id) {
+                return Err(Error("Invalid/cyclic container hierarchy".into()));
+            }
+            let record = self
+                .records
+                .get(id)
+                .ok_or_else(|| Error("Unknown node".into()))?;
+            if record.tag == 0 || terminal(record.tag) {
+                return Err(Error("Deleted node".into()));
+            }
+            out.push(id);
+            stack.extend(
+                record
+                    .children
+                    .iter()
+                    .rev()
+                    .map(|child| (*child, depth + 1)),
+            );
+        }
+        Ok(out)
+    }
+    pub(crate) fn rebuild(&mut self) -> Result<()> {
+        let ids = self.reachable()?;
+        if self.records.len() > Limits::default().max_records {
+            return Err(Error("Record limit exceeded".into()));
+        }
+        self.objects.clear();
+        for id in &ids {
+            if let Payload::Node {
+                object: Some(object),
+                ..
+            } = self.records[*id].payload
+            {
+                if self.objects.insert(object, *id).is_some() {
+                    return Err(Error("Duplicate object ID".into()));
+                }
+            }
+        }
+        for id in &ids {
+            let r = &self.records[*id];
+            if base_tag(r.tag) == 10 {
+                if let Payload::Fixed(bytes) = &r.payload {
+                    let object = i32::from_le_bytes(
+                        bytes
+                            .as_slice()
+                            .try_into()
+                            .map_err(|_| Error("Invalid reference".into()))?,
+                    );
+                    if !self.objects.contains_key(&object) {
+                        return Err(Error("Removal would leave a dangling reference; retarget it in the same transaction".into()));
+                    }
+                }
+            }
+            for child in &r.children {
+                if self.records[*child].parent != Some(*id) {
+                    return Err(Error("Invalid parent link".into()));
+                }
+            }
+        }
+        for id in ids {
+            let r = &mut self.records[id];
+            if matches!(r.payload, Payload::Array(_)) {
+                r.payload = Payload::Array(r.children.len() as i64);
+            }
+        }
+        self.encoded_size = self.encode().len();
+        if self.encoded_size > self.max_bytes {
+            return Err(Error("Document exceeds size limit".into()));
+        }
+        Ok(())
     }
     pub fn record_count(&self) -> usize {
         self.records.len()

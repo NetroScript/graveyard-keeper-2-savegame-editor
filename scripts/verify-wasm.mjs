@@ -8,17 +8,17 @@ const bytes = process.argv[2] ? await readFile(process.argv[2]) : Uint8Array.of(
 const session = new SaveSession();
 try {
   const summary = JSON.parse(session.open(bytes));
-  assert.deepEqual(Buffer.from(session.export()), Buffer.from(bytes));
-  const request = (value) => JSON.parse(session.request(JSON.stringify(value)));
-  const roots = request({ op: "children", parent: null, offset: 0, limit: 200 }).data;
-  const fields = request({ op: "children", parent: roots.nodes[0].id, offset: 0, limit: 200 }).data;
+  assert.deepEqual(Buffer.from(session.export(summary.documentId)), Buffer.from(bytes));
+  const request = (value) => JSON.parse(session.request(summary.documentId, JSON.stringify(value)));
+  const roots = request({ op: "children", parent: null, offset: 0, limit: 200 });
+  const fields = request({ op: "children", parent: roots.nodes[0].id, offset: 0, limit: 200 });
   const field = fields.nodes.find((node) => node.kind === "bool");
   assert.ok(field, "Expected a boolean field for the edit probe");
-  const edited = request({ op: "set_value", edit: { node: field.id, expectedTag: field.tag, revision: summary.revision, value: field.value === "true" ? "false" : "true" } }).data;
-  assert.equal(Buffer.from(session.export()).filter((byte, index) => byte !== bytes[index]).length, 1);
-  request({ op: "set_value", edit: { node: field.id, expectedTag: field.tag, revision: edited.revision, value: field.value } });
-  assert.deepEqual(Buffer.from(session.export()), Buffer.from(bytes));
+  const edited = request({ op: "transact", revision: summary.revision, operations: [{ op: "set", node: field.id, tag: field.tag, value: field.value === "true" ? "false" : "true" }] }).summary;
+  assert.equal(Buffer.from(session.export(summary.documentId)).filter((byte, index) => byte !== bytes[index]).length, 1);
+  request({ op: "undo", revision: edited.revision });
+  assert.deepEqual(Buffer.from(session.export(summary.documentId)), Buffer.from(bytes));
   assert.throws(() => session.open(Uint8Array.of(255)));
-  assert.deepEqual(Buffer.from(session.export()), Buffer.from(bytes));
+  assert.deepEqual(Buffer.from(session.export(summary.documentId)), Buffer.from(bytes));
   console.log(`WASM: exact round trip and reversible edit passed (${summary.originalBytes} bytes; ${summary.records} records).`);
 } finally { session.free(); }

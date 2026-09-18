@@ -1,0 +1,23 @@
+{
+  "id": "Vector4",
+  "typeName": "UnityEngine.Vector4, UnityEngine.CoreModule",
+  "reference": false,
+  "fields": [
+    {
+      "kind": "f32",
+      "value": "0"
+    },
+    {
+      "kind": "f32",
+      "value": "0"
+    },
+    {
+      "kind": "f32",
+      "value": "0"
+    },
+    {
+      "kind": "f32",
+      "value": "0"
+    }
+  ]
+}
