@@ -106,7 +106,12 @@ async function open(page: Page, name = "one.dat") {
 }
 async function exported(page: Page) {
   const ready = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Save", exact: true }).click();
+  const save = page.getByRole("button", { name: "Save", exact: true });
+  await (
+    (await save.isEnabled())
+      ? save
+      : page.getByRole("button", { name: "Save As", exact: true })
+  ).click();
   const stream = await (await ready).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
@@ -119,26 +124,49 @@ test("multiple saves preserve drafts, navigation, edits, undo and downloads", as
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
   await open(page);
+  const maximum = page.getByRole("spinbutton", {
+    name: "Maximum health",
+    exact: true,
+  });
+  await maximum.fill("0");
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Save As", exact: true }),
+  ).toBeDisabled();
+  await maximum.fill("100");
+  await expect(
+    page.getByRole("button", { name: "Save As", exact: true }),
+  ).toBeEnabled();
+  const sections = page.locator(".general-section");
+  await expect(sections.locator("h3.strip")).toHaveText([
+    "Vitals",
+    "Money",
+    "Technology Points",
+    "Mental State",
+  ]);
+  const content = await page.locator(".general-content").boundingBox();
+  for (const section of await sections.all()) {
+    const bounds = await section.boundingBox();
+    expect(bounds!.width).toBeGreaterThan(content!.width - 65);
+  }
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toBeDisabled();
   expect(await exported(page)).toEqual(fixture());
   await page
     .getByRole("spinbutton", { name: "Current health", exact: true })
     .fill("88");
   await page.getByRole("button", { name: "Load Saves", exact: true }).click();
   await open(page, "two.dat");
-  await page.getByRole("button", { name: "one.dat", exact: true }).click();
+  await page.getByRole("button", { name: /^one\.dat(?: Unsaved changes)?$/ }).click();
   await expect(
     page.getByRole("spinbutton", { name: "Current health", exact: true }),
   ).toHaveValue("88");
-  await page
-    .locator("form")
-    .filter({
-      has: page.getByRole("spinbutton", {
-        name: "Current health",
-        exact: true,
-      }),
-    })
-    .getByRole("button", { name: "Apply", exact: true })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Undo", exact: true }),
   ).toBeEnabled();
@@ -168,15 +196,9 @@ test("General insertion and Inspector share values; vector registration is activ
   await page.getByRole("spinbutton", { name: "Gold coins" }).fill("1");
   await page.getByRole("spinbutton", { name: "Silver coins" }).fill("23");
   await page.getByRole("spinbutton", { name: "Bronze coins" }).fill("45");
-  await page
-    .locator("form")
-    .filter({
-      has: page.getByRole("spinbutton", {
-        name: "Gold coins",
-      }),
-    })
-    .getByRole("button", { name: "Apply", exact: true })
-    .click();
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Undo", exact: true }),
   ).toBeEnabled();

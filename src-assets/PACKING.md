@@ -51,10 +51,10 @@ PNG retains lossless compression; metadata uses MessagePack.
 and image rendering backed by the shared parser:
 
 ```ts
-import { base } from "$app/paths";
+import { asset } from "$app/paths";
 import { AssetPack } from "$lib/assets/asset-pack";
 
-const assets = await AssetPack.load(`${base}/assets/game.gk2pack`);
+const assets = await AssetPack.load(asset("/assets/game.gk2pack"));
 // Resolve imageHash through the item catalog and its named sprite entry.
 const url = await assets.imageUrl(imageHash, "#272832");
 // Use url as the src of a normal <img>. Repeated requests reuse the same URL.

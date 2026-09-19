@@ -1229,6 +1229,11 @@ select {
   max-width: 1320px;
 }
 
+.view-content.general-content {
+  width: 100%;
+  max-width: none;
+}
+
 .page-heading {
   margin-bottom: 24px;
 }

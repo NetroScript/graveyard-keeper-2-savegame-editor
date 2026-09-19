@@ -27,20 +27,24 @@
     <button
       title="Undo"
       aria-label="Undo"
-      disabled={!doc.summary?.canUndo || doc.busy}
+      disabled={!doc.summary?.canUndo || doc.busy || doc.pendingGeneralEdits}
       onclick={() => doc.mutate("undo").catch(() => {})}
       ><ArrowCounterClockwise /></button
     ><button
       title="Redo"
       aria-label="Redo"
-      disabled={!doc.summary?.canRedo || doc.busy}
+      disabled={!doc.summary?.canRedo || doc.busy || doc.pendingGeneralEdits}
       onclick={() => doc.mutate("redo").catch(() => {})}
       ><ArrowClockwise /></button
-    ><button disabled={doc.busy} onclick={() => onsave(doc, true)}
-      >Save As</button
+    ><button
+      disabled={doc.busy || doc.pendingGeneralEdits || doc.invalidGeneralDraft}
+      onclick={() => onsave(doc, true)}>Save As</button
     ><button
       class="primary"
-      disabled={doc.busy}
+      disabled={!doc.summary?.dirty ||
+        doc.busy ||
+        doc.pendingGeneralEdits ||
+        doc.invalidGeneralDraft}
       onclick={() => onsave(doc, false)}><FloppyDisk />Save</button
     >
   </div>
@@ -92,7 +96,7 @@
         >{/each}
     </div>
   </nav>
-  <div class="view-content">
+  <div class="view-content" class:general-content={category === "General"}>
     <div hidden={category !== "General"}><General {doc} /></div>
     {#if category !== "General"}<section class="empty-state panel">
         <h2>{category}</h2>

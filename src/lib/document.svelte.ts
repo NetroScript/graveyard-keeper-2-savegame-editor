@@ -17,6 +17,8 @@ export class SaveDocument {
   path = $state<string>();
   metadata = $state<Record<string, unknown> | null>();
   busy = $state(false);
+  pendingGeneralEdits = $state(false);
+  invalidGeneralDraft = $state(false);
   error = $state("");
   private queue = Promise.resolve();
   constructor(
