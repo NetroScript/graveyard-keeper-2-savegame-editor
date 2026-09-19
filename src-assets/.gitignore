@@ -1,0 +1,5 @@
+**/bin/
+**/obj/
+exports/
+*.local.props
+lib/

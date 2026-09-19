@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Gk2.AssetExporter</AssemblyName>
+    <Version>0.1.0</Version>
+    <RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <!-- Supply GameManagedDir on the command line or in this ignored local file. -->
+  <Import Project="Paths.local.props" Condition="Exists('Paths.local.props')" />
+  <ItemGroup>
+    <Compile Include="Plugin.cs;ExportContext.cs;SpriteExporter.cs;Modules/*.cs" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
+    <Reference Include="$(GameManagedDir)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(GameManagedDir)/LazyBearTechnology.dll" Private="false" />
+    <Reference Include="$(GameManagedDir)/Newtonsoft.Json.dll" Private="false" />
+    <Reference Include="$(GameManagedDir)/Unity.TextMeshPro.dll" Private="false" />
+    <Reference Include="$(GameManagedDir)/UnityEngine*.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="ValidateGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GameManagedDir)/Assembly-CSharp.dll')" Text="Set GameManagedDir to the game's _Data/Managed directory (see README.md)." />
+  </Target>
+</Project>

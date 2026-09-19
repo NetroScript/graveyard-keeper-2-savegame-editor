@@ -34,3 +34,4 @@ The companion `.info` file is separate JSON slot metadata, written by `JsonFileS
 
 - [Builds and shared backend API](docs/builds.md)
 - [Library API](crates/save-core/README.md)
+- [Item definitions and icon exporter](src-assets/README.md)

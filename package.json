@@ -4,6 +4,9 @@
   "description": "",
   "type": "module",
   "scripts": {
+    "pack:assets": "node scripts/pack-assets.mjs",
+    "test:assets": "node --test tests/assets/*.test.mjs",
+    "test:assets:browser": "node --test tests/assets/render.browser.mjs",
     "dev": "pnpm build:wasm && node scripts/frontend.mjs browser dev",
     "build": "pnpm build:web",
     "build:wasm": "wasm-pack build crates/save-wasm --target web --out-dir ../../static/wasm --release",
@@ -22,6 +25,7 @@
   "license": "MIT",
   "dependencies": {
     "@fontsource/roboto": "^5.3.0",
+    "@msgpack/msgpack": "^3.1.3",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2"
   },
