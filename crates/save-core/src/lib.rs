@@ -1,5 +1,6 @@
 //! Lossless, game-scoped Odin binary documents. No filesystem, Unity or Tauri dependency.
 mod general;
+pub mod inventory;
 mod service;
 mod wire;
 mod workspace;

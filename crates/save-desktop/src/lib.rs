@@ -15,6 +15,7 @@ fn err(e: impl std::fmt::Display) -> String {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
+    pub out_of_bounds_edits: bool,
     pub backup_retention: u8,
     pub custom_directories: Vec<PathBuf>,
     pub interface_scale: f64,
@@ -22,6 +23,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            out_of_bounds_edits: false,
             backup_retention: 5,
             custom_directories: vec![],
             interface_scale: 1.0,

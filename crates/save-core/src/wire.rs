@@ -141,6 +141,7 @@ impl Record {
 /// Owns parsed records, not the original file. Encoding reconstructs every header and payload.
 #[derive(Clone)]
 pub struct Document {
+    pub(crate) next_object_id: std::cell::Cell<Option<i32>>,
     pub(crate) records: Vec<Record>,
     pub(crate) roots: Vec<usize>,
     pub(crate) types: HashMap<i32, String>,
@@ -221,6 +222,7 @@ impl Document {
         }
         let mut r = Reader { bytes, pos: 0 };
         let mut doc = Self {
+            next_object_id: std::cell::Cell::new(None),
             records: vec![],
             roots: vec![],
             types: HashMap::new(),
