@@ -155,6 +155,11 @@ and handling trimmed/rotated atlas entries. GPU readback supports non-readable
 textures. It restores render state and releases temporary Unity objects. The
 image cache retains only one source atlas at a time.
 
+The inventory UI module also exports loaded `UIItemCell` background sprites to
+`inventory-ui.json`. Open the character inventory before exporting so the cell
+prefab is loaded, then rebuild the asset pack. Older packs use the editor's CSS
+cell background until this catalog is available.
+
 ## Validation and extending the exporter
 
 Compilation has been verified against the Unity 6000.3.9 Mono assemblies

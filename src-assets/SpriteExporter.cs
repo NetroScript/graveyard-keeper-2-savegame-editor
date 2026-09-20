@@ -17,14 +17,14 @@ namespace Gk2.AssetExporter
 
         public SpriteExporter(ExportContext context) { this.context = context; }
 
-        public string Sprite(string name)
+        public string Sprite(string name, UnityEngine.Sprite source = null)
         {
             if (string.IsNullOrEmpty(name)) return null;
             if (Sprites.ContainsKey(name)) return name;
             UnityEngine.Sprite sprite = null;
             try
             {
-                sprite = EasySpritesCollection.Instance.GetSprite(name, null);
+                sprite = source ?? EasySpritesCollection.Instance.GetSprite(name, null);
                 if (sprite == null) throw new InvalidOperationException("Sprite is unavailable");
                 var pixels = Read(sprite.texture);
                 int width = Mathf.RoundToInt(sprite.rect.width), height = Mathf.RoundToInt(sprite.rect.height);
@@ -71,7 +71,7 @@ namespace Gk2.AssetExporter
             finally
             {
                 // SpriteAtlas.GetSprite returns a clone. The atlas itself remains game-owned.
-                if (sprite != null) UnityEngine.Object.Destroy(sprite);
+                if (source == null && sprite != null) UnityEngine.Object.Destroy(sprite);
             }
         }
 
