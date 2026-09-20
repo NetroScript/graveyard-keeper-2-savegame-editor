@@ -1,9 +1,9 @@
 import { base } from "$app/paths";
 
-// DTOs mirror gk2-save-core::service. All editable numeric values cross IPC as strings.
+// DTOs mirror gk2-save-core::workspace. All editable numeric values cross IPC as strings.
 export interface Summary {
   originalBytes: number;
-  encodedBytes: number;
+  encodedBytes: number | null; // Unknown after edits; calculated on export.
   records: number;
   types: number;
   objects: number;

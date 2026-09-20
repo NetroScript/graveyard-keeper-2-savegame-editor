@@ -307,18 +307,10 @@ pub(crate) struct Cache {
     entries: BTreeMap<usize, Entry>,
     rules: Vec<Value>,
     rule_keys: BTreeMap<String, usize>,
-    pub(crate) guids: HashSet<String>,
 }
 impl Cache {
     pub(crate) fn build(doc: &Document, catalog: &Catalog) -> Result<Self, Error> {
         let mut cache = Self::default();
-        for id in doc.reachable()? {
-            if short_type(doc, id) == "SGuid" {
-                if let Ok(guid) = value(doc, id, "id") {
-                    cache.guids.insert(guid.to_ascii_lowercase());
-                }
-            }
-        }
         for (node, kind, title) in containers(doc, catalog)? {
             cache.register(doc, catalog, node, kind, title)?;
         }
@@ -489,7 +481,11 @@ impl Cache {
             self.entries.remove(n);
         }
         let mut updated = containers.clone();
-        let mut pending = containers.iter().copied().collect::<Vec<_>>();
+        let mut pending = containers
+            .iter()
+            .copied()
+            .filter(|n| self.entries.contains_key(n))
+            .collect::<Vec<_>>();
         while let Some(container) = pending.pop() {
             for n in &doc.records[contents(doc, container)?].children {
                 let n = resolve(doc, *n)?;
@@ -507,53 +503,42 @@ impl Cache {
             json!({"upsert":updated.iter().filter_map(|n|self.entries.get(n)).map(|e|self.entry(doc,e)).collect::<Result<Vec<_>,_>>()?,"removed":removed,"rules":self.rules.iter().enumerate().skip(first_rule).map(|(id,v)|(id.to_string(),v.clone())).collect::<BTreeMap<_,_>>()}),
         )
     }
-    pub(crate) fn scope(
-        &self,
-        doc: &Document,
-        catalog: &Catalog,
-        container: usize,
-        edit: &Edit,
-    ) -> Result<Option<Vec<usize>>, Error> {
+    pub(crate) fn check_container(&self, doc: &Document, container: usize) -> Result<(), Error> {
         if !self.entries.contains_key(&container) {
             return Err(failure("Unsupported inventory"));
         }
-        let mut ids = vec![field(doc, container, "inventoryFillSize")?];
-        match edit {
-            Edit::Capacity { .. } => ids.push(field(doc, container, "inventorySize")?),
-            Edit::Put {
-                node: None, guid, ..
-            } => {
-                if self.guids.contains(&guid.to_ascii_lowercase()) {
-                    return Err(failure("Duplicate item GUID"));
-                }
-                ids.push(contents(doc, container)?);
-            }
-            Edit::Put {
-                node: Some(n),
-                item,
-                ..
-            } => {
-                let target = resolve(doc, *n)?;
-                let old_id = value(doc, target, "id")?;
-                let same = catalog
-                    .items
-                    .get(&old_id)
-                    .zip(catalog.items.get(item))
-                    .is_some_and(|(old, new)| {
-                        old.family.is_some()
-                            && old.family == new.family
-                            && old.capacity == new.capacity
-                            && old.durability == new.durability
-                    });
-                if old_id != *item && !same {
-                    return Ok(None);
-                }
-                ids.extend([field(doc, target, "count")?, field(doc, target, "id")?]);
-            }
-            _ => return Ok(None),
-        }
-        Ok(Some(ids))
+        crate::workspace::active(doc, container)?;
+        Ok(())
     }
+}
+pub(crate) fn new_guid<'a>(
+    doc: &Document,
+    catalog: &Catalog,
+    edit: &'a Edit,
+) -> Result<Option<&'a str>, Error> {
+    let Edit::Put {
+        node, item, guid, ..
+    } = edit
+    else {
+        return Ok(None);
+    };
+    if let Some(node) = node {
+        let old_id = value(doc, resolve(doc, *node)?, "id")?;
+        let same_family = catalog
+            .items
+            .get(&old_id)
+            .zip(catalog.items.get(item))
+            .is_some_and(|(old, new)| {
+                old.family.is_some()
+                    && old.family == new.family
+                    && old.capacity == new.capacity
+                    && old.durability == new.durability
+            });
+        if old_id == *item || same_family {
+            return Ok(None);
+        }
+    }
+    Ok(Some(guid))
 }
 fn set(doc: &mut Document, parent: usize, name: &str, value: String) -> Result<(), Error> {
     let node = field(doc, parent, name)?;
@@ -718,15 +703,6 @@ fn new_item(
         add(doc, p, Some("durability"), "f32", "1")?;
     }
     Ok(item)
-}
-pub(crate) fn write(
-    doc: &mut Document,
-    catalog: &Catalog,
-    container: usize,
-    edit: Edit,
-    out_of_bounds: bool,
-) -> Result<(), Error> {
-    write_inner(doc, catalog, container, edit, out_of_bounds, false)
 }
 pub(crate) fn write_inner(
     doc: &mut Document,
@@ -939,7 +915,7 @@ mod tests {
         assert_eq!(result["inventoryInvalidated"], false);
         assert!(result["general"].is_null());
         let after = w.export(id).unwrap();
-        assert_eq!(after.len(), w.summary(id).unwrap().encoded_bytes);
+        assert_eq!(Some(after.len()), w.summary(id).unwrap().encoded_bytes);
         let rev = w.summary(id).unwrap().revision;
         request(&mut w, id, json!({"op":"undo","revision":rev})).unwrap();
         assert_eq!(w.export(id).unwrap(), bytes);
@@ -993,6 +969,72 @@ mod tests {
         );
         assert!(transact(&mut w, id, c, json!({"kind":"remove","node":item}), false).is_err());
     }
+    #[test]
+    fn deletion_replacement_and_guid_indexes_survive_history() {
+        let bytes = fixture();
+        let mut w = Workspace::default();
+        let id = w.open(&bytes).unwrap().document_id;
+        request(
+            &mut w,
+            id,
+            json!({"op":"inventory_catalog","catalog":catalog()}),
+        )
+        .unwrap();
+        let c = request(&mut w, id, json!({"op":"inventories"})).unwrap()[0]["node"]
+            .as_u64()
+            .unwrap() as usize;
+        let put = |item: &str, node: Option<usize>, guid: &str| json!({"kind":"put","node":node,"item":item,"count":"1","guid":guid});
+        let first = "44444444-4444-4444-8444-444444444444";
+        let second = "55555555-5555-4555-8555-555555555555";
+        let inserted = transact(&mut w, id, c, put("bag", None, first), false).unwrap();
+        let bag = inserted["inventory"]["upsert"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|v| v["kind"] == "Bag")
+            .unwrap()["node"]
+            .as_u64()
+            .unwrap() as usize;
+        transact(&mut w, id, bag, put("apple", None, second), false).unwrap();
+        let populated = w.export(id).unwrap();
+        let removed = transact(&mut w, id, c, json!({"kind":"remove","node":bag}), false).unwrap();
+        assert_eq!(removed["inventory"]["removed"], json!([bag]));
+        assert_eq!(removed["inventoryInvalidated"], false);
+        assert!(removed["deleted"].as_array().unwrap().len() > 12);
+        let revision = w.summary(id).unwrap().revision;
+        request(&mut w, id, json!({"op":"undo","revision":revision})).unwrap();
+        assert_eq!(w.export(id).unwrap(), populated);
+        assert!(transact(&mut w, id, c, put("apple", None, second), false).is_err());
+        let revision = w.summary(id).unwrap().revision;
+        request(&mut w, id, json!({"op":"redo","revision":revision})).unwrap();
+        // A removed nested item's identity is available again; discarded redo records stay allocated.
+        let result = transact(&mut w, id, c, put("apple", None, second), false).unwrap();
+        let item = result["inventory"]["upsert"][0]["items"][0]["node"]
+            .as_u64()
+            .unwrap() as usize;
+        let apple = w.export(id).unwrap();
+        let replaced = transact(&mut w, id, c, put("tool", Some(item), first), false).unwrap();
+        assert_eq!(replaced["inventoryInvalidated"], false);
+        assert!(replaced["deleted"]
+            .as_array()
+            .unwrap()
+            .contains(&json!(item)));
+        assert_eq!(
+            replaced["inventory"]["upsert"][0]["items"][0]["durability"],
+            "1"
+        );
+        let tool = w.export(id).unwrap();
+        let revision = w.summary(id).unwrap().revision;
+        request(&mut w, id, json!({"op":"undo","revision":revision})).unwrap();
+        assert_eq!(w.export(id).unwrap(), apple);
+        let revision = w.summary(id).unwrap().revision;
+        request(&mut w, id, json!({"op":"redo","revision":revision})).unwrap();
+        assert_eq!(w.export(id).unwrap(), tool);
+        // Redo restores the GUID index, including newly introduced type definitions.
+        assert!(transact(&mut w, id, c, put("apple", None, first), false).is_err());
+        assert_eq!(w.export(id).unwrap(), tool);
+    }
+
     #[test]
     fn unchanged_amount_keeps_identity_and_atomic_batch_rejects() {
         let mut w = Workspace::default();

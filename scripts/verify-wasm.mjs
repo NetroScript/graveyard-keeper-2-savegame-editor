@@ -46,6 +46,7 @@ try {
       },
     ],
   }).summary;
+  assert.equal(edited.encodedBytes, null, "Edits must not serialize to calculate size");
   assert.equal(
     Buffer.from(session.export(summary.documentId)).filter(
       (byte, index) => byte !== bytes[index],
@@ -53,6 +54,7 @@ try {
     1,
   );
   let restored = request({ op: "undo", revision: edited.revision }).summary;
+  assert.equal(restored.encodedBytes, null);
 
   const general = request({ op: "general" });
   const health = general.find((entry) => entry.key === "hp" && !entry.error);

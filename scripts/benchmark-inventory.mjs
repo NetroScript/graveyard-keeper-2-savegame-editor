@@ -92,11 +92,19 @@ edit(
   { kind: "put", node: item.node, item: "cheese", count: "2", guid: "unused" },
   "Item count",
 );
+const replaced = edit(
+  { kind: "put", node: item.node, item: "mushroom_brown", count: "1", guid: crypto.randomUUID() },
+  "Replace item",
+);
+const replacement = replaced.inventory.upsert[0].items.at(-1);
+edit({ kind: "remove", node: replacement.node }, "Delete item");
+revision = request({ op: "undo", revision }, "Undo deletion").summary.revision;
+revision = request({ op: "redo", revision }, "Redo deletion").summary.revision;
 const edited = session.export(id);
 assert.equal(edited.length, request({ op: "summary" }).encodedBytes);
 const reopened = JSON.parse(session.open(edited)).documentId;
 assert.ok(reopened !== id);
-for (let i = 0; i < 3; i++)
+for (let i = 0; i < 5; i++)
   revision = request({ op: "undo", revision }, "Undo").summary.revision;
 assert.deepEqual(Buffer.from(session.export(id)), bytes);
 console.log("Edited export reopens; undo restores original bytes.");

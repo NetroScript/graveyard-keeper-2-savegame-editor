@@ -138,11 +138,59 @@ impl Record {
     }
 }
 
+/// Captures the first version of each modified record during a transaction.
+/// Mutable access deliberately goes through IndexMut; there is no DerefMut escape.
+#[derive(Clone, Default)]
+pub(crate) struct Records {
+    values: Vec<Record>,
+    journal: Option<(usize, HashMap<usize, Record>)>,
+}
+impl std::ops::Deref for Records {
+    type Target = [Record];
+    fn deref(&self) -> &Self::Target {
+        &self.values
+    }
+}
+impl std::ops::Index<usize> for Records {
+    type Output = Record;
+    fn index(&self, id: usize) -> &Record {
+        &self.values[id]
+    }
+}
+impl std::ops::IndexMut<usize> for Records {
+    fn index_mut(&mut self, id: usize) -> &mut Record {
+        if let Some((start, before)) = &mut self.journal {
+            if id < *start {
+                before.entry(id).or_insert_with(|| self.values[id].clone());
+            }
+        }
+        &mut self.values[id]
+    }
+}
+impl Records {
+    pub(crate) fn push(&mut self, record: Record) {
+        self.values.push(record);
+    }
+    pub(crate) fn truncate(&mut self, len: usize) {
+        self.values.truncate(len);
+    }
+    pub(crate) fn begin(&mut self) {
+        assert!(self.journal.is_none());
+        self.journal = Some((self.len(), HashMap::new()));
+    }
+    pub(crate) fn touched(&self) -> Vec<usize> {
+        self.journal.as_ref().unwrap().1.keys().copied().collect()
+    }
+    pub(crate) fn finish(&mut self) -> HashMap<usize, Record> {
+        self.journal.take().unwrap().1
+    }
+}
+
 /// Owns parsed records, not the original file. Encoding reconstructs every header and payload.
 #[derive(Clone)]
 pub struct Document {
     pub(crate) next_object_id: std::cell::Cell<Option<i32>>,
-    pub(crate) records: Vec<Record>,
+    pub(crate) records: Records,
     pub(crate) roots: Vec<usize>,
     pub(crate) types: HashMap<i32, String>,
     pub(crate) objects: HashMap<i32, usize>,
@@ -223,7 +271,7 @@ impl Document {
         let mut r = Reader { bytes, pos: 0 };
         let mut doc = Self {
             next_object_id: std::cell::Cell::new(None),
-            records: vec![],
+            records: Records::default(),
             roots: vec![],
             types: HashMap::new(),
             objects: HashMap::new(),
@@ -448,6 +496,7 @@ impl Document {
         }
         Ok(out)
     }
+    #[cfg(test)]
     pub(crate) fn rebuild(&mut self) -> Result<()> {
         let ids = self.reachable()?;
         if self.records.len() > Limits::default().max_records {
