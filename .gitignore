@@ -11,6 +11,7 @@ vite.config.ts.timestamp-*
 /target/
 /static/wasm/
 /static/assets/*.gk2pack
+/desktop-static/assets/*.gk2pack
 /test-results/
 /playwright-report/
 
