@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { encode } from "@msgpack/msgpack";
 function str(s: string) {
   return Buffer.concat([
     Buffer.from([0]),
@@ -48,6 +49,16 @@ function objectNode(
 function fixture() {
   return node("", [
     node("playerData", [
+      node("inventory", [
+        node("inventoryItem", [
+          textScalar("id", "inventory"),
+          scalar("count", 1),
+          node("inventory", [Buffer.from([6, 0, 0, 0, 0, 0, 0, 0, 0, 7])]),
+          scalar("inventorySize", 20),
+          scalar("inventoryFillSize", 0),
+          node("properties", [Buffer.from([6, 0, 0, 0, 0, 0, 0, 0, 0, 7])]),
+        ]),
+      ]),
       node("hpComponent", [scalar("hp", 75), scalar("maxHpValue", 100)]),
       node("res", [
         node("resType", [Buffer.from([6, 0, 0, 0, 0, 0, 0, 0, 0, 7])]),
@@ -160,7 +171,9 @@ test("multiple saves preserve drafts, navigation, edits, undo and downloads", as
     .fill("88");
   await page.getByRole("button", { name: "Load Saves", exact: true }).click();
   await open(page, "two.dat");
-  await page.getByRole("button", { name: /^one\.dat(?: Unsaved changes)?$/ }).click();
+  await page
+    .getByRole("button", { name: /^one\.dat(?: Unsaved changes)?$/ })
+    .click();
   await expect(
     page.getByRole("spinbutton", { name: "Current health", exact: true }),
   ).toHaveValue("88");
@@ -360,6 +373,252 @@ test("local real save round trip through browser", async ({ page }) => {
   expect(await exported(page)).toEqual(bytes);
   await page.screenshot({
     path: "test-results/workspace-wide.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  const player = page.getByRole("region", {
+    name: "Player inventory",
+    exact: true,
+  });
+  await expect(player).toBeVisible({ timeout: 30000 });
+  await expect(player.locator(".sprite").first()).toBeVisible();
+  const inventoryOrder = await page
+    .locator(".inventory-heading h3")
+    .allTextContents();
+  await page.screenshot({ path: "test-results/inventory-real.png" });
+  await player.locator(".slot-content").first().click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.screenshot({ path: "test-results/inventory-dialog-real.png" });
+  const amount = page.getByLabel("Item amount");
+  if (await amount.isEnabled()) {
+    const original = Number(await amount.inputValue());
+    await amount.fill(String(original === 1 ? 2 : 1));
+    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect(
+      await page.locator(".inventory-heading h3").allTextContents(),
+    ).toEqual(inventoryOrder);
+    await expect(page.locator(".inventory").first()).toHaveAttribute(
+      "aria-label",
+      "Player inventory",
+    );
+  } else {
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  }
+  await player
+    .getByRole("button", { name: "Add item to Player inventory", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "Item", exact: true })
+    .fill("Burial Certificate");
+  await page.getByRole("option").first().click();
+  const variants = page.locator(".variants");
+  await expect(variants.getByRole("button")).toHaveCount(3);
+  await expect(variants.locator("button[aria-pressed=true]")).toHaveCount(1);
+  await expect(variants.locator("img.quality").first()).toBeVisible();
+  await expect(variants.locator("img.quality")).toHaveCount(3);
+  await variants.getByRole("button").last().click();
+  await expect(variants.getByRole("button").last()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.screenshot({ path: "test-results/inventory-variants-real.png" });
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+function inventoryPack(extraItems = 0) {
+  const definition = (
+    id: string,
+    name: string,
+    stack: number,
+    quality = 0,
+    bag = false,
+  ) => ({
+    id,
+    name,
+    description: "Food",
+    sprite: null,
+    quality: {
+      type: quality ? "Star" : "None",
+      value: quality,
+      family: quality ? "apple" : null,
+      overlaySprite: null,
+    },
+    fields: {
+      stackCount: stack,
+      itemSize: "Small",
+      isBag: bag,
+      bagSize: bag ? 4 : 0,
+      inventorySize: 0,
+      hasDurability: false,
+      itemGroupIds: ["food"],
+      type: "None",
+      redSkulls: 0,
+      whiteSkulls: 0,
+    },
+  });
+  const metadata = encode({
+    schemaVersion: 1,
+    images: {},
+    catalogs: {
+      items: {
+        ...Object.fromEntries(
+          Array.from({ length: extraItems }, (_, i) => {
+            const id = `test_${String(i).padStart(3, "0")}`;
+            return [id, definition(id, `Test item ${i}`, 10)];
+          }),
+        ),
+        "apple:1": definition("apple:1", "Apple", 10, 1),
+        "apple:3": definition("apple:3", "Apple", 10, 3),
+        tool: definition("tool", "Tool", 1),
+        bag: definition("bag", "Food bag", 1, 0, true),
+      },
+      icons: { sprites: {}, fontIcons: {}, spriteAssets: [] },
+      "inventory-rules": {
+        bags: {
+          bag: { complete: true, allowedItemIds: ["apple:1", "apple:3"] },
+        },
+      },
+    },
+  });
+  const header = Buffer.alloc(16);
+  header.set(Buffer.from("GK2PACK\0"));
+  header.writeUInt32LE(1, 8);
+  header.writeUInt32LE(metadata.length, 12);
+  return Buffer.concat([header, metadata]);
+}
+test("item suggestions load more on scroll and retain compact rows", async ({
+  page,
+}) => {
+  await page.route("**/assets/game.gk2pack", (route) =>
+    route.fulfill({
+      body: inventoryPack(120),
+      contentType: "application/octet-stream",
+    }),
+  );
+  await page.goto("/");
+  await open(page);
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Add item to Player inventory", exact: true })
+    .click();
+  const list = page.getByRole("listbox", { name: "Valid items" });
+  await expect(list.getByRole("option")).toHaveCount(50);
+  expect(
+    (await list.getByRole("option").first().boundingBox())!.height,
+  ).toBeLessThanOrEqual(66);
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(list.getByRole("option")).toHaveCount(100);
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(list.getByRole("option")).toHaveCount(123);
+  await page
+    .getByRole("combobox", { name: "Item", exact: true })
+    .fill("test_119");
+  await expect(
+    list.getByRole("option").filter({ hasText: "test_119" }),
+  ).toBeVisible();
+});
+
+test("inventory dialog searches variants, enforces bounds, edits, deletes and undoes", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const send = Worker.prototype.postMessage;
+    (window as any).saveRequests = [];
+    Worker.prototype.postMessage = function (message: any, ...args: any[]) {
+      if (message.op === "request")
+        (window as any).saveRequests.push(message.payload.request.op);
+      return Reflect.apply(send, this, [message, ...args]);
+    };
+  });
+  await page.route("**/assets/game.gk2pack", (route) =>
+    route.fulfill({
+      body: inventoryPack(),
+      contentType: "application/octet-stream",
+    }),
+  );
+  await page.goto("/");
+  await open(page);
+  await page.getByRole("button", { name: "Inventory", exact: true }).click();
+  const player = page.getByRole("region", {
+    name: "Player inventory",
+    exact: true,
+  });
+  await expect(player.locator(".inventory-slot")).toHaveCount(20);
+  await player
+    .getByRole("button", { name: "Add item to Player inventory", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("combobox", { name: "Item", exact: true })
+    .fill("aple");
+  await expect(dialog.getByRole("option")).toHaveCount(1);
+  await dialog.getByRole("option").click();
+  await expect(dialog.getByLabel("Variant")).toHaveValue("apple:3");
+  await dialog.getByLabel("Item amount").fill("11");
+  await expect(
+    dialog.getByRole("button", { name: "Confirm", exact: true }),
+  ).toBeDisabled();
+  await dialog.getByLabel("Item amount").fill("4");
+  await page.evaluate(() => {
+    (window as any).saveRequests = [];
+  });
+  await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).saveRequests)).toEqual([
+    "transact",
+  ]);
+  await player
+    .getByRole("button", { name: "Edit Apple, amount 4", exact: true })
+    .click();
+  await expect(dialog.getByLabel("Item amount")).toHaveValue("4");
+  await dialog.getByLabel("Item amount").fill("7");
+  await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(
+    player.getByRole("button", { name: "Edit Apple, amount 7", exact: true }),
+  ).toBeVisible();
+  await player
+    .getByRole("button", { name: "Remove Apple", exact: true })
+    .click();
+  await expect(
+    player.getByRole("button", { name: "Remove Apple", exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(
+    player.getByRole("button", { name: "Edit Apple, amount 7", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByLabel("Allow out of bounds edits").check();
+  await page.getByRole("button", { name: /^one\.dat/ }).click();
+  await player.getByLabel("Capacity: Player inventory").fill("24");
+  await page.evaluate(() => {
+    (window as any).saveRequests = [];
+  });
+  await player.getByLabel("Capacity: Player inventory").press("Tab");
+  await expect(player.locator(".inventory-slot")).toHaveCount(24);
+  expect(await page.evaluate(() => (window as any).saveRequests)).toEqual([
+    "transact",
+  ]);
+  await player
+    .getByRole("button", { name: "Edit Apple, amount 7", exact: true })
+    .click();
+  await dialog.getByLabel("Item amount").fill("50");
+  await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(
+    player.getByRole("button", { name: "Edit Apple, amount 50", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/inventory-wide.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await page.screenshot({
+    path: "test-results/inventory-narrow.png",
     fullPage: true,
   });
 });

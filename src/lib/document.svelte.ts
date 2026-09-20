@@ -1,4 +1,6 @@
+import { untrack } from "svelte";
 import type { SaveBackend, Summary, Operation, NodeView } from "./save-api";
+import type { InventoryDelta } from "./inventory/catalog";
 export interface Preview {
   path?: string;
   name: string;
@@ -19,6 +21,9 @@ export class SaveDocument {
   busy = $state(false);
   pendingGeneralEdits = $state(false);
   invalidGeneralDraft = $state(false);
+  general = $state<GeneralField[] | null>(null);
+  inventoryDelta = $state<InventoryDelta | null>(null);
+  inventoryEpoch = $state(0);
   error = $state("");
   private queue = Promise.resolve();
   constructor(
@@ -39,7 +44,10 @@ export class SaveDocument {
     this.metadata = p.metadata;
   }
   query<T>(request: Operation) {
-    return this.backend.request<T>(this.id, request);
+    return this.backend.request<T>(
+      untrack(() => this.id),
+      request,
+    );
   }
   nodes(ids: number[]) {
     return this.query<NodeView[]>({ op: "nodes", ids });
@@ -50,12 +58,20 @@ export class SaveDocument {
       this.busy = true;
       this.error = "";
       try {
-        const result = await this.query<{ summary: Summary }>({
+        const result = await this.query<{
+          summary: Summary;
+          general?: GeneralField[] | null;
+          inventory?: InventoryDelta | null;
+          inventoryInvalidated?: boolean;
+        }>({
           op,
           revision,
           ...(operations ? { operations } : {}),
         });
         this.summary = result.summary;
+        if (result.general) this.general = result.general;
+        if (result.inventory) this.inventoryDelta = result.inventory;
+        if (result.inventoryInvalidated) this.inventoryEpoch++;
       } catch (e) {
         this.error = String(e);
         throw e;
@@ -72,11 +88,13 @@ export class SaveDocument {
 }
 export const desktop = import.meta.env.MODE === "desktop";
 export interface Settings {
+  outOfBoundsEdits: boolean;
   backupRetention: number;
   customDirectories: string[];
   interfaceScale: number;
 }
 export const defaultSettings: Settings = {
+  outOfBoundsEdits: false,
   backupRetention: 5,
   customDirectories: [],
   interfaceScale: 1,

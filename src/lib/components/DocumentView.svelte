@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { SaveDocument } from "../document.svelte";
+  import type { SaveDocument, Settings } from "../document.svelte";
+  import Inventory from "../inventory/Inventory.svelte";
   import General from "./General.svelte";
   import Inspector from "../inspector/Inspector.svelte";
   import FloppyDisk from "~icons/ph/floppy-disk";
@@ -8,11 +9,16 @@
   let {
     doc,
     onsave,
-  }: { doc: SaveDocument; onsave: (doc: SaveDocument, as: boolean) => void } =
-    $props();
+    settings,
+  }: {
+    doc: SaveDocument;
+    settings: Settings;
+    onsave: (doc: SaveDocument, as: boolean) => void;
+  } = $props();
   let view = $state("editor");
   let category = $state("General");
   let inspectorVisited = $state(false);
+  let inventoryVisited = $state(false);
 </script>
 
 <header class="document-header">
@@ -91,14 +97,24 @@
     <div class="tab-group">
       {#each ["General", "Inventory", "Relationships", "Technologies"] as tab}<button
           class:active={category === tab}
-          onclick={() => (category = tab)}
-          >{tab}{#if tab !== "General"}<small>Not available</small>{/if}</button
+          onclick={() => {
+            category = tab;
+            if (tab === "Inventory") inventoryVisited = true;
+          }}
+          >{tab}{#if tab !== "General" && tab !== "Inventory"}<small
+              >Not available</small
+            >{/if}</button
         >{/each}
     </div>
   </nav>
-  <div class="view-content" class:general-content={category === "General"}>
+  <div class="view-content" class:general-content={category === "General" || category === "Inventory"}>
     <div hidden={category !== "General"}><General {doc} /></div>
-    {#if category !== "General"}<section class="empty-state panel">
+    <div hidden={category !== "Inventory"}>
+      {#if inventoryVisited}<Inventory {doc} {settings} active={view === "editor" && category === "Inventory"} />{/if}
+    </div>
+    {#if category !== "General" && category !== "Inventory"}<section
+        class="empty-state panel"
+      >
         <h2>{category}</h2>
         <p>
           This editor category is not available yet. Its data remains accessible
@@ -108,5 +124,5 @@
   </div>
 </div>
 <div hidden={view !== "inspector"} class="inspector-view">
-  {#if inspectorVisited}<Inspector {doc} />{/if}
+  {#if inspectorVisited}<Inspector {doc} active={view === "inspector"} />{/if}
 </div>

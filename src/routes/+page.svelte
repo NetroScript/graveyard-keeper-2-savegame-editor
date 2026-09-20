@@ -237,7 +237,7 @@
           class="document-workspace"
           hidden={active !== doc.id}
         >
-          <DocumentView {doc} onsave={save} />
+          <DocumentView {doc} {settings} onsave={save} />
         </div>{/each}{:else}<p class="page-content">Loading editor…</p>{/if}
   </main>
 </div>

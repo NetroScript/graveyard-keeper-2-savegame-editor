@@ -5,7 +5,7 @@
   import TreeNode from "./TreeNode.svelte";
   import { matchWidget } from "./widgets";
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
-  let { doc }: { doc: SaveDocument } = $props();
+  let { doc, active = true }: { doc: SaveDocument; active?: boolean } = $props();
   let roots = $state<NodeView[]>([]);
   let treeRevision = $state(-1);
   let selected = $state<number | null>(null);
@@ -64,6 +64,7 @@
     }
   }
   $effect(() => {
+    if (!active) return;
     const revision = doc.summary!.revision;
     const id = selected;
     void refresh();
@@ -122,7 +123,6 @@
   async function transaction(operations: Operation[]) {
     try {
       await doc.transact(operations);
-      await refresh();
       error = "";
     } catch (e) {
       error = String(e);
@@ -156,6 +156,7 @@
           {selected}
           onselect={select}
           {expanded}
+          {active}
         />{/each}
     </ul>
   </div>

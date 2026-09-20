@@ -37,6 +37,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tauri-apps/cli": "^2",
     "@types/node": "^22.20.3",
+    "fz-search": "^1.0.0",
     "prettier": "^3.9.8",
     "prettier-plugin-svelte": "^4.1.1",
     "svelte": "^5.56.3",

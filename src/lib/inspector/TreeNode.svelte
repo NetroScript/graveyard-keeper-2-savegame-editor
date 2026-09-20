@@ -10,12 +10,14 @@
     selected,
     onselect,
     expanded,
+    active = true,
   }: {
     doc: SaveDocument;
     node: NodeView;
     selected: number | null;
     onselect: (node: NodeView) => void | Promise<void>;
     expanded: Set<number>;
+    active?: boolean;
   } = $props();
   let row = $state<HTMLDivElement>();
   let isExpanded = $derived(expanded.has(node.id));
@@ -50,7 +52,7 @@
   }
   $effect(() => {
     const revision = doc.summary!.revision;
-    if (isExpanded) void load();
+    if (active && isExpanded) void load();
   });
   $effect(() => {
     if (selected === node.id && row) {
@@ -92,6 +94,7 @@
         {selected}
         {onselect}
         {expanded}
+        {active}
       />{/each}{#if children.length < total}<li>
         <button onclick={() => load(children.length)}
           >Load more ({total - children.length})</button

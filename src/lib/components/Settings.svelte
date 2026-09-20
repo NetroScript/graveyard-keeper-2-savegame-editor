@@ -38,6 +38,23 @@
     >
   </div>
 </section>
+<section class="panel settings-panel">
+  <h2 class="strip">Editing</h2>
+  <div class="panel-body">
+    <label
+      ><input
+        type="checkbox"
+        checked={settings.outOfBoundsEdits}
+        onchange={(e) =>
+          update({ ...settings, outOfBoundsEdits: e.currentTarget.checked })}
+      /> Allow out of bounds edits</label
+    >
+    <p class="hint">
+      Allow inventory capacity changes and item amounts above the normal stack
+      size.
+    </p>
+  </div>
+</section>
 {#if desktop}<section class="panel settings-panel">
     <h2 class="strip">Save protection</h2>
     <div class="panel-body">

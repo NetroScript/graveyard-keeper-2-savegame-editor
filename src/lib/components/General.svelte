@@ -42,17 +42,19 @@
     { name: "Mental State", keys: ["insanity", "happiness"] },
   ];
   $effect(() => {
-    const revision = doc.summary!.revision;
     let alive = true;
     doc
       .query<GeneralField[]>({ op: "general" })
       .then((v) => {
-        if (alive) fields = v;
+        if (alive) doc.general = v;
       })
       .catch((e) => (message = String(e)));
     return () => {
       alive = false;
     };
+  });
+  $effect(() => {
+    if (doc.general) fields = doc.general;
   });
   let pending: Record<string, string> = {};
   const invalid = new Set<string>();
@@ -77,7 +79,7 @@
         pending = {};
         try {
           await doc.transact([{ op: "general", values }]);
-          fields = await doc.query<GeneralField[]>({ op: "general" });
+          fields = doc.general ?? fields;
           for (const [key, value] of Object.entries(values)) {
             if (drafts[key] === value && !invalid.has(key)) {
               delete drafts[key];

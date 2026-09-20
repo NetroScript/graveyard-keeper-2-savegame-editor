@@ -42,6 +42,9 @@ importers:
       '@types/node':
         specifier: ^22.20.3
         version: 22.20.3
+      fz-search:
+        specifier: ^1.0.0
+        version: 1.0.0
       prettier:
         specifier: ^3.9.8
         version: 3.9.8
@@ -414,6 +417,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  fz-search@1.0.0:
+    resolution: {integrity: sha512-zP5tvpXQ7JifsUZfUgySP2ZbQmFq20/R3Njw/n1+JGnu6lD7E6jbz7fFkkayfl3902KNYwZcYvN4hvAwWc5uBw==}
 
   import-meta-resolve@4.2.0:
     resolution: {integrity: sha512-Iqv2fzaTQN28s/FwZAoFq0ZSs/7hMAHJVX+w8PZl3cY19Pxk6jFFalxQoIfW2826i/fDLXv8IiEZRIT0lDuWcg==}
@@ -1017,6 +1023,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  fz-search@1.0.0: {}
 
   import-meta-resolve@4.2.0: {}
 
