@@ -33,23 +33,22 @@
     <button
       title="Undo"
       aria-label="Undo"
-      disabled={!doc.summary?.canUndo || doc.busy || doc.pendingGeneralEdits}
+      disabled={!doc.summary?.canUndo || doc.busy}
       onclick={() => doc.mutate("undo").catch(() => {})}
       ><ArrowCounterClockwise /></button
     ><button
       title="Redo"
       aria-label="Redo"
-      disabled={!doc.summary?.canRedo || doc.busy || doc.pendingGeneralEdits}
+      disabled={!doc.summary?.canRedo || doc.busy}
       onclick={() => doc.mutate("redo").catch(() => {})}
       ><ArrowClockwise /></button
     ><button
-      disabled={doc.busy || doc.pendingGeneralEdits || doc.invalidGeneralDraft}
+      disabled={doc.busy || doc.invalidGeneralDraft}
       onclick={() => onsave(doc, true)}>Save As</button
     ><button
       class="primary"
       disabled={!doc.summary?.dirty ||
         doc.busy ||
-        doc.pendingGeneralEdits ||
         doc.invalidGeneralDraft}
       onclick={() => onsave(doc, false)}><FloppyDisk />Save</button
     >

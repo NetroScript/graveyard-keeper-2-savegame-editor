@@ -372,6 +372,7 @@ impl Cache {
             }
             cursor = doc.records[id].parent;
         }
+        location["player"] = json!(player);
         let container_id = value(doc, node, "id")?;
         let bag = catalog.items.get(&container_id).is_some_and(|d| d.is_bag);
         let filters: Vec<_> = properties(doc, node)?
@@ -896,6 +897,7 @@ mod tests {
             .request(id, crate::workspace::Command::Inventories)
             .unwrap();
         let c = snapshot["inventories"][0]["node"].as_u64().unwrap() as usize;
+        assert_eq!(snapshot["inventories"][0]["location"]["player"], true);
         assert!(snapshot["inventories"][0].get("allowed").is_none());
         assert_eq!(snapshot["rules"].as_object().unwrap().len(), 1);
         let put = json!({"kind":"put","node":null,"item":"tool","count":"1","guid":"55555555-5555-4555-8555-555555555555"});

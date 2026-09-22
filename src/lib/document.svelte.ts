@@ -53,11 +53,13 @@ export class SaveDocument {
     return this.query<NodeView[]>({ op: "nodes", ids });
   }
   mutate(op: string, operations?: Operation[]) {
-    const revision = this.summary!.revision;
     const task = this.queue.then(async () => {
-      this.busy = true;
+      // Fast edits should not flash every control through its disabled style.
+      // The queue still serializes them; only show busy state when work is perceptible.
+      const busyTimer = setTimeout(() => (this.busy = true), 120);
       this.error = "";
       try {
+        const revision = untrack(() => this.summary!.revision);
         const result = await this.query<{
           summary: Summary;
           general?: GeneralField[] | null;
@@ -76,6 +78,7 @@ export class SaveDocument {
         this.error = String(e);
         throw e;
       } finally {
+        clearTimeout(busyTimer);
         this.busy = false;
       }
     });
@@ -84,6 +87,9 @@ export class SaveDocument {
   }
   transact(operations: Operation[]) {
     return this.mutate("transact", operations);
+  }
+  settled() {
+    return this.queue;
   }
 }
 export const desktop = import.meta.env.MODE === "desktop";

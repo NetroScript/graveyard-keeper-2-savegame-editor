@@ -40,6 +40,7 @@ export interface InventoryData {
   items: InventoryItem[];
   ruleId: number;
   location?: {
+    player?: boolean;
     scene?: string | null;
     world?: string | null;
     position?: string[];

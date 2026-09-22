@@ -214,7 +214,6 @@
             <button
               type="button"
               disabled={doc.busy ||
-                doc.pendingGeneralEdits ||
                 !fields.find((f) => f.key === "hp" && !f.error) ||
                 !fields.find((f) => f.key === "max_hp" && !f.error && f.value)}
               onclick={() => {

@@ -126,6 +126,7 @@
   }
   async function save(doc: SaveDocument, as: boolean) {
     try {
+      await doc.settled();
       if (desktop) {
         const destination =
           as || !doc.path

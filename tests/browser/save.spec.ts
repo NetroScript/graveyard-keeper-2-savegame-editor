@@ -382,6 +382,14 @@ test("local real save round trip through browser", async ({ page }) => {
   });
   await expect(player).toBeVisible({ timeout: 30000 });
   await expect(player.locator(".sprite").first()).toBeVisible();
+  const categoryNames = await page.locator(".category-heading h3").allTextContents();
+  expect(categoryNames[0]).toBe("Player");
+  expect(categoryNames.slice(1)).toEqual(
+    [...categoryNames.slice(1)].sort((a, b) => a.localeCompare(b)),
+  );
+  await expect(
+    page.getByRole("navigation", { name: "Inventory categories" }).getByRole("button"),
+  ).toHaveCount(categoryNames.length);
   const inventoryOrder = await page
     .locator(".inventory-heading h3")
     .allTextContents();
@@ -411,12 +419,18 @@ test("local real save round trip through browser", async ({ page }) => {
   await page
     .getByRole("combobox", { name: "Item", exact: true })
     .fill("Burial Certificate");
-  await page.getByRole("option").first().click();
+  await page
+    .getByRole("listbox", { name: "Valid items" })
+    .getByRole("option")
+    .first()
+    .click();
   const variants = page.locator(".variants");
   await expect(variants.getByRole("button")).toHaveCount(3);
   await expect(variants.locator("button[aria-pressed=true]")).toHaveCount(1);
   await expect(variants.locator("img.quality").first()).toBeVisible();
-  await expect(variants.locator("img.quality")).toHaveCount(3);
+  await expect(variants.locator("img.quality")).toHaveCount(3, {
+    timeout: 20000,
+  });
   await variants.getByRole("button").last().click();
   await expect(variants.getByRole("button").last()).toHaveAttribute(
     "aria-pressed",
@@ -549,6 +563,29 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
     exact: true,
   });
   await expect(player.locator(".inventory-slot")).toHaveCount(20);
+  await expect(page.locator(".category-heading h3")).toHaveText(["Player"]);
+  const categoryNavigation = page.getByRole("navigation", {
+    name: "Inventory categories",
+  });
+  await expect(
+    categoryNavigation.getByRole("button", {
+      name: "Player: 1 container; shortcut 1",
+    }),
+  ).toBeVisible();
+  const containerSearch = page.getByLabel("Search containers and items");
+  await containerSearch.focus();
+  await page.keyboard.press("1");
+  await expect(containerSearch).toHaveValue("1");
+  await containerSearch.fill("");
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await page.keyboard.press("1");
+  await expect(page.locator(".inventory-category")).toBeFocused();
+  const hideEmpty = page.getByLabel("Hide empty containers");
+  await hideEmpty.check();
+  await expect(player).toHaveCount(0);
+  await expect(page.getByText("No containers match the current filters.")).toBeVisible();
+  await hideEmpty.uncheck();
+  await expect(player).toBeVisible();
   await player
     .getByRole("button", { name: "Add item to Player inventory", exact: true })
     .click();
@@ -581,12 +618,31 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
   await expect(
     player.getByRole("button", { name: "Edit Apple, amount 7", exact: true }),
   ).toBeVisible();
+  await containerSearch.fill("apple");
+  await expect(player).toBeVisible();
+  await containerSearch.fill("tool");
+  await expect(player).toHaveCount(0);
+  await containerSearch.fill("player");
+  await expect(player).toBeVisible();
+  await containerSearch.fill("");
+  await page.evaluate(() => {
+    const saveAs = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Save As",
+    )!;
+    (window as any).disabledTransitions = [];
+    new MutationObserver(() =>
+      (window as any).disabledTransitions.push(saveAs.hasAttribute("disabled")),
+    ).observe(saveAs, { attributes: true, attributeFilter: ["disabled"] });
+  });
   await player
     .getByRole("button", { name: "Remove Apple", exact: true })
     .click();
   await expect(
     player.getByRole("button", { name: "Remove Apple", exact: true }),
   ).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).disabledTransitions)).not.toContain(
+    true,
+  );
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(
     player.getByRole("button", { name: "Edit Apple, amount 7", exact: true }),
@@ -616,9 +672,16 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(page.locator(".inventory-tools")).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  ).toBe(true);
+  await page.locator(".rail").evaluate((rail) =>
+    Promise.all(rail.getAnimations().map((animation) => animation.finished)),
+  );
   await page.screenshot({
     path: "test-results/inventory-narrow.png",
-    fullPage: true,
   });
+  await page.getByRole("button", { name: "Toggle navigation" }).click();
+  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible();
 });
