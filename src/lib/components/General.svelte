@@ -2,12 +2,18 @@
   import { onMount } from "svelte";
   import { loadGeneralIcons } from "../assets/general-icons";
   import type { SaveDocument, GeneralField } from "../document.svelte";
+  import type { DropSnapshot, WorldDrop } from "../drops";
+  import DropCleanupDialog from "./DropCleanupDialog.svelte";
   let { doc }: { doc: SaveDocument } = $props();
   let fields = $state<GeneralField[]>([]);
   let drafts = $state<Record<string, string>>({});
   let moneyDraft = $state<{ gold: string; silver: string; bronze: string }>();
   let message = $state("");
   let icons = $state<Record<string, string>>({});
+  let drops = $state<WorldDrop[]>([]);
+  let dropsLoading = $state(true);
+  let dropError = $state("");
+  let cleanupOpen = $state(false);
   onMount(() => {
     let mounted = true;
     loadGeneralIcons()
@@ -55,6 +61,26 @@
   });
   $effect(() => {
     if (doc.general) fields = doc.general;
+  });
+  $effect(() => {
+    doc.dropEpoch;
+    let alive = true;
+    dropsLoading = true;
+    dropError = "";
+    doc
+      .query<DropSnapshot>({ op: "drops" })
+      .then((snapshot) => {
+        if (alive) drops = snapshot.drops;
+      })
+      .catch((error) => {
+        if (alive) dropError = String(error);
+      })
+      .finally(() => {
+        if (alive) dropsLoading = false;
+      });
+    return () => {
+      alive = false;
+    };
   });
   let pending: Record<string, string> = {};
   const invalid = new Set<string>();
@@ -225,11 +251,51 @@
       </div>
     </form>
   {/each}
+  <section class="general-section panel">
+    <h3 class="strip">Save utilities</h3>
+    <div class="utility-body">
+      <div>
+        <h4>Dropped items</h4>
+        <p>
+          Remove item drops that have accumulated in the world. You can review
+          their type, ID and location before deleting them.
+        </p>
+        {#if dropError}<p class="hint warning" role="alert">{dropError}</p>{/if}
+      </div>
+      <button
+        type="button"
+        disabled={dropsLoading ||
+          drops.length === 0 ||
+          doc.busy ||
+          doc.pendingGeneralEdits}
+        onclick={() => (cleanupOpen = true)}
+      >{dropsLoading
+          ? "Finding drops…"
+          : drops.length
+            ? `Delete drops (${drops.length})`
+            : "No drops found"}</button
+      >
+      <p class="technology-note">
+        Technology point trivia: current versions of the game already collect
+        stranded points through their collect-all routine, including points that
+        have no visible world object.
+      </p>
+    </div>
+  </section>
 </div>
 <p class="hint" role="status">
   {message ||
     "Changes remain in memory until the save file is written. Resource values use the game’s float32 precision."}
 </p>
+
+{#if cleanupOpen}
+  <DropCleanupDialog
+    {doc}
+    {drops}
+    onclose={() => (cleanupOpen = false)}
+    onremoved={() => (cleanupOpen = false)}
+  />
+{/if}
 
 <style>
   .general-sections {
@@ -269,6 +335,38 @@
   }
   .form-actions {
     margin-top: 16px;
+  }
+  .utility-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 24px;
+    padding: 20px;
+  }
+  .utility-body h4,
+  .utility-body p {
+    margin: 0;
+  }
+  .utility-body h4 {
+    margin-bottom: 6px;
+  }
+  .technology-note {
+    grid-column: 1 / -1;
+    padding-top: 12px;
+    border-top: 1px solid #444650;
+    color: #aaa8a3;
+    font-size: 12px;
+  }
+  @media (max-width: 620px) {
+    .utility-body {
+      grid-template-columns: 1fr;
+    }
+    .utility-body button {
+      justify-self: start;
+    }
+    .technology-note {
+      grid-column: 1;
+    }
   }
   @media (min-width: 1200px) {
     .general-section-body {

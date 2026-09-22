@@ -24,6 +24,7 @@ export class SaveDocument {
   general = $state<GeneralField[] | null>(null);
   inventoryDelta = $state<InventoryDelta | null>(null);
   inventoryEpoch = $state(0);
+  dropEpoch = $state(0);
   error = $state("");
   private queue = Promise.resolve();
   constructor(
@@ -74,6 +75,16 @@ export class SaveDocument {
         if (result.general) this.general = result.general;
         if (result.inventory) this.inventoryDelta = result.inventory;
         if (result.inventoryInvalidated) this.inventoryEpoch++;
+        if (
+          op === "undo" ||
+          op === "redo" ||
+          operations?.some(
+            (operation) =>
+              operation.op === "drops" ||
+              !["general", "inventory"].includes(operation.op),
+          )
+        )
+          this.dropEpoch++;
       } catch (e) {
         this.error = String(e);
         throw e;

@@ -6,7 +6,7 @@
 
 Opening bytes returns a summary with `documentId`, `revision`, byte counts, `dirty`, `canUndo` and `canRedo`. Every subsequent `request(documentId, command)` or `export(documentId)` targets that document. Handles are monotonically allocated record indices: reordering, deleting, undoing and inserting never assigns an old handle to a different node. They are session handles, not file offsets or persistent IDs.
 
-Queries include `summary`, `children` (offset/limit, maximum 200), `nodes` (up to 200 handles), `general` and `templates`. Close releases a document. Numeric field values cross transport boundaries as strings; input/output files use binary buffers.
+Queries include `summary`, `children` (offset/limit, maximum 200), `nodes` (up to 200 handles), `general`, `drops` and `templates`. Close releases a document. Numeric field values cross transport boundaries as strings; input/output files use binary buffers.
 
 ```json
 {
@@ -27,7 +27,7 @@ All edit types use this incremental path, including inventory removal/replacemen
 
 For a read-only native debug benchmark against a local save and packed catalog, run `node scripts/benchmark-native.mjs <save.dat> [game.gk2pack]`. It times edits and undo/redo separately and verifies byte-identical restoration without writing the save. `cargo run -p gk2-save-core --example benchmark_edits -- <save.dat>` runs a smaller set without a catalog. These measure core requests, excluding IPC and rendering. Rebuild WASM before running `node scripts/benchmark-inventory.mjs <save.dat>` for the browser codec.
 
-Operations: `set`, `insert`, `template`, `duplicate`, `remove`, `move`, `retarget`, `general`. `move.index` and insertion indices are zero-based sibling positions. Arrays require unnamed entries. Retarget uses a destination **node handle** declaring an Odin object, not the object's serialized ID. Removal of referenced objects is rejected unless the same batch resolves all affected references. Cloning allocates fresh Odin IDs, remaps references inside the cloned subtree and preserves references to outside objects. SGuid and other game identifiers are unchanged. These checks establish serialization integrity, not all game rules.
+Operations: `set`, `insert`, `template`, `duplicate`, `remove`, `move`, `retarget`, `general`, `drops`. `move.index` and insertion indices are zero-based sibling positions. Arrays require unnamed entries. Retarget uses a destination **node handle** declaring an Odin object, not the object's serialized ID. Removal of referenced objects is rejected unless the same batch resolves all affected references. Cloning allocates fresh Odin IDs, remaps references inside the cloned subtree and preserves references to outside objects. SGuid and other game identifiers are unchanged. These checks establish serialization integrity, not all game rules.
 
 The encoder traverses the current containment tree, updates array counts and relocates a type declaration if its original node is removed or reordered. Unrelated payload bytes and original type-name string encodings remain intact. Unedited exports and undo back to the original document are byte-identical. Removed records remain inaccessible but allocated so their handles and raw type definitions are not reused.
 
@@ -38,6 +38,8 @@ The encoder traverses the current containment tree, updates array counts and rel
 `general` operations accept named values (`hp`, `max_hp`, `money`, `energy`, `stamina`, `insanity`, `happiness`, `tech_red`, `tech_green`, `tech_blue`). Missing supported resources are inserted into both lists in one transaction using the registered GameResAtom template. Inputs must be finite and nonnegative; maximum health must be positive. Untouched abnormal values are retained. Float values displayed after Apply reflect the actual accepted float32 value. Money is stored in base units; the UI edits it as gold/silver/bronze using 10,000/100/1 and submits one base-unit value.
 
 New game classes or fields do not require schema regeneration for raw preservation. Named General selectors tolerate unrelated additions and ordering changes. Renamed fields, changed layouts or scalar types may require selector updates and otherwise produce explicit unavailable controls. A type matcher is not a blanket guarantee of compatibility with every future game version.
+
+The `drops` query finds ordinary `DropData` entries in every scene's active and queued drop lists. It returns stable handles together with the item ID, count, drop type, source list, world and position. A `drops` operation accepts a list of those handles, verifies that every selection is still an ordinary drop and removes them atomically. The General tab uses this for selective cleanup; the transaction can be undone like any other edit. Dedicated technology-point drops are left alone because current game versions already collect visible and viewless points through their collect-all routine.
 
 ## Add an Inspector widget
 
