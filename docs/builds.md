@@ -56,7 +56,11 @@ pnpm preview                # rebuild and serve the browser production build
 pnpm tauri dev              # native development application
 pnpm tauri build            # native application and installers
 pnpm tauri build --no-bundle # native application only
+pnpm release:local           # web plus current-platform desktop release directory
 ```
+
+Cross-platform release builds, private asset-pack staging, GitHub Pages and
+desktop updates are documented in [Release builds](releases.md).
 
 `wasm-pack` is a project development dependency, not a required global installation. Its first build downloads helper tools. `pnpm build:wasm` regenerates the module after Rust changes; browser development currently does not watch/rebuild Rust automatically. `tauri dev` handles native rebuilding.
 

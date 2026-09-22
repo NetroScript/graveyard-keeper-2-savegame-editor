@@ -1,37 +1,109 @@
-# Graveyard Keeper 2 save editor
+# Graveyard Keeper 2 Save Editor
 
-A lossless Rust save library and Svelte inspector, available as a Tauri desktop application or a browser-only WebAssembly build. A demo save has passed byte-identical reconstruction in native Rust, WebAssembly and the browser UI.
+An unofficial save editor for **Graveyard Keeper 2**. It can edit player values,
+manage supported inventories, undo changes, and inspect data that does not yet
+have a dedicated editor.
 
-## Run
+The editor runs on your own device. The web version processes saves in your
+browser and does not upload them to a server.
 
-Install Node, pnpm and Rust, then `pnpm install`. For browser builds, run `rustup target add wasm32-unknown-unknown` once. The project includes wasm-pack as a development dependency; its first run downloads the matching tools.
+## Use the editor
 
-| Command | Result |
-| --- | --- |
-| `pnpm dev` | Browser development server; builds WebAssembly first |
-| `pnpm build:web` | Static browser site in `build/web` |
-| `pnpm preview` | Preview the browser build |
-| `pnpm tauri dev` | Desktop development application |
-| `pnpm tauri build` | Desktop executable and configured installers |
-| `pnpm tauri build --no-bundle` | Desktop executable without installer packaging |
-| `pnpm test:core` | Rust codec and service tests |
-| `pnpm test:wasm` | Test the generated WebAssembly artifact; build it first |
-| `pnpm test:browser` | Build and test the browser UI with Playwright Chromium |
+### Web version
 
-Desktop builds require the normal platform-specific Tauri prerequisites. `pnpm dev:desktop` starts only the frontend for Tauri; use `pnpm tauri dev` to launch both processes.
+[Open the Graveyard Keeper 2 Save Editor](https://netroscript.github.io/graveyard-keeper-2-savegame-editor/)
 
-Before running browser tests, install their browser with `pnpm exec playwright install chromium`.
+The hosted editor will become available after the first GitHub Pages release.
+Choose your `.dat` save and its matching `.info` file when available. The edited
+save is downloaded as a new file, leaving the original untouched.
 
-Open a `.dat` file, browse the record tree and export a copy. Integer, finite float, boolean and string values can be edited in memory. This is a raw inspector: game-specific validators, collection insertion/removal, undo, and `.info` metadata updates are not implemented yet. No-op export preserves the original bytes; edited saves still require in-game validation.
+### Desktop version
 
-## File formats
+Download the version for your operating system from the
+[GitHub Releases page](https://github.com/NetroScript/graveyard-keeper-2-savegame-editor/releases).
 
-The inspected demo already writes `GameSave` to `.dat` using Odin's **binary** format (`DataFormat.Binary`). Embedded UTF-16 field names and strings can look readable in a text editor, but the surrounding tokens, lengths and values are binary. The current library reads and writes this format, with byte-identical unedited exports.
+The desktop application can find saves automatically, create backups, detect if
+another program changed a save, and install signed application updates. On
+Windows, use the installer if you want automatic updates. The standalone `.exe`
+can be run without installation, but accepting an update will launch an installer.
 
-The companion `.info` file is separate JSON slot metadata, written by `JsonFileSerializer`. The editor does not currently load or modify it. It also does not implement Odin's JSON/text serializer. These are separate formats, not text and binary modes that the game switches between for the same save payload. Future changes to the binary grammar or encryption would require additional codec support.
+Always keep a backup before loading an edited save in the game. The editor checks
+the save structure, but only the game can confirm that every edited value is valid
+for a particular game version.
 
-## Documentation
+## What can be edited
 
-- [Builds and shared backend API](docs/builds.md)
-- [Library API](crates/save-core/README.md)
-- [Item definitions and icon exporter](src-assets/README.md)
+- Health, energy, stamina, money, happiness, insanity, and technology points.
+- Player inventory, bags, chests, and supported world containers.
+- Item counts, quality variants, durability, capacity, insertion, replacement,
+  and removal where the game rules are known.
+- Raw save fields and structures through the Save Inspector.
+- Undo and redo for accepted edits.
+
+The side rail shows the game version represented by the included asset catalog.
+If that version is older than the installed game, definitions or icons may be
+outdated even when the save itself still opens.
+
+## Finding saves
+
+Typical release save locations are:
+
+| Platform     | Location                                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Windows      | `%USERPROFILE%\AppData\LocalLow\Lazy Bear Games\Graveyard Keeper 2`                                                                 |
+| macOS        | `~/Library/Application Support/Lazy Bear Games/Graveyard Keeper 2`                                                                  |
+| Linux        | `~/.config/unity3d/Lazy Bear Games/Graveyard Keeper 2`                                                                              |
+| Steam Proton | `~/.local/share/Steam/steamapps/compatdata/4358690/pfx/drive_c/users/steamuser/AppData/LocalLow/Lazy Bear Games/Graveyard Keeper 2` |
+
+Steam libraries and Linux configuration directories can be stored elsewhere.
+
+## Screenshots
+
+Screenshots will be added with the first public release.
+
+## For developers
+
+The project uses Rust for lossless save processing, Svelte for the interface,
+WebAssembly for browser builds, and Tauri for desktop builds.
+
+Install Node.js, pnpm and Rust, then run:
+
+```sh
+pnpm install
+rustup target add wasm32-unknown-unknown
+pnpm dev
+```
+
+Useful commands:
+
+| Command              | Result                                                           |
+| -------------------- | ---------------------------------------------------------------- |
+| `pnpm build:web`     | Static browser application in `build/web`                        |
+| `pnpm tauri dev`     | Desktop development application                                  |
+| `pnpm tauri build`   | Desktop executable and installers for the current platform       |
+| `pnpm release:local` | Web and current-platform release files under `release/<version>` |
+| `pnpm check`         | TypeScript and Svelte checks                                     |
+| `pnpm test:core`     | Rust save-library tests                                          |
+| `pnpm test:browser`  | Browser integration tests                                        |
+
+More technical documentation:
+
+- [Desktop and browser builds](docs/builds.md)
+- [Release builds and updates](docs/releases.md)
+- [Save library API](crates/save-core/README.md)
+- [Game asset exporter](src-assets/README.md)
+
+## License and game assets
+
+The editor source code is available under the [MIT License](LICENSE).
+
+The MIT License applies only to the editor's original source code. Graveyard
+Keeper 2 and the game artwork and other game assets distributed with the editor
+remain the property of Lazy Bear Games and their respective rights holders. No
+ownership of, or license to, those assets is claimed, offered, or granted by this
+project. Their inclusion does not imply authorization, affiliation, or
+endorsement by Lazy Bear Games or any other rights holder.
+
+If Lazy Bear Games or another applicable rights holder requests their removal,
+the project maintainers will promptly remove the relevant assets from the hosted
+web editor and from future downloadable distributions under their control.

@@ -14,5 +14,8 @@ vite.config.ts.timestamp-*
 /desktop-static/assets/*.gk2pack
 /test-results/
 /playwright-report/
+/release/
+/.tauri-private-key
+/.tauri-private-key.pub
 
 target

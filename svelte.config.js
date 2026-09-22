@@ -9,14 +9,29 @@ import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 const config = {
   preprocess: vitePreprocess(),
   kit: {
+    paths: {
+      base:
+        process.env.SAVE_BUILD_TARGET === "desktop"
+          ? ""
+          : process.env.BASE_PATH || "",
+    },
     files: {
       // The generated wasm package is a browser asset. Keeping a separate,
       // minimal desktop asset directory prevents it from being embedded in Tauri.
-      assets: process.env.SAVE_BUILD_TARGET === "desktop" ? "desktop-static" : "static",
+      assets:
+        process.env.SAVE_BUILD_TARGET === "desktop"
+          ? "desktop-static"
+          : "static",
     },
     adapter: adapter({
-      pages: process.env.SAVE_BUILD_TARGET === "desktop" ? "build/desktop" : "build/web",
-      assets: process.env.SAVE_BUILD_TARGET === "desktop" ? "build/desktop" : "build/web",
+      pages:
+        process.env.SAVE_BUILD_TARGET === "desktop"
+          ? "build/desktop"
+          : "build/web",
+      assets:
+        process.env.SAVE_BUILD_TARGET === "desktop"
+          ? "build/desktop"
+          : "build/web",
       fallback: "index.html",
     }),
   },

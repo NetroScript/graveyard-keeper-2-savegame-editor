@@ -1,0 +1,153 @@
+name: Build release
+
+on:
+  workflow_dispatch:
+    inputs:
+      asset_release_tag:
+        description: Draft release containing the private game.gk2pack input
+        required: true
+        default: asset-pack-input
+      publish:
+        description: Publish GitHub Pages and a GitHub Release
+        required: true
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ASSET_RELEASE_TAG: ${{ inputs.asset_release_tag || 'asset-pack-input' }}
+  RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.publish == true }}
+
+jobs:
+  web:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - name: Download private asset pack
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p static/assets
+          gh release download "$ASSET_RELEASE_TAG" --pattern game.gk2pack --dir static/assets
+      - name: Build web application
+        env:
+          BASE_PATH: /graveyard-keeper-2-savegame-editor
+        run: pnpm build:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: build/web
+      - if: env.RELEASE_BUILD == 'true'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/web
+
+  desktop:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            name: windows-x86_64
+            args: --bundles nsis
+          - platform: ubuntu-22.04
+            name: linux-x86_64
+            args: --bundles appimage
+          - platform: macos-latest
+            name: macos-aarch64
+            args: --target aarch64-apple-darwin --bundles app,dmg
+          - platform: macos-latest
+            name: macos-x86_64
+            args: --target x86_64-apple-darwin --bundles app,dmg
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.2
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && (matrix.name == 'macos-aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin') || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+      - run: pnpm install --frozen-lockfile
+      - name: Download private asset pack
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p static/assets
+          gh release download "$ASSET_RELEASE_TAG" --pattern game.gk2pack --dir static/assets
+      - name: Build desktop bundles
+        if: env.RELEASE_BUILD != 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
+        run: pnpm tauri build ${{ matrix.args }}
+      - name: Build and publish desktop bundles
+        if: env.RELEASE_BUILD == 'true'
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
+        with:
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v__VERSION__' }}
+          releaseName: Graveyard Keeper 2 Save Editor v__VERSION__
+          releaseBody: Download the installer or bundle for your platform from the assets below.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}-${{ github.sha }}
+          path: |
+            src-tauri/target/**/release/bundle/**/*
+          if-no-files-found: error
+
+  deploy-pages:
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish == true
+    needs: web
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

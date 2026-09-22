@@ -167,6 +167,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let config = app.path().app_config_dir()?.join("settings.json");
             let settings = std::fs::read(&config)
