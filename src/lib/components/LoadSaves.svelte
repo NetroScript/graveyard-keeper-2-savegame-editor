@@ -9,6 +9,10 @@
   import FolderOpen from "~icons/ph/folder-open";
   import Copy from "~icons/ph/copy";
   import ArrowClockwise from "~icons/ph/arrow-clockwise";
+  import DesktopTower from "~icons/ph/desktop-tower";
+  import Tag from "~icons/ph/tag";
+  import GameIcon from "./GameIcon.svelte";
+  import { gameDayIcon } from "../assets/game-icons";
   let {
     onfiles,
     onpath,
@@ -35,12 +39,11 @@
   );
   const paths: Record<string, string> = {
     Windows:
-      "%USERPROFILE%\\AppData\\LocalLow\\Lazy Bear Games\\Graveyard Keeper 2 Demo",
-    macOS:
-      "~/Library/Application Support/Lazy Bear Games/Graveyard Keeper 2 Demo",
-    Linux: "~/.config/unity3d/Lazy Bear Games/Graveyard Keeper 2 Demo",
+      "%USERPROFILE%\\AppData\\LocalLow\\Lazy Bear Games\\Graveyard Keeper 2",
+    macOS: "~/Library/Application Support/Lazy Bear Games/Graveyard Keeper 2",
+    Linux: "~/.config/unity3d/Lazy Bear Games/Graveyard Keeper 2",
     Proton:
-      "~/.local/share/Steam/steamapps/compatdata/5075680/pfx/drive_c/users/steamuser/AppData/LocalLow/Lazy Bear Games/Graveyard Keeper 2 Demo",
+      "~/.local/share/Steam/steamapps/compatdata/4358690/pfx/drive_c/users/steamuser/AppData/LocalLow/Lazy Bear Games/Graveyard Keeper 2",
   };
   async function refresh() {
     try {
@@ -111,21 +114,21 @@
         <div class="panel-body">
           {#if save.metadata}{@const m = save.metadata}
             <div class="save-day">
-              Day {String(m.day ?? "—")}<span
-                >{m.isDemoSave ? "Demo" : "Release"}</span
-              >
+              <GameIcon name={gameDayIcon(m.day)} />Day {String(
+                m.day ?? "—",
+              )}<span>{m.isDemoSave ? "Demo" : "Release"}</span>
             </div>
             <p>{String(m.saveDateTime ?? "Unknown save date")}</p>
             <dl>
-              <dt>Version</dt>
+              <dt><Tag />Version</dt>
               <dd>{String(m.gameSaveVersion ?? "—")}</dd>
-              <dt>Platform</dt>
+              <dt><DesktopTower />Platform</dt>
               <dd>{String(m.platform ?? "—")}</dd>
-              <dt>Church</dt>
-              <dd>{String(m.churchQuality ?? "—")}</dd>
-              <dt>Graveyard</dt>
+              <dt><GameIcon name="wskull" />Graveyard</dt>
               <dd>{String(m.graveyardQuality ?? "—")}</dd>
-              <dt>Village reputation</dt>
+              <dt><GameIcon name="cross" variant="church" />Church</dt>
+              <dd>{String(m.churchQuality ?? "—")}</dd>
+              <dt><GameIcon name="village_REP" />Village reputation</dt>
               <dd>{String(m.villageRep ?? "—")}</dd>
             </dl>{:else}<p>
               {save.metadataError
@@ -195,9 +198,8 @@
         >
       </div>
       <p class="hint">
-        For the release, use “Graveyard Keeper 2” without “Demo”. Proton release
-        app ID: 4358690. Steam libraries may be stored elsewhere; Linux also
-        respects XDG_CONFIG_HOME.
+        Steam libraries may be stored elsewhere. Linux also respects
+        XDG_CONFIG_HOME.
       </p>
     </div>
   </section>

@@ -157,9 +157,10 @@ small,
     serif;
   letter-spacing: 0.08em;
 }
-.brand > svg {
-  width: 34px;
-  height: 34px;
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
   color: #b69052;
   flex-shrink: 0;
 }
@@ -179,6 +180,7 @@ small,
   flex: 1;
 }
 .rail nav > button,
+.about-link,
 .settings-link {
   width: 100%;
   justify-content: flex-start;
@@ -235,8 +237,27 @@ small,
 .close-save svg {
   width: 13px;
 }
-.settings-link {
+.about-link {
   margin-top: 20px;
+}
+.settings-link {
+  margin-top: 2px;
+}
+.asset-version {
+  padding: 12px 13px 8px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.asset-version b {
+  display: block;
+  color: var(--cream);
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .rail-footer {
   font-size: 8px;
@@ -573,6 +594,51 @@ main {
   display: flex;
   justify-content: space-between;
   margin-bottom: 10px;
+}
+.save-day,
+.save-metadata summary,
+.save-card dt,
+.save-metadata dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.save-day svg,
+.save-card dt > svg,
+.save-metadata dt > svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+.save-card .game-icon {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+.save-day .game-icon {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+}
+.save-card .game-icon.church {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+.save-metadata summary .game-icon {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+.save-metadata .game-icon.church {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+.save-card dt > svg {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
 }
 .save-day span {
   font:
@@ -1041,6 +1107,46 @@ dialog::backdrop {
 }
 .save-metadata dl {
   max-width: 450px;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.about-grid .panel-body {
+  display: grid;
+  gap: 16px;
+}
+.about-actions {
+  align-content: start;
+}
+.about-actions a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  color: #e3bd78;
+}
+.about-actions svg,
+.about-grid .strip svg {
+  width: 19px;
+  height: 19px;
+}
+.about-grid .strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.updater-panel {
+  grid-column: 1 / -1;
+}
+.updater-panel progress {
+  width: 100%;
+}
+@media (max-width: 800px) {
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Game UI palette and frame treatment. */

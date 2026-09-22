@@ -6,6 +6,10 @@
   import FloppyDisk from "~icons/ph/floppy-disk";
   import ArrowCounterClockwise from "~icons/ph/arrow-counter-clockwise";
   import ArrowClockwise from "~icons/ph/arrow-clockwise";
+  import DesktopTower from "~icons/ph/desktop-tower";
+  import Tag from "~icons/ph/tag";
+  import GameIcon from "./GameIcon.svelte";
+  import { gameDayIcon } from "../assets/game-icons";
   let {
     doc,
     onsave,
@@ -47,9 +51,7 @@
       onclick={() => onsave(doc, true)}>Save As</button
     ><button
       class="primary"
-      disabled={!doc.summary?.dirty ||
-        doc.busy ||
-        doc.invalidGeneralDraft}
+      disabled={!doc.summary?.dirty || doc.busy || doc.invalidGeneralDraft}
       onclick={() => onsave(doc, false)}><FloppyDisk />Save</button
     >
   </div>
@@ -57,20 +59,20 @@
 {#if doc.metadata}{@const m = doc.metadata}
   <details class="save-metadata">
     <summary
-      >Day {String(m.day ?? "—")} · {String(m.saveDateTime ?? "Unknown date")} · {m.isDemoSave
-        ? "Demo"
-        : "Release"}</summary
+      ><GameIcon name={gameDayIcon(m.day)} />Day {String(m.day ?? "—")} · {String(
+        m.saveDateTime ?? "Unknown date",
+      )} · {m.isDemoSave ? "Demo" : "Release"}</summary
     >
     <dl>
-      <dt>Version</dt>
+      <dt><Tag />Version</dt>
       <dd>{String(m.gameSaveVersion ?? "—")}</dd>
-      <dt>Platform</dt>
+      <dt><DesktopTower />Platform</dt>
       <dd>{String(m.platform ?? "—")}</dd>
-      <dt>Church quality</dt>
-      <dd>{String(m.churchQuality ?? "—")}</dd>
-      <dt>Graveyard quality</dt>
+      <dt><GameIcon name="wskull" />Graveyard quality</dt>
       <dd>{String(m.graveyardQuality ?? "—")}</dd>
-      <dt>Village reputation</dt>
+      <dt><GameIcon name="cross" variant="church" />Church quality</dt>
+      <dd>{String(m.churchQuality ?? "—")}</dd>
+      <dt><GameIcon name="village_REP" />Village reputation</dt>
       <dd>{String(m.villageRep ?? "—")}</dd>
     </dl>
     <p class="hint">
@@ -106,10 +108,17 @@
         >{/each}
     </div>
   </nav>
-  <div class="view-content" class:general-content={category === "General" || category === "Inventory"}>
+  <div
+    class="view-content"
+    class:general-content={category === "General" || category === "Inventory"}
+  >
     <div hidden={category !== "General"}><General {doc} /></div>
     <div hidden={category !== "Inventory"}>
-      {#if inventoryVisited}<Inventory {doc} {settings} active={view === "editor" && category === "Inventory"} />{/if}
+      {#if inventoryVisited}<Inventory
+          {doc}
+          {settings}
+          active={view === "editor" && category === "Inventory"}
+        />{/if}
     </div>
     {#if category !== "General" && category !== "Inventory"}<section
         class="empty-state panel"

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { base } from "$app/paths";
   import { createBackend, type SaveBackend, type Summary } from "$lib/save-api";
   import {
     SaveDocument,
@@ -12,13 +13,15 @@
   } from "$lib/document.svelte";
   import LoadSaves from "$lib/components/LoadSaves.svelte";
   import SettingsView from "$lib/components/Settings.svelte";
+  import About from "$lib/components/About.svelte";
   import DocumentView from "$lib/components/DocumentView.svelte";
+  import { loadAssetManifest } from "$lib/assets/game-icons";
   import FolderOpen from "~icons/ph/folder-open";
   import Gear from "~icons/ph/gear-six";
   import File from "~icons/ph/file-text";
   import X from "~icons/ph/x";
   import List from "~icons/ph/list";
-  import Book from "~icons/ph/book-open";
+  import Info from "~icons/ph/info";
   import "@fontsource/roboto/latin-400.css";
   import "@fontsource/roboto/latin-500.css";
   import "@fontsource/roboto/latin-700.css";
@@ -26,14 +29,22 @@
   let backend: SaveBackend;
   let ready = $state(false);
   let documents = $state<SaveDocument[]>([]);
-  let active = $state<number | "load" | "settings">("load");
+  let active = $state<number | "load" | "settings" | "about">("load");
   let settings = $state<Settings>({ ...defaultSettings });
   let drawer = $state(false);
   let error = $state("");
   let conflict = $state<SaveDocument>();
   let closing = $state<SaveDocument>();
+  let assetVersion = $state("Loading…");
   onMount(() => {
     let alive = true;
+    loadAssetManifest()
+      .then((manifest) => {
+        if (alive) assetVersion = manifest.gameVersion || "Unknown";
+      })
+      .catch(() => {
+        if (alive) assetVersion = "Unavailable";
+      });
     createBackend()
       .then(async (b) => {
         backend = b;
@@ -195,7 +206,7 @@
     ></button>{/if}
   <aside class:open={drawer} class="rail">
     <div class="brand">
-      <Book />
+      <img class="brand-icon" src={`${base}/app-icon.png`} alt="" />
       <div>GRAVEYARD KEEPER <b>2</b><small>SAVE EDITOR</small></div>
     </div>
     <nav aria-label="Workspace">
@@ -219,7 +230,17 @@
           >
         </div>{/each}
     </nav>
+    <div
+      class="asset-version"
+      title="Game version represented by the loaded asset pack"
+    >
+      Asset game version <b>{assetVersion}</b>
+    </div>
     <button
+      class="about-link"
+      class:active={active === "about"}
+      onclick={() => activate("about")}><Info />About</button
+    ><button
       class="settings-link"
       class:active={active === "settings"}
       onclick={() => activate("settings")}><Gear />Settings</button
@@ -233,6 +254,9 @@
       </div>
       <div class="page-content" hidden={active !== "settings"}>
         <SettingsView {settings} {onsettings} />
+      </div>
+      <div class="page-content" hidden={active !== "about"}>
+        <About {assetVersion} />
       </div>
       {#each documents as doc (doc.id)}<div
           class="document-workspace"
