@@ -13,23 +13,31 @@ browser and does not upload them to a server.
 
 [Open the Graveyard Keeper 2 Save Editor](https://netroscript.github.io/graveyard-keeper-2-savegame-editor/)
 
-The hosted editor will become available after the first GitHub Pages release.
 Choose your `.dat` save and its matching `.info` file when available. The edited
 save is downloaded as a new file, leaving the original untouched.
+
+The web editor cannot create or manage backups in the game's save folder. Keep
+the original `.dat` and matching `.info` files until you have confirmed the edited
+save works in the game. Use the desktop version if you want save discovery,
+automatic paired backups, and protection against overwriting a save changed by
+the game or another program.
 
 ### Desktop version
 
 Download the version for your operating system from the
 [GitHub Releases page](https://github.com/NetroScript/graveyard-keeper-2-savegame-editor/releases).
 
-The desktop application can find saves automatically, create backups, detect if
-another program changed a save, and install signed application updates. On
-Windows, use the installer if you want automatic updates. The standalone `.exe`
-can be run without installation, but accepting an update will launch an installer.
+The desktop application can find saves automatically. Before replacing a save,
+it creates a compressed ZIP backup containing its `.dat` and `.info` files by
+default; the number of retained backups is configurable in Settings. It also detects if another
+program changed a save and can install signed application updates. On Windows,
+use the installer if you want automatic updates. The standalone `.exe` can be run
+without installation, but accepting an update will launch an installer.
 
-Always keep a backup before loading an edited save in the game. The editor checks
-the save structure, but only the game can confirm that every edited value is valid
-for a particular game version.
+The editor checks the save structure, but only the game can confirm that every
+edited value is valid for a particular game version. Keep the desktop backup, or
+your own backup when using the web editor, until the edited save has loaded
+successfully.
 
 ## What can be edited
 
@@ -58,10 +66,6 @@ Typical release save locations are:
 | Steam Proton | `~/.local/share/Steam/steamapps/compatdata/4358690/pfx/drive_c/users/steamuser/AppData/LocalLow/Lazy Bear Games/Graveyard Keeper 2` |
 
 Steam libraries and Linux configuration directories can be stored elsewhere.
-
-## Screenshots
-
-Screenshots will be added with the first public release.
 
 ## For developers
 

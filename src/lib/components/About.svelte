@@ -20,6 +20,9 @@
 
   const repository =
     "https://github.com/NetroScript/graveyard-keeper-2-savegame-editor";
+  const webEditor =
+    "https://netroscript.github.io/graveyard-keeper-2-savegame-editor/";
+  const desktopDownloads = `${repository}/releases`;
 
   async function external(event: MouseEvent, url: string) {
     if (!desktop) return;
@@ -130,6 +133,32 @@
       >
     </div>
   </section>
+  <section class="panel edition-panel">
+    <h2 class="strip"><Download />Web and desktop</h2>
+    <div class="panel-body">
+      <p>You are using the <strong>{desktop ? "desktop application" : "web editor"}</strong>.</p>
+      <div class="edition-comparison">
+        <section>
+          <h3>Web editor</h3>
+          <p>Runs without installation and updates automatically with the website.</p>
+          <p>You select saves manually and receive edited files as downloads. Keep your original <code>.dat</code> and <code>.info</code> files as your backup.</p>
+        </section>
+        <section>
+          <h3>Desktop application</h3>
+          <p>Finds installed saves and writes them back safely with configurable compressed backups containing the matching save pair, plus external-change checks.</p>
+          <p>It can check for application updates, but must be downloaded or installed on your computer.</p>
+        </section>
+      </div>
+      <a
+        class="other-edition"
+        href={desktop ? webEditor : desktopDownloads}
+        target="_blank"
+        rel="noreferrer"
+        onclick={(e) => external(e, desktop ? webEditor : desktopDownloads)}
+        ><Download />{desktop ? "Open the web editor" : "Download the desktop application"}</a
+      >
+    </div>
+  </section>
   {#if desktop}<section class="panel updater-panel">
       <h2 class="strip"><ArrowClockwise />Updates</h2>
       <div class="panel-body">
@@ -154,5 +183,20 @@
           >{/if}
         {#if message}<p role="status" class="hint">{message}</p>{/if}
       </div>
-    </section>{/if}
+  </section>{/if}
 </div>
+
+<style>
+  .edition-panel { grid-column:1 / -1; }
+  .edition-comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--border); background:#20222a; }
+  .edition-comparison section { padding:12px 14px; }
+  .edition-comparison section + section { border-left:1px solid var(--border); }
+  .edition-comparison h3 { margin:0 0 7px; color:#e3c36c; font-size:14px; }
+  .edition-comparison p { margin:5px 0; color:#b8bdc7; }
+  .other-edition { display:inline-flex; align-items:center; gap:7px; margin-top:12px; color:#e3bd78; }
+  .other-edition :global(svg) { width:18px; height:18px; }
+  @media (max-width:720px) {
+    .edition-comparison { grid-template-columns:1fr; }
+    .edition-comparison section + section { border-left:0; border-top:1px solid var(--border); }
+  }
+</style>

@@ -175,6 +175,19 @@
     <span>Matching .info files are optional and provide save metadata.</span
     ><small>Files are processed locally and are not uploaded.</small></button
   >
+  <aside class="web-backup-note panel">
+    <strong>Keep your original save files</strong>
+    <p>
+      The web editor downloads edited copies and cannot manage backups in the
+      game's save folder. Keep the original <code>.dat</code> and matching
+      <code>.info</code> files until the edited save works in the game.
+    </p>
+    <a
+      href="https://github.com/NetroScript/graveyard-keeper-2-savegame-editor/releases"
+      target="_blank"
+      rel="noreferrer">Download the desktop application for automatic paired backups</a
+    >
+  </aside>
   <section class="panel location-panel">
     <h3 class="strip">Save file locations</h3>
     <div class="panel-body">
@@ -205,3 +218,10 @@
   </section>
 {/if}
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
+
+<style>
+  .web-backup-note { margin-top:16px; padding:14px 16px; }
+  .web-backup-note strong { color:#e3c36c; }
+  .web-backup-note p { margin:6px 0; color:#b8bdc7; }
+  .web-backup-note a { color:#e3bd78; }
+</style>
