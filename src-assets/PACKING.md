@@ -20,8 +20,8 @@ the versioned pack as an input artifact without installing or launching the game
 
 The browser test uses an installed Chrome by default. Set `PLAYWRIGHT_CHANNEL`
 to another installed Playwright browser channel if needed. It verifies actual
-pixel output, a shared canvas, cached requests and URL cleanup using synthetic
-images; game files are not required for the tests.
+pixel output, bounded concurrent rendering, cached requests and URL cleanup
+using synthetic images; game files are not required for the tests.
 
 Validation failures stop packing. `--allow-partial` permits an explicitly partial
 catalog for development and retains its diagnostics as `catalogs.packWarnings`.
@@ -62,13 +62,14 @@ const url = await assets.imageUrl(imageHash, "#272832");
 // Call assets.dispose() when this pack is no longer used by any displayed images.
 ```
 
-The renderer lazily creates one offscreen HTML canvas (not one per item). Work
-is serialized through it, and generated Blob URLs are cached by image hash and
-outline color. The DOM uses ordinary image elements. Concurrent identical
-requests share the same promise. Disposal revokes URLs and rejects queued work;
-callers should release the `AssetPack` instance to release the original pack
-buffer too. Limit the number of requested outline colors to the UI palette to
-keep the cache small. No filesystem images are generated at runtime.
+The renderer lazily creates a pool of up to four canvases. Independent images
+can be decoded, cropped, recolored and encoded concurrently, while generated
+Blob URLs are cached by image hash and render options. The DOM uses ordinary
+image elements. Concurrent identical requests share the same promise. Disposal
+revokes URLs, rejects queued work and releases the canvases; callers should
+release the `AssetPack` instance to release the original pack buffer too. Limit
+the number of requested outline colors to the UI palette to keep the cache
+small. No filesystem images are generated at runtime.
 
 The replacement rule currently targets exactly RGB `(0, 0, 255)` and preserves
 alpha.

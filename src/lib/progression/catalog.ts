@@ -1,4 +1,5 @@
 import { gameAssets } from "../assets/game-assets";
+import { loadGameIcon } from "../assets/game-icons";
 
 export interface Reward {
   type: string;
@@ -56,6 +57,67 @@ export interface ProgressionState { unlockedTechnologies: string[]; talents: Tal
 
 export async function loadProgressionCatalog() {
   return (await gameAssets()).catalog<ProgressionCatalog>("progression");
+}
+
+let progressionPreload: Promise<void> | undefined;
+
+function idle() {
+  return new Promise<void>((resolve) => {
+    if ("requestIdleCallback" in window)
+      window.requestIdleCallback(() => resolve(), { timeout: 100 });
+    else globalThis.setTimeout(resolve, 0);
+  });
+}
+
+/** Warm all progression graphics in small background batches after a save opens. */
+export function preloadProgressionAssets() {
+  return (progressionPreload ??= (async () => {
+    const catalog = await loadProgressionCatalog();
+    const requests = new Map<
+      string,
+      { name: string; kind: "font" | "sprite"; recolor: boolean }
+    >();
+    const add = (
+      name: string | null | undefined,
+      kind: "font" | "sprite" = "sprite",
+      recolor = kind === "sprite",
+    ) => {
+      if (name) requests.set(`${kind}:${name}:${recolor}`, { name, kind, recolor });
+    };
+    for (const tab of catalog.technology.tabs) add(tab.sprite);
+    for (const node of catalog.technology.nodes) {
+      add(node.icon);
+      add(node.gate?.sprite);
+      for (const name of Object.keys(node.price)) add(name, "font", false);
+      for (const reward of node.rewards) {
+        add(reward.sprite);
+        for (const ingredient of reward.ingredients ?? []) add(ingredient.sprite);
+      }
+    }
+    for (const branch of catalog.talents.branches)
+      add(branch.fontIcon, "font", false);
+    for (const inspiration of catalog.talents.inspirations)
+      add(inspiration.sprite);
+    for (const level of catalog.talents.levelUps) {
+      add(level.sprite, "sprite", false);
+      add(level.perk?.sprite, "sprite", false);
+    }
+    const pending = [...requests.values()];
+    await idle();
+    for (let start = 0; start < pending.length; start += 8) {
+      await Promise.allSettled(
+        pending.slice(start, start + 8).map(({ name, kind, recolor }) =>
+          loadGameIcon(name, kind, {
+            crop: true,
+            outline: recolor ? "#17181d" : undefined,
+          }),
+        ),
+      );
+      await idle();
+    }
+  })().catch(() => {
+    progressionPreload = undefined;
+  }));
 }
 
 export function dependencyClosure<T extends { id: string; parents: string[] }>(target: T, nodes: T[], unlocked: Set<string>) {

@@ -16,6 +16,7 @@
   import About from "$lib/components/About.svelte";
   import DocumentView from "$lib/components/DocumentView.svelte";
   import { loadAssetManifest } from "$lib/assets/game-icons";
+  import { preloadProgressionAssets } from "$lib/progression/catalog";
   import FolderOpen from "~icons/ph/folder-open";
   import Gear from "~icons/ph/gear-six";
   import File from "~icons/ph/file-text";
@@ -38,6 +39,7 @@
   let assetVersion = $state("Loading…");
   onMount(() => {
     let alive = true;
+    void preloadProgressionAssets();
     loadAssetManifest()
       .then((manifest) => {
         if (alive) assetVersion = manifest.gameVersion || "Unknown";

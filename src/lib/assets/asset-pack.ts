@@ -7,11 +7,16 @@ export interface ImageRenderOptions {
   crop?: boolean;
 }
 
-/** One canvas per loaded pack. Generated URLs remain valid until dispose(). */
+/** A small canvas pool bounds concurrent decoding while avoiding a serial queue. */
 export class AssetPack {
   readonly pack: ReturnType<typeof parsePack>;
-  private canvas: HTMLCanvasElement | undefined;
-  private queue: Promise<unknown> = Promise.resolve();
+  private readonly canvasLimit = 4;
+  private canvasCount = 0;
+  private canvases: HTMLCanvasElement[] = [];
+  private canvasWaiters: {
+    resolve: (canvas: HTMLCanvasElement) => void;
+    reject: (error: Error) => void;
+  }[] = [];
   private cache = new Map<string, Promise<string>>();
   private urls = new Set<string>();
   private disposed = false;
@@ -34,6 +39,31 @@ export class AssetPack {
     return this.pack.metadata.catalogs[name] as T;
   }
 
+  private acquireCanvas(): Promise<HTMLCanvasElement> {
+    if (this.disposed)
+      return Promise.reject(new Error("Asset pack disposed"));
+    const available = this.canvases.pop();
+    if (available) return Promise.resolve(available);
+    if (this.canvasCount < this.canvasLimit) {
+      this.canvasCount++;
+      return Promise.resolve(document.createElement("canvas"));
+    }
+    return new Promise((resolve, reject) => {
+      this.canvasWaiters.push({ resolve, reject });
+    });
+  }
+
+  private releaseCanvas(canvas: HTMLCanvasElement) {
+    if (this.disposed) {
+      canvas.width = 0;
+      canvas.height = 0;
+      return;
+    }
+    const waiter = this.canvasWaiters.shift();
+    if (waiter) waiter.resolve(canvas);
+    else this.canvases.push(canvas);
+  }
+
   /** String arguments remain supported for existing item-outline callers. */
   imageUrl(
     hash: string,
@@ -48,18 +78,18 @@ export class AssetPack {
     const key = `${hash}:${color ?? "original"}:${crop ? "crop" : "full"}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
-    // Serialize use of the canvas, including asynchronous PNG encoding.
-    const result = this.queue.then(async () => {
+    const result = (async () => {
       if (this.disposed) throw new Error("Asset pack disposed");
       const source = new Blob([new Uint8Array(this.pack.imageBytes(hash))], {
         type: "image/png",
       });
       let blob = source;
       if (color || crop) {
-        const bitmap = await createImageBitmap(source);
+        const canvas = await this.acquireCanvas();
+        let bitmap: ImageBitmap | undefined;
         try {
+          bitmap = await createImageBitmap(source);
           if (this.disposed) throw new Error("Asset pack disposed");
-          const canvas = (this.canvas ??= document.createElement("canvas"));
           canvas.width = bitmap.width;
           canvas.height = bitmap.height;
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -116,16 +146,17 @@ export class AssetPack {
             ),
           );
         } finally {
-          bitmap.close();
+          bitmap?.close();
+          this.releaseCanvas(canvas);
         }
       }
       if (this.disposed) throw new Error("Asset pack disposed");
       const url = URL.createObjectURL(blob);
       this.urls.add(url);
       return url;
-    });
+    })();
     this.cache.set(key, result);
-    this.queue = result.catch(() => {
+    result.catch(() => {
       this.cache.delete(key);
     });
     return result;
@@ -136,10 +167,13 @@ export class AssetPack {
     for (const url of this.urls) URL.revokeObjectURL(url);
     this.urls.clear();
     this.cache.clear();
-    if (this.canvas) {
-      this.canvas.width = 0;
-      this.canvas.height = 0;
-      this.canvas = undefined;
+    for (const waiter of this.canvasWaiters)
+      waiter.reject(new Error("Asset pack disposed"));
+    this.canvasWaiters = [];
+    for (const canvas of this.canvases) {
+      canvas.width = 0;
+      canvas.height = 0;
     }
+    this.canvases = [];
   }
 }

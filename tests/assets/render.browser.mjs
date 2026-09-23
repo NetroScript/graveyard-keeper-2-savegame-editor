@@ -6,7 +6,7 @@ import { createServer } from "vite";
 import { encode } from "@msgpack/msgpack";
 import { PACK_MAGIC } from "../../src/lib/assets/pack.ts";
 
-test("one canvas renders cached outline variants and releases URLs", async () => {
+test("a bounded canvas pool renders cached cropped variants and releases URLs", async () => {
   const server = await createServer({
     configFile: false,
     server: { host: "127.0.0.1", port: 0 },
@@ -135,7 +135,7 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
       perkName: "Example perk",
       missingCatalog: true,
       samePromise: true,
-      rendererCanvases: 1,
+      rendererCanvases: 2,
       normalPixels: {
         width: 2,
         height: 1,
