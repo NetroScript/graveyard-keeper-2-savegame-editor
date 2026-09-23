@@ -35,13 +35,13 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
     );
     const encoded = await page.evaluate(() => {
       const canvas = document.createElement("canvas");
-      canvas.width = 2;
-      canvas.height = 1;
+      canvas.width = 4;
+      canvas.height = 3;
       const ctx = canvas.getContext("2d");
       ctx.fillStyle = "#0000ff";
-      ctx.fillRect(0, 0, 1, 1);
+      ctx.fillRect(1, 1, 1, 1);
       ctx.fillStyle = "#ff0000";
-      ctx.fillRect(1, 0, 1, 1);
+      ctx.fillRect(2, 1, 1, 1);
       return canvas.toDataURL().split(",")[1];
     });
     const png = Buffer.from(encoded, "base64");
@@ -50,7 +50,7 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
       schemaVersion: 1,
       catalogs: { perks: { example: { name: "Example perk" } } },
       images: {
-        [hash]: { offset: 0, length: png.length, width: 2, height: 1 },
+        [hash]: { offset: 0, length: png.length, width: 4, height: 3 },
       },
     });
     const header = Buffer.alloc(16);
@@ -74,11 +74,16 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
         } catch {
           missingCatalog = true;
         }
-        const first = assets.imageUrl(hash, "#101112");
-        const samePromise = first === assets.imageUrl(hash, "#101112");
+        const first = assets.imageUrl(hash, {
+          outline: "#101112",
+          crop: true,
+        });
+        const samePromise =
+          first ===
+          assets.imageUrl(hash, { outline: "#101112", crop: true });
         const [normal, hover] = await Promise.all([
           first,
-          assets.imageUrl(hash, "#abcdef"),
+          assets.imageUrl(hash, { outline: "#abcdef", crop: true }),
         ]);
         const rendererCanvases = canvases;
         async function pixels(url) {
@@ -86,12 +91,16 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
             await (await fetch(url)).blob(),
           );
           const canvas = original("canvas");
-          canvas.width = 2;
-          canvas.height = 1;
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(bitmap, 0, 0);
           bitmap.close();
-          return [...ctx.getImageData(0, 0, 2, 1).data];
+          return {
+            width: canvas.width,
+            height: canvas.height,
+            values: [...ctx.getImageData(0, 0, canvas.width, canvas.height).data],
+          };
         }
         const normalPixels = await pixels(normal);
         const hoverPixels = await pixels(hover);
@@ -127,8 +136,16 @@ test("one canvas renders cached outline variants and releases URLs", async () =>
       missingCatalog: true,
       samePromise: true,
       rendererCanvases: 1,
-      normalPixels: [16, 17, 18, 255, 255, 0, 0, 255],
-      hoverPixels: [171, 205, 239, 255, 255, 0, 0, 255],
+      normalPixels: {
+        width: 2,
+        height: 1,
+        values: [16, 17, 18, 255, 255, 0, 0, 255],
+      },
+      hoverPixels: {
+        width: 2,
+        height: 1,
+        values: [171, 205, 239, 255, 255, 0, 0, 255],
+      },
       revoked: true,
       disposed: true,
     });

@@ -1,4 +1,5 @@
 import { gameAssets } from "./game-assets";
+import type { ImageRenderOptions } from "./asset-pack";
 
 interface Icons {
   sprites: Record<string, { image?: string }>;
@@ -11,8 +12,10 @@ const cache = new Map<string, Promise<string | undefined>>();
 export function loadGameIcon(
   name: string,
   kind: "font" | "sprite" = "font",
+  options: ImageRenderOptions = {},
 ): Promise<string | undefined> {
-  const key = `${kind}:${name}`;
+  const outline = options.outline?.toLowerCase();
+  const key = `${kind}:${name}:${outline ?? "original"}:${options.crop ? "crop" : "full"}`;
   const existing = cache.get(key);
   if (existing) return existing;
   const result = (async () => {
@@ -27,7 +30,7 @@ export function loadGameIcon(
         candidates.find((entry) => entry.assetId === defaultId)?.image ??
         (candidates.length === 1 ? candidates[0].image : undefined);
     }
-    return hash ? pack.imageUrl(hash) : undefined;
+    return hash ? pack.imageUrl(hash, options) : undefined;
   })().catch(() => undefined);
   cache.set(key, result);
   return result;

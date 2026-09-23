@@ -45,7 +45,7 @@ export function loadGeneralIcons(): Promise<Record<string, string>> {
           candidates.find((candidate) => candidate.assetId === defaultId) ??
           (candidates.length === 1 ? candidates[0] : undefined);
         if (!icon) throw new Error(`Missing General icon: ${name}`);
-        return [field, await loaded.imageUrl(icon.image)] as const;
+        return [field, await loaded.imageUrl(icon.image, { crop: true })] as const;
       }),
     );
     return Object.fromEntries(entries);

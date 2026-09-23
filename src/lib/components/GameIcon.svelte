@@ -14,7 +14,10 @@
 
   $effect(() => {
     let current = true;
-    loadGameIcon(name, kind).then((value) => {
+    loadGameIcon(name, kind, {
+      crop: true,
+      outline: kind === "sprite" ? "#17181d" : undefined,
+    }).then((value) => {
       if (current) url = value;
     });
     return () => {
@@ -29,16 +32,24 @@
 
 <style>
   .game-icon {
+    position: relative;
     display: inline-grid;
     place-items: center;
     width: 24px;
     height: 24px;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
     flex: 0 0 24px;
   }
   img {
+    position: absolute;
+    inset: 0;
     display: block;
     width: 100%;
     height: 100%;
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
     image-rendering: crisp-edges;
     image-rendering: pixelated;

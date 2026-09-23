@@ -1,5 +1,12 @@
 import { parsePack, replaceBlue } from "./pack";
 
+export interface ImageRenderOptions {
+  /** Replace the game's pure-blue shader mask with this CSS hex color. */
+  outline?: string;
+  /** Remove fully transparent outer rows and columns before creating the URL. */
+  crop?: boolean;
+}
+
 /** One canvas per loaded pack. Generated URLs remain valid until dispose(). */
 export class AssetPack {
   readonly pack: ReturnType<typeof parsePack>;
@@ -27,13 +34,18 @@ export class AssetPack {
     return this.pack.metadata.catalogs[name] as T;
   }
 
-  /** Pass #RRGGBB for item outlines; omit for unmodified icons. */
-  imageUrl(hash: string, outline?: string): Promise<string> {
+  /** String arguments remain supported for existing item-outline callers. */
+  imageUrl(
+    hash: string,
+    options?: string | ImageRenderOptions,
+  ): Promise<string> {
     if (this.disposed) return Promise.reject(new Error("Asset pack disposed"));
+    const outline = typeof options === "string" ? options : options?.outline;
+    const crop = typeof options === "object" && options.crop === true;
     if (outline !== undefined && !/^#[0-9a-f]{6}$/i.test(outline))
       return Promise.reject(new Error("Outline must be #RRGGBB"));
     const color = outline?.toLowerCase();
-    const key = `${hash}:${color ?? "original"}`;
+    const key = `${hash}:${color ?? "original"}:${crop ? "crop" : "full"}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
     // Serialize use of the canvas, including asynchronous PNG encoding.
@@ -43,7 +55,7 @@ export class AssetPack {
         type: "image/png",
       });
       let blob = source;
-      if (color) {
+      if (color || crop) {
         const bitmap = await createImageBitmap(source);
         try {
           if (this.disposed) throw new Error("Asset pack disposed");
@@ -53,14 +65,47 @@ export class AssetPack {
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
           if (!ctx) throw new Error("Canvas rendering is unavailable");
           ctx.imageSmoothingEnabled = false;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(bitmap, 0, 0);
           const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          replaceBlue(pixels.data, [
-            parseInt(color.slice(1, 3), 16),
-            parseInt(color.slice(3, 5), 16),
-            parseInt(color.slice(5, 7), 16),
-          ]);
+          if (color)
+            replaceBlue(pixels.data, [
+              parseInt(color.slice(1, 3), 16),
+              parseInt(color.slice(3, 5), 16),
+              parseInt(color.slice(5, 7), 16),
+            ]);
           ctx.putImageData(pixels, 0, 0);
+          let left = 0;
+          let top = 0;
+          let width = canvas.width;
+          let height = canvas.height;
+          if (crop) {
+            let right = -1;
+            let bottom = -1;
+            left = canvas.width;
+            top = canvas.height;
+            for (let y = 0; y < canvas.height; y++)
+              for (let x = 0; x < canvas.width; x++)
+                if (pixels.data[(y * canvas.width + x) * 4 + 3] !== 0) {
+                  left = Math.min(left, x);
+                  top = Math.min(top, y);
+                  right = Math.max(right, x);
+                  bottom = Math.max(bottom, y);
+                }
+            if (right >= left && bottom >= top) {
+              width = right - left + 1;
+              height = bottom - top + 1;
+            } else {
+              left = 0;
+              top = 0;
+            }
+          }
+          const rendered = ctx.getImageData(left, top, width, height);
+          canvas.width = width;
+          canvas.height = height;
+          const output = canvas.getContext("2d");
+          if (!output) throw new Error("Canvas rendering is unavailable");
+          output.putImageData(rendered, 0, 0);
           blob = await new Promise<Blob>((resolve, reject) =>
             canvas.toBlob(
               (value) =>
