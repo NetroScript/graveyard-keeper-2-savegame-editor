@@ -27,6 +27,7 @@ test("packs shared images once, drops controller icons, and rejects corruption",
         completedModules: [
           "items",
           "resources",
+          "progression",
           "inventory-rules",
           "font-icons",
         ],
@@ -46,6 +47,19 @@ test("packs shared images once, drops controller icons, and rejects corruption",
       write("inventory-rules", { bags: {} }),
       write("item-definition-schema", { fields: [{ name: "id" }] }),
       write("resources", []),
+      write("progression", {
+        schemaVersion: 1,
+        technology: {
+          tabs: [{ id: "building", sprite: "item" }],
+          nodes: [],
+        },
+        talents: {
+          branches: [{ id: "talent", fontIcon: "energy" }],
+          expLevels: [],
+          inspirations: [],
+          levelUps: [],
+        },
+      }),
       write("localization.en", { test: "Test item" }),
       write("icons", {
         images: { [hash]: { path: `images/${hash}.png`, width: 1, height: 1 } },

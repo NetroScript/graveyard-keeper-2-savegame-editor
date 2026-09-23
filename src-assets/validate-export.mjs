@@ -9,7 +9,7 @@ export async function validateExport(directory) {
   const root = resolve(directory);
   const load = async (name) =>
     JSON.parse(await readFile(resolve(root, name), "utf8"));
-  const [manifest, ids, items, families, rules, schema, icons, resources] =
+  const [manifest, ids, items, families, rules, schema, icons, resources, progression] =
     await Promise.all(
       [
         "manifest.json",
@@ -20,6 +20,7 @@ export async function validateExport(directory) {
         "item-definition-schema.json",
         "icons.json",
         "resources.json",
+        "progression.json",
       ].map(load),
     );
   const check = (condition, message) => {
@@ -38,7 +39,7 @@ export async function validateExport(directory) {
     Object.keys(items).length === ids.length,
     "Item definitions are missing",
   );
-  for (const module of ["items", "resources", "inventory-rules", "font-icons"])
+  for (const module of ["items", "resources", "progression", "inventory-rules", "font-icons"])
     check(
       manifest.completedModules.includes(module),
       `Missing module: ${module}`,
@@ -104,6 +105,33 @@ export async function validateExport(directory) {
   for (const resource of resources)
     for (const configuration of resource.configurations)
       font(configuration.iconName, resource.resource);
+  check(progression.schemaVersion === 1, "Unsupported progression schema version");
+  const techIds = new Set(progression.technology.nodes.map((node) => node.id));
+  const tabIds = new Set(progression.technology.tabs.map((tab) => tab.id));
+  check(techIds.size === progression.technology.nodes.length, "Duplicate technology IDs");
+  for (const tab of progression.technology.tabs) sprite(tab.sprite, `technology tab ${tab.id}`);
+  for (const node of progression.technology.nodes) {
+    check(tabIds.has(node.tab), `${node.id}: unknown technology tab ${node.tab}`);
+    for (const parent of node.parents) check(techIds.has(parent), `${node.id}: unknown technology parent ${parent}`);
+    if (node.icon) sprite(node.icon, node.id);
+    for (const reward of node.rewards) if (reward.sprite) sprite(reward.sprite, `${node.id}/${reward.id}`);
+  }
+  const branchIds = new Set(progression.talents.branches.map((branch) => branch.id));
+  for (const branch of progression.talents.branches) font(branch.fontIcon, branch.id);
+  const inspirationIds = new Set(progression.talents.inspirations.map((item) => item.id));
+  check(inspirationIds.size === progression.talents.inspirations.length, "Duplicate inspiration IDs");
+  for (const item of progression.talents.inspirations) {
+    check(branchIds.has(item.talent), `${item.id}: unknown talent branch ${item.talent}`);
+    sprite(item.sprite, item.id);
+  }
+  const levelIds = new Set(progression.talents.levelUps.map((item) => item.id));
+  check(levelIds.size === progression.talents.levelUps.length, "Duplicate talent level IDs");
+  for (const item of progression.talents.levelUps) {
+    check(branchIds.has(item.talent), `${item.id}: unknown talent branch ${item.talent}`);
+    for (const parent of item.parents) check(levelIds.has(parent), `${item.id}: unknown talent parent ${parent}`);
+    sprite(item.sprite, item.id);
+    if (item.perk?.sprite) sprite(item.perk.sprite, `${item.id}/${item.perk.id}`);
+  }
   for (const [name, entry] of Object.entries(icons.sprites))
     check(!!icons.images[entry.image], `${name}: missing image reference`);
   for (const [name, entries] of Object.entries(icons.fontIcons))

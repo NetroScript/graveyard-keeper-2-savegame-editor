@@ -1,8 +1,8 @@
 # Graveyard Keeper 2 asset exporter
 
 BepInEx plugin for exporting the installed Graveyard Keeper 2 game's item catalog,
-English localization, inventory compatibility data, inventory sprites, quality
-overlays, and TextMesh Pro sprite icons. Exports are JSON and shared PNG images,
+English localization, technology trees, inspirations, perks, inventory compatibility
+data, sprites, quality overlays, and TextMesh Pro sprite icons. Exports are JSON and shared PNG images,
 usable by either the native or browser editor without Unity or game DLLs.
 
 ## Build and installation
@@ -66,6 +66,7 @@ use the BepInEx 5 API for this project.
 | `quality-families.json`       | Star-quality variants grouped by the game's base-ID rule                                                                                              |
 | `inventory-rules.json`        | Per-bag allowed item IDs and per-item equipment eligibility                                                                                           |
 | `resources.json`              | All resource-to-icon mappings for every configured icon type                                                                                          |
+| `progression.json`            | Technology tabs/nodes/dependencies/rewards and talent branches, inspiration levels, perk-tree nodes, costs, text and icon links                       |
 | `icons.json`                  | Named sprites, TMP sprite characters/metrics/assets, and shared image index                                                                           |
 | `localization.en.json`        | English resource text with nested/replacement markup preserved                                                                                        |
 | `images/<sha256>.png`         | Deduplicated RGBA images; identical images are written once                                                                                           |

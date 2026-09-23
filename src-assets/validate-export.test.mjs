@@ -18,7 +18,7 @@ test("checks catalog coverage, bag references, PNG integrity and partial exports
   const manifest = {
     schemaVersion: 1,
     status: "complete",
-    completedModules: ["items", "resources", "inventory-rules", "font-icons"],
+    completedModules: ["items", "resources", "progression", "inventory-rules", "font-icons"],
   };
   const item = {
     id: "test",
@@ -43,6 +43,11 @@ test("checks catalog coverage, bag references, PNG integrity and partial exports
       write("resources.json", [
         { resource: "energy", configurations: [{ iconName: "energy" }] },
       ]),
+      write("progression.json", {
+        schemaVersion: 1,
+        technology: { tabs: [{ id: "Building", sprite: "test-icon" }], nodes: [] },
+        talents: { branches: [{ id: "talent", fontIcon: "energy" }], expLevels: [], inspirations: [], levelUps: [] },
+      }),
       write("icons.json", {
         images: { [hash]: { path: `images/${hash}.png`, width: 1, height: 1 } },
         sprites: { "test-icon": { image: hash } },
