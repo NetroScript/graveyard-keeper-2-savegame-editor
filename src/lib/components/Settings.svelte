@@ -72,8 +72,8 @@
         /></label
       >
       <p class="hint">
-        Editor backups keep the previous .dat and .info together, separately
-        from game backups. Set to 0 to disable them.
+        Each editor backup is a compressed ZIP containing the previous .dat and
+        .info together, separately from game backups. Set to 0 to disable them.
       </p>
       <h3>Custom save directories</h3>
       {#each settings.customDirectories as path}<div class="copy-path">

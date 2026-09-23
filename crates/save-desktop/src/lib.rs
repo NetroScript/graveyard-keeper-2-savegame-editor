@@ -8,6 +8,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
 type Result<T> = std::result::Result<T, String>;
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
@@ -336,6 +337,43 @@ fn atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     tmp.persist(path).map_err(err)?;
     Ok(())
 }
+fn backup_archive(
+    root: &Path,
+    path: &Path,
+    data: &[u8],
+    metadata: Option<&[u8]>,
+) -> Result<tempfile::NamedTempFile> {
+    let mut file = tempfile::Builder::new()
+        .prefix("save-")
+        .suffix(".zip")
+        .tempfile_in(root)
+        .map_err(err)?;
+    {
+        let options = SimpleFileOptions::default()
+            .compression_method(CompressionMethod::Deflated)
+            .compression_level(Some(6));
+        let mut archive = ZipWriter::new(file.as_file_mut());
+        archive
+            .start_file(
+                path.file_name().unwrap_or_default().to_string_lossy(),
+                options,
+            )
+            .map_err(err)?;
+        archive.write_all(data).map_err(err)?;
+        if let Some(metadata) = metadata {
+            archive
+                .start_file(
+                    info(path).file_name().unwrap_or_default().to_string_lossy(),
+                    options,
+                )
+                .map_err(err)?;
+            archive.write_all(metadata).map_err(err)?;
+        }
+        archive.finish().map_err(err)?;
+    }
+    file.as_file().sync_all().map_err(err)?;
+    Ok(file)
+}
 /// A journal retains the complete previous pair until both replacements have succeeded.
 pub fn recover(path: &Path) -> Result<()> {
     let dir = journal(path);
@@ -409,15 +447,12 @@ fn write_pair(
         // Prepare and sync the retained backup before touching the destination.
         let backup = if retention > 0 && old.is_some() {
             fs::create_dir_all(&backup_root).map_err(err)?;
-            let dir = tempfile::Builder::new()
-                .prefix("save-")
-                .tempdir_in(&backup_root)
-                .map_err(err)?;
-            atomic(&dir.path().join("save.dat"), old.as_ref().unwrap())?;
-            if let Some(b) = &old_info {
-                atomic(&dir.path().join("save.info"), b)?;
-            }
-            Some(dir)
+            Some(backup_archive(
+                &backup_root,
+                path,
+                old.as_ref().unwrap(),
+                old_info.as_deref(),
+            )?)
         } else {
             None
         };
@@ -443,12 +478,18 @@ fn write_pair(
     if let Ok(entries) = fs::read_dir(backup_root) {
         let mut entries: Vec<_> = entries
             .flatten()
-            .filter(|e| e.file_name().to_string_lossy().starts_with("save-") && e.path().is_dir())
+            .filter(|e| {
+                e.path().is_file()
+                    && e.file_name().to_string_lossy().starts_with("save-")
+                    && e.path()
+                        .extension()
+                        .is_some_and(|extension| extension.eq_ignore_ascii_case("zip"))
+            })
             .collect();
         entries.sort_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
         let count = entries.len().saturating_sub(retention as usize);
         for entry in entries.into_iter().take(count) {
-            let _ = fs::remove_dir_all(entry.path());
+            let _ = fs::remove_file(entry.path());
         }
     }
     Ok(())
@@ -519,10 +560,21 @@ mod tests {
         let backups = temp.path().join(".gk2-editor-backups/slot.dat");
         assert_eq!(fs::read_dir(&backups).unwrap().count(), 2);
         for entry in fs::read_dir(&backups).unwrap() {
-            assert_eq!(
-                fs::read(entry.unwrap().path().join("save.info")).unwrap(),
-                metadata
-            );
+            let file = fs::File::open(entry.unwrap().path()).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            let mut saved_data = Vec::new();
+            let mut data_entry = archive.by_name("slot.dat").unwrap();
+            assert_eq!(data_entry.compression(), CompressionMethod::Deflated);
+            std::io::Read::read_to_end(&mut data_entry, &mut saved_data).unwrap();
+            drop(data_entry);
+            assert_eq!(saved_data, bytes);
+            let mut saved_metadata = Vec::new();
+            std::io::Read::read_to_end(
+                &mut archive.by_name("slot.info").unwrap(),
+                &mut saved_metadata,
+            )
+            .unwrap();
+            assert_eq!(saved_metadata, metadata);
         }
         let dest = temp.path().join("copy.dat");
         w.save(id, 1, Some(dest.clone()), 2).unwrap();
