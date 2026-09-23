@@ -3,6 +3,8 @@
   import Inventory from "../inventory/Inventory.svelte";
   import General from "./General.svelte";
   import Inspector from "../inspector/Inspector.svelte";
+  import Technologies from "../progression/Technologies.svelte";
+  import Inspirations from "../progression/Inspirations.svelte";
   import FloppyDisk from "~icons/ph/floppy-disk";
   import ArrowCounterClockwise from "~icons/ph/arrow-counter-clockwise";
   import ArrowClockwise from "~icons/ph/arrow-clockwise";
@@ -23,6 +25,8 @@
   let category = $state("General");
   let inspectorVisited = $state(false);
   let inventoryVisited = $state(false);
+  let technologiesVisited = $state(false);
+  let inspirationsVisited = $state(false);
 </script>
 
 <header class="document-header">
@@ -96,13 +100,15 @@
 <div hidden={view !== "editor"} class="editor-view">
   <nav class="category-tabs" aria-label="Editor categories">
     <div class="tab-group">
-      {#each ["General", "Inventory", "Relationships", "Technologies"] as tab}<button
+      {#each ["General", "Inventory", "Technologies", "Inspirations", "Relationships"] as tab}<button
           class:active={category === tab}
           onclick={() => {
             category = tab;
             if (tab === "Inventory") inventoryVisited = true;
+            if (tab === "Technologies") technologiesVisited = true;
+            if (tab === "Inspirations") inspirationsVisited = true;
           }}
-          >{tab}{#if tab !== "General" && tab !== "Inventory"}<small
+          >{tab}{#if tab === "Relationships"}<small
               >Not available</small
             >{/if}</button
         >{/each}
@@ -110,7 +116,7 @@
   </nav>
   <div
     class="view-content"
-    class:general-content={category === "General" || category === "Inventory"}
+    class:general-content={category !== "Relationships"}
   >
     <div hidden={category !== "General"}><General {doc} /></div>
     <div hidden={category !== "Inventory"}>
@@ -120,7 +126,13 @@
           active={view === "editor" && category === "Inventory"}
         />{/if}
     </div>
-    {#if category !== "General" && category !== "Inventory"}<section
+    <div hidden={category !== "Technologies"}>
+      {#if technologiesVisited}<Technologies {doc} active={view === "editor" && category === "Technologies"} />{/if}
+    </div>
+    <div hidden={category !== "Inspirations"}>
+      {#if inspirationsVisited}<Inspirations {doc} active={view === "editor" && category === "Inspirations"} />{/if}
+    </div>
+    {#if category === "Relationships"}<section
         class="empty-state panel"
       >
         <h2>{category}</h2>

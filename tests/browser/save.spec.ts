@@ -156,6 +156,7 @@ test("multiple saves preserve drafts, navigation, edits, undo and downloads", as
     "Money",
     "Technology Points",
     "Mental State",
+    "Save utilities",
   ]);
   const content = await page.locator(".general-content").boundingBox();
   for (const section of await sections.all()) {
@@ -438,6 +439,66 @@ test("local real save round trip through browser", async ({ page }) => {
   );
   await page.screenshot({ path: "test-results/inventory-variants-real.png" });
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+test("real save renders progression trees and undo restores unlocks", async ({ page }) => {
+  test.skip(!process.env.GK2_SAVE_FIXTURE, "Set GK2_SAVE_FIXTURE for private save validation");
+  const bytes = await readFile(process.env.GK2_SAVE_FIXTURE!);
+  await page.goto("/");
+  await page.getByLabel("Select save files").setInputFiles(process.env.GK2_SAVE_FIXTURE!);
+  await expect(page.getByRole("spinbutton", { name: "Current health", exact: true })).toBeEnabled({ timeout: 30000 });
+
+  await page.getByRole("button", { name: "Technologies", exact: true }).click();
+  await expect(page.getByRole("navigation", { name: "Technology trees" })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".tech-node").first()).toBeVisible();
+  await expect(page.locator(".branch-tabs img").first()).toBeVisible();
+  await expect.poll(async () => (await page.locator(".reward-icons img").first().boundingBox())?.width ?? 0).toBeGreaterThan(45);
+  await page.locator(".tech-node strong").first().hover();
+  const techPopover = page.locator('[popover]:popover-open');
+  await expect(techPopover).toBeVisible();
+  await page.locator(".reward-icons .progression-icon").first().hover();
+  await expect(techPopover.locator("strong")).not.toBeEmpty();
+  await page.screenshot({ path: "test-results/technologies-real.png", fullPage: true });
+  const reputationGate = page.locator(".tech-node.gate").first();
+  if (await reputationGate.count()) {
+    await reputationGate.scrollIntoViewIfNeeded();
+    await expect(reputationGate.locator("img")).toBeVisible();
+    await expect(reputationGate.locator(".gate-value")).toBeVisible();
+    await page.screenshot({ path: "test-results/technology-gate-real.png", fullPage: true });
+  }
+  const unlockedTechs = page.locator(".tech-node.unlocked");
+  const unlockedTechCount = await unlockedTechs.count();
+  const lockedTech = page.locator(".tech-node:not(.unlocked)").first();
+  await lockedTech.click();
+  await expect.poll(() => unlockedTechs.count()).toBeGreaterThan(unlockedTechCount);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(unlockedTechs).toHaveCount(unlockedTechCount);
+
+  await page.getByRole("button", { name: "Inspirations", exact: true }).click();
+  await expect(page.getByRole("navigation", { name: "Inspiration categories" })).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".inspiration-card").first()).toBeVisible();
+  await expect(page.locator(".perk-node").first()).toBeVisible();
+  await expect(page.locator(".perk-node img").first()).toBeVisible();
+  const inspirationCard = page.locator(".inspiration-card").first();
+  const selectedLevel = inspirationCard.locator('[aria-pressed="true"]');
+  const previousLevel = Number(await selectedLevel.textContent());
+  const maximumLevel = await inspirationCard.locator(".level-buttons button").count() - 1;
+  if (previousLevel < maximumLevel) {
+    const progress = inspirationCard.getByRole("slider");
+    await progress.fill(await progress.getAttribute("max") ?? "0");
+    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(String(previousLevel + 1));
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(String(previousLevel));
+  }
+  await page.screenshot({ path: "test-results/inspirations-real.png", fullPage: true });
+  const unlockedPerks = page.locator(".perk-node.unlocked");
+  const unlockedPerkCount = await unlockedPerks.count();
+  const lockedPerk = page.locator(".perk-node:not(.unlocked)").first();
+  await lockedPerk.click();
+  await expect.poll(() => unlockedPerks.count()).toBeGreaterThan(unlockedPerkCount);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(unlockedPerks).toHaveCount(unlockedPerkCount);
+  expect(await exported(page)).toEqual(bytes);
 });
 
 function inventoryPack(extraItems = 0) {

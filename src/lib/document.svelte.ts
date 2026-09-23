@@ -25,6 +25,7 @@ export class SaveDocument {
   inventoryDelta = $state<InventoryDelta | null>(null);
   inventoryEpoch = $state(0);
   dropEpoch = $state(0);
+  progressionEpoch = $state(0);
   error = $state("");
   private queue = Promise.resolve();
   constructor(
@@ -85,6 +86,12 @@ export class SaveDocument {
           )
         )
           this.dropEpoch++;
+        if (
+          op === "undo" ||
+          op === "redo" ||
+          operations?.some((operation) => operation.op === "progression")
+        )
+          this.progressionEpoch++;
       } catch (e) {
         this.error = String(e);
         throw e;

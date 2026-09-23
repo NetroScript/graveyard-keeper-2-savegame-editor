@@ -37,6 +37,8 @@ for a particular game version.
 - Player inventory, bags, chests, and supported world containers.
 - Item counts, quality variants, durability, capacity, insertion, replacement,
   and removal where the game rules are known.
+- Technology trees, including dependency-aware unlocks and the game's rewards.
+- Inspiration progress, unlocked levels, talent values, and perk trees.
 - Raw save fields and structures through the Save Inspector.
 - Undo and redo for accepted edits.
 
