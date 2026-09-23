@@ -452,6 +452,9 @@ test("real save renders progression trees and undo restores unlocks", async ({ p
   await expect(page.getByRole("navigation", { name: "Technology trees" })).toBeVisible({ timeout: 30000 });
   await expect(page.locator(".tech-node").first()).toBeVisible();
   await expect(page.locator(".branch-tabs img").first()).toBeVisible();
+  await expect(page.locator(".tech-node > .anchor > strong").filter({ hasText: /^Furniture Kit I$/ })).toHaveCount(1);
+  await expect(page.getByText("tech_furniture_kit_1", { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/t_b_signboard_house|repair_sign_1102/)).toHaveCount(0);
   await expect.poll(async () => (await page.locator(".reward-icons img").first().boundingBox())?.width ?? 0).toBeGreaterThan(45);
   await page.locator(".tech-node strong").first().hover();
   const techPopover = page.locator('[popover]:popover-open');

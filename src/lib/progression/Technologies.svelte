@@ -123,9 +123,10 @@
 {:else}<p class="hint">Loading technology definitions and save state…</p>{/if}
 
 <style>
-  .branch-tabs { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; padding:10px; background:#20232b; border:1px solid var(--border); }
-  .branch-tabs button { min-width:108px; padding:7px 12px; flex-direction:column; gap:2px; }
-  .branch-tabs button.active { color:var(--gold); border-color:var(--gold); background:#34313a; }
+  .branch-tabs { display:flex; width:max-content; max-width:100%; margin:0 auto; gap:0; padding:3px; overflow-x:auto; background:#191b21; border:1px solid #41434b; }
+  .branch-tabs button { position:relative; min-width:108px; padding:7px 12px; flex:0 0 auto; flex-direction:column; gap:2px; color:#aaa8a4; background:transparent; border:1px solid transparent; }
+  .branch-tabs button + button::before { content:""; position:absolute; left:-1px; top:16%; bottom:16%; width:1px; background:#4b4d56; }
+  .branch-tabs button.active { z-index:1; color:var(--gold); border-color:#51525a; background:#34353a; }
   .branch-tabs :global(.progression-icon) { --icon-size:58px; }
   .progression-layout { display:grid; gap:12px; margin-top:12px; }
   .tree-panel { position:relative; overflow:auto; width:100%; min-height:660px; background:#191a20; }

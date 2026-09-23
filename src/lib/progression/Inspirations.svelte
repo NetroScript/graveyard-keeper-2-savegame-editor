@@ -124,8 +124,10 @@
 {:else}<p class="hint">Loading inspiration definitions and save state…</p>{/if}
 
 <style>
-  .talent-tabs { display:flex; justify-content:center; gap:6px; padding:10px; flex-wrap:wrap; border:1px solid var(--border); background:#20232b; }
-  .talent-tabs button { position:relative; min-width:92px; flex-direction:column; gap:1px; padding:5px 10px; } .talent-tabs button.active { border-color:var(--gold); color:var(--gold); background:#34313a; }
+  .talent-tabs { display:flex; width:max-content; max-width:100%; margin:0 auto; gap:0; padding:3px; overflow-x:auto; border:1px solid #41434b; background:#191b21; }
+  .talent-tabs button { position:relative; min-width:92px; flex:0 0 auto; flex-direction:column; gap:1px; padding:5px 10px; color:#aaa8a4; background:transparent; border:1px solid transparent; }
+  .talent-tabs button + button::before { content:""; position:absolute; left:-1px; top:16%; bottom:16%; width:1px; background:#4b4d56; }
+  .talent-tabs button.active { z-index:1; border-color:#51525a; color:var(--gold); background:#34353a; }
   .talent-tabs :global(.progression-icon){--icon-size:58px}.talent-tabs strong{position:absolute;top:5px;right:7px;min-width:20px;padding:1px 4px;color:#d3d7df;background:#20232bd9;border:1px solid #555967;font-size:11px}.talent-tabs span{text-transform:capitalize}
   .branch-summary { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; padding:10px; margin-top:10px; } .branch-summary label{display:flex;align-items:center;gap:7px;color:#b8bdc7}.branch-summary input{width:78px}
   .inspiration-layout{display:grid;grid-template-columns:minmax(430px,1fr) minmax(430px,1fr);gap:12px;margin-top:12px;align-items:start}.inspiration-panel,.perk-panel{min-width:0}

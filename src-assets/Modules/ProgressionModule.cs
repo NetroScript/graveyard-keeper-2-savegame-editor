@@ -29,6 +29,44 @@ namespace Gk2.AssetExporter
             return string.IsNullOrEmpty(prefix) ? header : prefix + ": " + header;
         }
 
+        private static string TechnologyText(ExportContext context, string id, string suffix = "")
+        {
+            var key = id + suffix;
+            if (context.English.ContainsKey(key)) return context.Localize(key);
+            if (id.StartsWith("tech_", StringComparison.Ordinal))
+            {
+                var fallback = id.Substring(5) + suffix;
+                if (context.English.ContainsKey(fallback)) return context.Localize(fallback);
+            }
+            return key;
+        }
+
+        private static string WorkstationName(ExportContext context, string id)
+        {
+            if (context.English.ContainsKey(id)) return context.Localize(id);
+            const string prefix = "t_b_signboard_";
+            if (id.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                var categoryKey = "repair_sign_" + id.Substring(prefix.Length);
+                if (context.English.ContainsKey(categoryKey)) return context.Localize(categoryKey);
+            }
+            return id;
+        }
+
+        private static string[] WorkstationNames(ExportContext context, IEnumerable<string> ids)
+        {
+            var result = new List<string>();
+            var hasTownCategory = false;
+            foreach (var id in ids)
+            {
+                if (id.StartsWith("t_b_signboard_", StringComparison.Ordinal)) hasTownCategory = true;
+                else if (hasTownCategory && id.StartsWith("repair_sign_", StringComparison.Ordinal)
+                    && id.Substring("repair_sign_".Length).All(char.IsDigit)) continue;
+                result.Add(WorkstationName(context, id));
+            }
+            return result.Distinct(StringComparer.Ordinal).ToArray();
+        }
+
         private static object[] Ingredients(ExportContext context, IEnumerable<NeedItemData> needs)
         {
             return needs.Select(need =>
@@ -72,14 +110,14 @@ namespace Gk2.AssetExporter
                         var def = GameBalance.GetCraftDef(id);
                         var item = def.TryGetResultingItemDef(true);
                         var linked = new LinkedEntityWidgetData(def, null);
-                        rewards.Add(new { type = "craft", id, name = Title(linked), description = item == null ? context.Localize(id + "_d") : context.Localize(item.GetDescriptionLocale()), sprite = context.Sprites.Sprite(def.GetCraftResultIcon(null)), craftedAt = def.craftsIn.Select(context.Localize).ToArray(), ingredients = Ingredients(context, def.needItems) });
+                        rewards.Add(new { type = "craft", id, name = Title(linked), description = item == null ? context.Localize(id + "_d") : context.Localize(item.GetDescriptionLocale()), sprite = context.Sprites.Sprite(def.GetCraftResultIcon(null)), craftedAt = WorkstationNames(context, def.craftsIn), ingredients = Ingredients(context, def.needItems) });
                     }
                     foreach (var id in tech.alchemyFormulasAfterUnlock)
                     {
                         var def = GameBalance.Me.GetDataOrNull<AlchemyFormulaDef>(id);
                         var item = def == null ? null : def.ItemDef;
                         var linked = def == null ? null : new LinkedEntityWidgetData(def, null);
-                        rewards.Add(new { type = "alchemy", id, name = linked == null ? context.Localize(id) : Title(linked), description = context.Localize((item == null ? id : item.GetDescriptionLocale())), sprite = item == null ? null : context.Sprites.Sprite(item.iconId), craftedAt = def == null ? new string[0] : def.craftsIn.Select(context.Localize).ToArray(), ingredients = new object[0] });
+                        rewards.Add(new { type = "alchemy", id, name = linked == null ? context.Localize(id) : Title(linked), description = context.Localize((item == null ? id : item.GetDescriptionLocale())), sprite = item == null ? null : context.Sprites.Sprite(item.iconId), craftedAt = def == null ? new string[0] : WorkstationNames(context, def.craftsIn), ingredients = new object[0] });
                     }
                     foreach (var id in tech.buildingsAfterUnlock)
                     {
@@ -91,7 +129,7 @@ namespace Gk2.AssetExporter
                     {
                         var def = GameBalance.Me.GetDataOrNull<TownBuildingDef>(id);
                         var linked = def == null ? null : new LinkedEntityWidgetData(def, null);
-                        rewards.Add(new { type = "townBuilding", id, name = linked == null ? context.Localize(id) : Title(linked), description = context.Localize(id + "_d"), sprite = def == null ? null : context.Sprites.Sprite(def.BuildResultIcon), craftedAt = def == null ? new string[0] : def.craftsIn.Select(context.Localize).ToArray(), ingredients = def == null ? new object[0] : Ingredients(context, def.needItems) });
+                        rewards.Add(new { type = "townBuilding", id, name = linked == null ? context.Localize(id) : Title(linked), description = context.Localize(id + "_d"), sprite = def == null ? null : context.Sprites.Sprite(def.BuildResultIcon), craftedAt = def == null ? new string[0] : WorkstationNames(context, def.craftsIn), ingredients = def == null ? new object[0] : Ingredients(context, def.needItems) });
                     }
                     foreach (var id in tech.perksAfterUnlock)
                     {
@@ -125,8 +163,8 @@ namespace Gk2.AssetExporter
                     technologies.Add(new
                     {
                         id = tech.id,
-                        name = context.Localize(tech.id),
-                        description = context.Localize(tech.id + "_d"),
+                        name = TechnologyText(context, tech.id),
+                        description = TechnologyText(context, tech.id, "_d"),
                         tab = tech.tab.ToString(),
                         x = tech.TreePos.x,
                         y = tech.TreePos.y,
