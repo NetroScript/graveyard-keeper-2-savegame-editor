@@ -116,7 +116,7 @@
             <div class="save-day">
               <GameIcon name={gameDayIcon(m.day)} />Day {String(
                 m.day ?? "—",
-              )}<span>{m.isDemoSave ? "Demo" : "Release"}</span>
+              )}<span class="save-kind">{m.isDemoSave ? "Demo" : "Release"}</span>
             </div>
             <p>{String(m.saveDateTime ?? "Unknown save date")}</p>
             <dl>

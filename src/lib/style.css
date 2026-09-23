@@ -640,7 +640,7 @@ main {
   height: 24px;
   flex-basis: 24px;
 }
-.save-day span {
+.save-day .save-kind {
   font:
     11px "Segoe UI",
     sans-serif;
@@ -1382,7 +1382,7 @@ select {
   border-radius: 0;
 }
 
-.save-day span {
+.save-day .save-kind {
   border-radius: 0;
   background: #363740;
   border-color: #6d5b3e;
