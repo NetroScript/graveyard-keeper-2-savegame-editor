@@ -2,6 +2,7 @@
 pub mod drops;
 mod general;
 pub mod inventory;
+pub mod progression;
 mod service;
 mod wire;
 mod workspace;

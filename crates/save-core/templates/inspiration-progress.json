@@ -1,0 +1,10 @@
+{
+  "id": "inspiration-progress",
+  "typeName": "InspirationProgressData, Assembly-CSharp",
+  "reference": true,
+  "fields": [
+    { "name": "id", "kind": "string", "value": "" },
+    { "name": "currentValue", "kind": "i32", "value": "0" },
+    { "name": "completionGoalValue", "kind": "i32", "value": "0" }
+  ]
+}

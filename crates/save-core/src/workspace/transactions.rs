@@ -387,6 +387,7 @@ impl Workspace {
             }
             Command::General => Ok(crate::general::read(doc)),
             Command::Drops => crate::drops::read(doc),
+            Command::Progression => crate::progression::read(doc),
             Command::Inventories => {
                 let s = self.sessions.get_mut(&id).unwrap();
                 if s.inventory_cache.is_none() {
@@ -429,9 +430,14 @@ impl Workspace {
             .checked_add(1)
             .ok_or_else(|| failure("Revision limit exceeded"))?;
         let s = self.sessions.get_mut(&id).unwrap();
-        let general_unchanged = operations
-            .iter()
-            .all(|op| matches!(op, Operation::Inventory { .. } | Operation::Drops { .. }));
+        let general_unchanged = operations.iter().all(|op| {
+            matches!(
+                op,
+                Operation::Inventory { .. }
+                    | Operation::Drops { .. }
+                    | Operation::Progression { .. }
+            )
+        });
         if operations
             .iter()
             .any(|op| matches!(op, Operation::Inventory { .. }))
@@ -452,7 +458,10 @@ impl Workspace {
         let invalidated = operations.iter().any(|op| {
             !matches!(
                 op,
-                Operation::Inventory { .. } | Operation::General { .. } | Operation::Drops { .. }
+                Operation::Inventory { .. }
+                    | Operation::General { .. }
+                    | Operation::Drops { .. }
+                    | Operation::Progression { .. }
             )
         });
         let start = s.doc.records.len();
@@ -486,6 +495,8 @@ impl Workspace {
                     )?;
                 } else if let Operation::Drops { action } = op {
                     crate::drops::write(&mut s.doc, action)?;
+                } else if let Operation::Progression { action } = op {
+                    crate::progression::write(&mut s.doc, action)?;
                 } else {
                     apply(&mut s.doc, op)?;
                 }

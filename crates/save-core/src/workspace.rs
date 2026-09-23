@@ -35,6 +35,7 @@ pub enum Command {
     },
     General,
     Drops,
+    Progression,
     InventoryCatalog {
         catalog: crate::inventory::Catalog,
     },
@@ -103,6 +104,9 @@ pub enum Operation {
     },
     Drops {
         action: crate::drops::Edit,
+    },
+    Progression {
+        action: crate::progression::Edit,
     },
 }
 mod transactions;
@@ -454,6 +458,9 @@ pub(crate) fn apply(doc: &mut Document, op: Operation) -> Result<(), Error> {
         Operation::General { values } => crate::general::write(doc, values)?,
         Operation::Inventory { .. } => return Err(failure("Inventory edits require a catalog")),
         Operation::Drops { .. } => return Err(failure("Drop edits require a transaction")),
+        Operation::Progression { .. } => {
+            return Err(failure("Progression edits require a transaction"))
+        }
     }
     Ok(())
 }

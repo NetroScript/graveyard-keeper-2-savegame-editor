@@ -1,0 +1,10 @@
+{
+  "id": "perk-data",
+  "typeName": "PerkData, Assembly-CSharp",
+  "reference": true,
+  "fields": [
+    { "name": "id", "kind": "string", "value": "" },
+    { "name": "currentDuration", "kind": "f32", "value": "0" },
+    { "name": "tickTimer", "kind": "f32", "value": "0" }
+  ]
+}
