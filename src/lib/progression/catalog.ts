@@ -69,6 +69,10 @@ function idle() {
   });
 }
 
+function inlineIcons(text: string | null | undefined) {
+  return text?.matchAll(/<sprite\b[^>]*\bname\s*=\s*["']([^"']+)["'][^>]*>/gi) ?? [];
+}
+
 /** Warm all progression graphics in small background batches after a save opens. */
 export function preloadProgressionAssets() {
   return (progressionPreload ??= (async () => {
@@ -88,19 +92,25 @@ export function preloadProgressionAssets() {
     for (const node of catalog.technology.nodes) {
       add(node.icon);
       add(node.gate?.sprite);
+      for (const match of inlineIcons(node.description)) add(match[1], "font", false);
       for (const name of Object.keys(node.price)) add(name, "font", false);
       for (const reward of node.rewards) {
         add(reward.sprite);
+        for (const match of inlineIcons(reward.description)) add(match[1], "font", false);
         for (const ingredient of reward.ingredients ?? []) add(ingredient.sprite);
       }
     }
     for (const branch of catalog.talents.branches)
       add(branch.fontIcon, "font", false);
-    for (const inspiration of catalog.talents.inspirations)
+    for (const inspiration of catalog.talents.inspirations) {
       add(inspiration.sprite);
+      for (const match of inlineIcons(inspiration.description)) add(match[1], "font", false);
+    }
     for (const level of catalog.talents.levelUps) {
       add(level.sprite, "sprite", false);
       add(level.perk?.sprite, "sprite", false);
+      for (const match of inlineIcons(level.description)) add(match[1], "font", false);
+      for (const match of inlineIcons(level.perk?.description)) add(match[1], "font", false);
     }
     const pending = [...requests.values()];
     await idle();

@@ -482,6 +482,12 @@ test("real save renders progression trees and undo restores unlocks", async ({ p
   await expect(page.locator(".inspiration-card").first()).toBeVisible();
   await expect(page.locator(".perk-node").first()).toBeVisible();
   await expect(page.locator(".perk-node img").first()).toBeVisible();
+  await page.getByRole("button", { name: /Anatomy/ }).click();
+  const graveBuilder = page.getByRole("button", { name: /Grave Builder/ });
+  await graveBuilder.hover();
+  const perkPopover = page.locator('[popover]:popover-open');
+  await expect(perkPopover.locator(".description .inline-icon img")).toHaveCount(2);
+  await expect(perkPopover.locator(".description")).not.toContainText("<sprite");
   const inspirationCard = page.locator(".inspiration-card").first();
   const selectedLevel = inspirationCard.locator('[aria-pressed="true"]');
   const previousLevel = Number(await selectedLevel.textContent());

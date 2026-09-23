@@ -4,6 +4,7 @@
   import { loadProgressionCatalog, dependencyClosure, localized, readableId, type ProgressionCatalog, type ProgressionState, type TechnologyNode } from "./catalog";
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
+  import LocalizedText from "./LocalizedText.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -109,12 +110,12 @@
     <aside class="details panel">
       {#if selected}
         <h3 class="strip">{selected.name}</h3><div class="details-body">
-          {#if localized(selected.description, `${selected.id}_d`)}<p>{selected.description}</p>{/if}
+          {#if localized(selected.description, `${selected.id}_d`)}<p><LocalizedText text={selected.description} /></p>{/if}
           <p class="state"><strong>{unlocked.has(selected.id) ? "Unlocked" : "Locked"}</strong></p>
           {#if selected.type && selected.type !== "Common"}<p class="muted">This is a {nodeKind(selected).toLowerCase()} gate. Unlocking it bypasses that requirement without changing quests or reputation.</p>{:else if selected.hiddenAtStart}<p class="muted">The game normally reveals this technology through game or quest progress. Unlocking it does not mark that quest as completed.</p>{/if}
           {#if additionalEffectCount(selected)}<p class="warning">The game normally applies {additionalEffectCount(selected)} additional side effect{additionalEffectCount(selected) === 1 ? "" : "s"} when this technology unlocks. The editor preserves story state and does not execute game scripts.</p>{/if}
           {#if selected.parents.length}<h4>Prerequisites</h4><ul>{#each selected.parents as id}<li>{catalog.technology.nodes.find((n) => n.id === id)?.name ?? id}</li>{/each}</ul>{/if}
-          {#if selected.rewards.length}<h4>Unlocks</h4><div class="reward-list">{#each selected.rewards as reward}<div><InfoPopover title={rewardName(reward)} description={localized(reward.description,`${reward.id}_d`)} facts={rewardFacts(reward)} entries={reward.ingredients ?? []}><ProgressionIcon name={reward.sprite} label={reward.name} /></InfoPopover><span><strong>{rewardName(reward)}</strong>{#if reward.craftedAt?.length}<small>Crafted at: {reward.craftedAt.join(", ")}</small>{/if}{#if localized(reward.description, `${reward.id}_d`)}<small>{reward.description}</small>{/if}</span></div>{/each}</div>{/if}
+          {#if selected.rewards.length}<h4>Unlocks</h4><div class="reward-list">{#each selected.rewards as reward}<div><InfoPopover title={rewardName(reward)} description={localized(reward.description,`${reward.id}_d`)} facts={rewardFacts(reward)} entries={reward.ingredients ?? []}><ProgressionIcon name={reward.sprite} label={reward.name} /></InfoPopover><span><strong>{rewardName(reward)}</strong>{#if reward.craftedAt?.length}<small>Crafted at: {reward.craftedAt.join(", ")}</small>{/if}{#if localized(reward.description, `${reward.id}_d`)}<small><LocalizedText text={reward.description} /></small>{/if}</span></div>{/each}</div>{/if}
           {#if !unlocked.has(selected.id)}<button class="primary wide" disabled={saving} onclick={() => void unlock(selected!)}>Unlock with prerequisites</button>{/if}
         </div>
       {:else}<div class="details-body muted"><p>Select a technology to see its description, prerequisites and rewards.</p></div>{/if}

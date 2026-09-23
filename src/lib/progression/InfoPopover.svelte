@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import ProgressionIcon from "./ProgressionIcon.svelte";
+  import LocalizedText from "./LocalizedText.svelte";
   let { title, description, facts = [], items = [], entries = [], fill = false, children }: { title: string; description?: string | null; facts?: { label: string; value: string }[]; items?: string[]; entries?: { name: string; count: number; sprite: string | null }[]; fill?: boolean; children: Snippet } = $props();
   let anchor: HTMLSpanElement;
   let popover: HTMLElement;
@@ -26,7 +27,7 @@
 </span>
 <span bind:this={popover} popover="manual" class="popover" role="tooltip" style={`left:${left}px;top:${top}px`}>
   <strong>{title}</strong>
-  {#if description}<span class="description">{description}</span>{/if}
+  {#if description}<span class="description"><LocalizedText text={description} /></span>{/if}
   {#if facts.length}<dl>{#each facts as fact}<div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>{/each}</dl>{/if}
   {#if entries.length}<span class="list-title">Materials</span><span class="entries">{#each entries as entry}<span class="entry"><ProgressionIcon name={entry.sprite} label={entry.name} /><span>{entry.name}</span><b>{entry.count}</b></span>{/each}</span>{/if}
   {#if items.length}<span class="list-title">Unlocks</span><ul>{#each items as item}<li>{item}</li>{/each}</ul>{/if}

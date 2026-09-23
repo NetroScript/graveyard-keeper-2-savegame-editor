@@ -3,6 +3,7 @@
   import { dependencyClosure, loadProgressionCatalog, localized, readableId, type InspirationDef, type ProgressionCatalog, type ProgressionState, type TalentLevelNode } from "./catalog";
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
+  import LocalizedText from "./LocalizedText.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -104,7 +105,7 @@
         {#each inspirations as levels}{@const base=levels[0].baseId}{@const progress=branch.inspirations.find(p=>p.id===base)}{@const level=purchased(levels,progress)}{@const shown=levels[Math.min(level,levels.length-1)]}{@const chosenLevel=Math.max(0,Math.min(levels.length,Number(drafts[`${base}:level`] ?? level)))}{@const progressMax=levels[Math.min(chosenLevel,levels.length-1)]?.completionGoal ?? 0}{@const progressValue=Math.max(0,Math.min(progressMax,Number(drafts[`${base}:current`] ?? progress?.currentValue ?? "0")))}
           <article class="inspiration-card">
             <InfoPopover title={shown.name} description={inspirationDescription(levels)} facts={[{label:"Unlocked levels",value:`${chosenLevel} / ${levels.length}`},{label:"Current goal",value:String(progressMax)},{label:"Experience",value:String(shown.completionExp)}]}><ProgressionIcon name={shown.sprite} label={shown.name} /></InfoPopover>
-            <div class="inspiration-copy"><h4>{shown.name}</h4>{#if inspirationDescription(levels)}<p>{inspirationDescription(levels)}</p>{/if}
+            <div class="inspiration-copy"><h4>{shown.name}</h4>{#if inspirationDescription(levels)}<p><LocalizedText text={inspirationDescription(levels)!} /></p>{/if}
               <div class="inspiration-fields"><label class="progress-control">Progress<span><input aria-label={`${shown.name} progress`} type="range" min="0" max={progressMax} value={progressValue} oninput={(e)=>drafts[`${base}:current`]=e.currentTarget.value} onchange={(e)=>changeProgress(levels,chosenLevel,Number(e.currentTarget.value))} /><output>{progressValue} / {progressMax}</output></span></label>
                 <fieldset><legend>Unlocked levels</legend><div class="level-buttons">{#each Array(levels.length+1) as _,i}<button type="button" aria-label={`${shown.name}: ${i} unlocked levels`} aria-pressed={chosenLevel===i} onclick={()=>drafts[`${base}:level`]=String(i)}>{i}</button>{/each}</div></fieldset>
                 <button disabled={saving} onclick={()=>void setInspiration(levels)}>Apply</button>
@@ -117,7 +118,7 @@
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{#each perkNodes as node}{#each node.parents as id}{@const parent=perkNodes.find(n=>n.id===id)}{#if parent}<path class:unlocked={studied.has(parent.id)&&studied.has(node.id)} d={`M ${px(parent.x)} ${py(parent.y)} L ${px(node.x)} ${py(node.y)}`} />{/if}{/each}{/each}</svg>
         {#each perkNodes as node}<button type="button" class="perk-node" class:unlocked={studied.has(node.id)} class:selected={selectedPerk?.id===node.id} style={`left:calc(${px(node.x)}% - 32px);top:calc(${py(node.y)}% - 32px)`} disabled={saving} onclick={()=>void unlockPerk(node)}><InfoPopover fill title={perkName(node)} description={perkDescription(node)} facts={[{label:"State",value:studied.has(node.id)?"Unlocked":"Locked"},{label:"Point cost",value:String(node.pointPrice)},{label:"Mastery",value:`+${node.talentValue}`}]}><ProgressionIcon name={node.sprite} label={perkName(node)} recolor={false} /><span>{node.pointPrice}</span></InfoPopover></button>{/each}
       </div>
-      <div class="perk-details">{#if selectedPerk}<h4>{perkName(selectedPerk)}</h4>{#if perkDescription(selectedPerk)}<p>{perkDescription(selectedPerk)}</p>{/if}<strong>{studied.has(selectedPerk.id)?"Unlocked":"Locked"}</strong>{:else}<p>Hover for perk details. Selecting a locked perk unlocks it and all prerequisites.</p>{/if}</div>
+      <div class="perk-details">{#if selectedPerk}<h4>{perkName(selectedPerk)}</h4>{#if perkDescription(selectedPerk)}<p><LocalizedText text={perkDescription(selectedPerk)!} /></p>{/if}<strong>{studied.has(selectedPerk.id)?"Unlocked":"Locked"}</strong>{:else}<p>Hover for perk details. Selecting a locked perk unlocks it and all prerequisites.</p>{/if}</div>
       </section>
     </div>
   {/if}
