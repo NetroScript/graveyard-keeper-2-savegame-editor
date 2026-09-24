@@ -10,12 +10,17 @@ const value = (name) => {
 };
 if (args.includes("--help")) {
   console.log(
-    "Usage: pnpm release:local [--asset game.gk2pack] [--web-only|--desktop-only] [--output directory]",
+    "Usage: pnpm release:local [--asset game.gk2pack] [--web-only|--desktop-only] [--portable-only] [--output directory]",
   );
   process.exit(0);
 }
 if (args.includes("--web-only") && args.includes("--desktop-only"))
   throw new Error("Choose either --web-only or --desktop-only");
+const portableOnly = args.includes("--portable-only");
+if (portableOnly && process.platform !== "linux")
+  throw new Error("--portable-only is supported only on Linux");
+if (portableOnly && args.includes("--web-only"))
+  throw new Error("--portable-only requires a desktop build");
 const buildWeb = !args.includes("--desktop-only");
 const buildDesktop = !args.includes("--web-only");
 
@@ -73,25 +78,7 @@ if (buildWeb) {
 }
 if (buildDesktop) {
   await rm(desktopOutput, { recursive: true, force: true });
-  const key = resolve(root, ".tauri-private-key");
-  const bundles = resolve(root, "src-tauri", "target", "release", "bundle");
-  await rm(bundles, { recursive: true, force: true });
-  const bundleTargets =
-    process.platform === "win32"
-      ? "nsis"
-      : process.platform === "darwin"
-        ? "app,dmg"
-        : "appimage,deb,rpm";
-  await run(
-    "pnpm",
-    ["tauri", "build", "--bundles", bundleTargets],
-    existsSync(key)
-      ? {
-          TAURI_SIGNING_PRIVATE_KEY: await readFile(key, "utf8"),
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "",
-        }
-      : {},
-  );
+  await mkdir(desktopOutput, { recursive: true });
   if (process.platform === "linux") {
     const portableTarget = resolve(root, "target", "portable");
     await run("pnpm", ["tauri", "build", "--no-bundle"], {
@@ -108,9 +95,30 @@ if (buildDesktop) {
       "graveyard-keeper-2-savegame-editor",
     ]);
   }
-  if (existsSync(bundles))
-    await cp(bundles, desktopOutput, {
-      recursive: true,
-    });
+  if (!portableOnly) {
+    const key = resolve(root, ".tauri-private-key");
+    const bundles = resolve(root, "src-tauri", "target", "release", "bundle");
+    await rm(bundles, { recursive: true, force: true });
+    const bundleTargets =
+      process.platform === "win32"
+        ? "nsis"
+        : process.platform === "darwin"
+          ? "app,dmg"
+          : "appimage,deb,rpm";
+    await run(
+      "pnpm",
+      ["tauri", "build", "--bundles", bundleTargets],
+      existsSync(key)
+        ? {
+            TAURI_SIGNING_PRIVATE_KEY: await readFile(key, "utf8"),
+            TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "",
+          }
+        : {},
+    );
+    if (existsSync(bundles))
+      await cp(bundles, desktopOutput, {
+        recursive: true,
+      });
+  }
 }
 console.log(`Release output: ${output}`);

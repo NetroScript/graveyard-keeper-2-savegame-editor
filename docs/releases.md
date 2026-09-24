@@ -61,6 +61,18 @@ This writes the web application and the current platform's desktop bundles under
 `release/<version>/`. Native desktop installers must be built on their target OS;
 the GitHub Actions matrix supplies those operating systems.
 
+On Linux, build just the executable archive that uses the local system's
+WebKitGTK, without invoking the AppImage bundler:
+
+```sh
+pnpm release:local -- --desktop-only --portable-only
+```
+
+Pass `--asset /path/to/game.gk2pack` if the asset pack is not already in
+`static/assets/`. The archive is written to `release/<version>/linux-x64/`.
+Extract it and run `graveyard-keeper-2-savegame-editor` on a system with
+WebKitGTK 4.1 installed. This build does not need an updater signing key.
+
 ## Publish a release
 
 Push a version tag matching the application version, for example `v0.1.0`, or run
