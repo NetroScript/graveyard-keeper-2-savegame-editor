@@ -1,6 +1,6 @@
 [package]
 name = "graveyard-keeper-2-savegame-editor"
-version = "0.1.1"
+version = "0.1.2"
 description = "Save editor for Graveyard Keeper 2"
 authors = ["NetroScript"]
 edition = "2021"

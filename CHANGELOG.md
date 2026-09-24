@@ -3,8 +3,9 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
-## [0.1.2] - Unreleased
+## [0.1.2] - Improvements and fixes
 
+- Updated the bundled game data for Graveyard Keeper 2 version 1.005.
 - Added custom track and thumb styling for Inspiration progress and inventory durability sliders, including WebKitGTK and Firefox.
 - Prevented duplicate restore points when restoring the current version or switching between archived versions.
 - Sized inline game icons to match surrounding text in progression descriptions.
