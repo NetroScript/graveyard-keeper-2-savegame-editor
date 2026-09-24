@@ -84,7 +84,7 @@
       <dl>
         <dt>Editor version</dt>
         <dd>{packageInfo.version}</dd>
-        <dt>Asset game version</dt>
+        <dt>Game data version</dt>
         <dd>{assetVersion}</dd>
         <dt>License</dt>
         <dd>MIT</dd>

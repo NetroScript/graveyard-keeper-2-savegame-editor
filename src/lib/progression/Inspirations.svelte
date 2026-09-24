@@ -4,6 +4,7 @@
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
+  import LoadingIndicator from "../components/LoadingIndicator.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -122,7 +123,7 @@
       </section>
     </div>
   {/if}
-{:else}<p class="hint">Loading inspiration definitions and save state…</p>{/if}
+{:else}<LoadingIndicator label="Loading inspiration definitions and save state…" />{/if}
 
 <style>
   .talent-tabs { display:flex; width:max-content; max-width:100%; margin:0 auto; gap:0; padding:3px; overflow-x:auto; border:1px solid #41434b; background:#191b21; }

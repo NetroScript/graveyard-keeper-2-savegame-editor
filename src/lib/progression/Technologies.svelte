@@ -5,6 +5,7 @@
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
+  import LoadingIndicator from "../components/LoadingIndicator.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -121,7 +122,7 @@
       {:else}<div class="details-body muted"><p>Select a technology to see its description, prerequisites and rewards.</p></div>{/if}
     </aside>
   </div>
-{:else}<p class="hint">Loading technology definitions and save state…</p>{/if}
+{:else}<LoadingIndicator label="Loading technology definitions and save state…" />{/if}
 
 <style>
   .branch-tabs { display:flex; width:max-content; max-width:100%; margin:0 auto; gap:0; padding:3px; overflow-x:auto; background:#191b21; border:1px solid #41434b; }
