@@ -5,6 +5,7 @@
   import type { Update } from "@tauri-apps/plugin-updater";
   import Info from "~icons/ph/info";
   import GithubLogo from "~icons/ph/github-logo";
+  import RedditLogo from "~icons/ph/reddit-logo";
   import Star from "~icons/ph/star";
   import Bug from "~icons/ph/bug";
   import Download from "~icons/ph/download-simple";
@@ -38,6 +39,7 @@
   const webEditor =
     "https://netroscript.github.io/graveyard-keeper-2-savegame-editor/";
   const desktopDownloads = `${repository}/releases`;
+  const redditProfile = "https://www.reddit.com/user/Jack_5515/";
 
   async function external(event: MouseEvent, url: string) {
     if (!desktop) return;
@@ -145,6 +147,17 @@
         rel="noreferrer"
         onclick={(e) => external(e, `${repository}/blob/master/LICENSE`)}
         >Read the MIT License</a
+      >
+      <p>
+        For bugs and feature requests, please open a GitHub issue. If that is not
+        possible, you can also reach me on Reddit:
+      </p>
+      <a
+        href={redditProfile}
+        target="_blank"
+        rel="noreferrer"
+        onclick={(e) => external(e, redditProfile)}
+        ><RedditLogo />u/Jack_5515</a
       >
     </div>
   </section>

@@ -190,12 +190,6 @@
   }
 </script>
 
-<svelte:head
-  ><title>Graveyard Keeper 2 Save Editor</title><meta
-    name="description"
-    content="Save editor for Graveyard Keeper 2."
-  /></svelte:head
->
 <div class="workspace" style={`--interface-scale:${settings.interfaceScale}`}>
   <button
     class="mobile-menu"

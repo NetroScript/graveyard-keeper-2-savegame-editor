@@ -9,6 +9,8 @@ release. GitHub Releases use the matching version section automatically.
 - Prevented duplicate restore points when restoring the current version or switching between archived versions.
 - Sized inline game icons to match surrounding text in progression descriptions.
 - Kept Inspiration category pixel art sharp when switching tabs.
+- Added a screenshot and description for web editor link previews.
+- Added link to Reddit Profile to about page
 
 ## [0.1.1] - Linux download options
 
