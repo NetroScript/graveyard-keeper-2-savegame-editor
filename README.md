@@ -32,9 +32,10 @@ it creates a compressed ZIP backup containing its `.dat` and `.info` files by
 default; the number of retained backups is configurable in Settings. Earlier
 versions can be restored from the save list. It also detects if another program
 changed a save and can install signed application updates. On Windows, use the
-installer if you want automatic updates. Portable downloads are also available:
-a standalone `.exe` for Windows, compressed application bundles for both macOS
-architectures, and an AppImage for Linux.
+installer if you want automatic updates. Linux downloads include `.deb` and
+`.rpm` packages, an executable archive that uses system WebKitGTK, and an
+AppImage. Portable downloads also include a standalone `.exe` for Windows and
+compressed application bundles for both macOS architectures.
 
 The Windows portable executable can be run without installation, but accepting
 an automatic update launches the installer and changes it into an installed
@@ -46,6 +47,31 @@ The editor checks the save structure, but only the game can confirm that every
 edited value is valid for a particular game version. Keep the desktop backup, or
 your own backup when using the web editor, until the edited save has loaded
 successfully.
+
+#### Linux
+
+On Debian/Ubuntu, use the `.deb` package; on Fedora, use the `.rpm` package.
+These use your system's WebKitGTK and avoid the AppImage's forced X11 backend.
+
+The AppImage bundles the WebKitGTK version from the build environment, and its
+launcher forces the X11 backend even in a Wayland session. This AppImage was
+laggy on an NVIDIA/Wayland system where the system WebKitGTK path ran more
+smoothly. Setting `GDK_BACKEND=wayland` in the shell cannot override the
+AppImage launcher. If it feels slow, try a native package or the executable
+archive. The archive is intended for distributions such as Arch Linux and
+requires compatible system libraries, including WebKitGTK 4.1. Extract it, run
+`graveyard-keeper-2-savegame-editor`, and download a new archive to update it.
+
+If none of the Linux downloads works on your system, use the
+[web editor](#web-version) or build the desktop executable locally with
+`pnpm tauri build --no-bundle`.
+Building requires Linux Tauri dependencies and `static/assets/game.gk2pack`,
+which is not included in Git. See the [build instructions](docs/builds.md) and
+[game asset exporter](src-assets/README.md) to prepare a local build.
+
+If `pnpm tauri dev` crashes with `Error 71 (Protocol error)` on NVIDIA Wayland,
+try `__NV_DISABLE_EXPLICIT_SYNC=1 pnpm tauri dev`. This resolved the crash on
+the system tested here without disabling the faster rendering path.
 
 ## Screenshots
 

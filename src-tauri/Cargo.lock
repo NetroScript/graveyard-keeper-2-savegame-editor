@@ -1441,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "graveyard-keeper-2-savegame-editor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "gk2-save-core",
  "gk2-save-desktop",

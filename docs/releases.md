@@ -47,8 +47,9 @@ Run **Build release** from the Actions tab with `publish` disabled. The workflow
 builds the WebAssembly site plus Windows x64, Linux x64, macOS Apple Silicon and
 macOS Intel desktop bundles. Each result is retained as a private workflow
 artifact. The Windows artifact includes a portable executable, both macOS
-artifacts include a portable application archive, and the Linux AppImage is
-already portable. It does not deploy Pages or create a public GitHub release.
+artifacts include a portable application archive, and Linux ships `.deb` and
+`.rpm` packages, an executable archive that uses system WebKitGTK, and an
+AppImage. It does not deploy Pages or create a public GitHub release.
 
 For a current-platform local build:
 
@@ -90,12 +91,19 @@ created again.
 
 The workflow publishes the following user-facing formats:
 
-| Platform            | Installed format | Portable format      |
-| ------------------- | ---------------- | -------------------- |
-| Windows x64         | NSIS installer   | Standalone `.exe`    |
-| Linux x64           | —                | AppImage             |
-| macOS Apple Silicon | DMG              | `.app.tar.gz` bundle |
-| macOS Intel         | DMG              | `.app.tar.gz` bundle |
+| Platform            | Installed format | Portable format               |
+| ------------------- | ---------------- | ----------------------------- |
+| Windows x64         | NSIS installer   | Standalone `.exe`             |
+| Linux x64           | `.deb` / `.rpm`  | AppImage / executable archive |
+| macOS Apple Silicon | DMG              | `.app.tar.gz` bundle          |
+| macOS Intel         | DMG              | `.app.tar.gz` bundle          |
+
+The `.deb` (Debian/Ubuntu) and `.rpm` (Fedora) packages use the system
+WebKitGTK. The AppImage bundles WebKitGTK from the build environment and forces
+the X11 backend, which caused lag on the NVIDIA/Wayland system tested here.
+The archive is an option for other distributions, including Arch Linux, when
+WebKitGTK 4.1 is installed. Archive users download and replace it manually to
+update. See the README for details.
 
 The standalone Windows executable can be run directly when the Microsoft
 WebView2 runtime is available. Checking for updates works there, but applying an
@@ -103,10 +111,12 @@ update launches the NSIS installer and exits the running application. Accepting
 that update installs the application. Users who want to remain portable must
 download the new portable executable and replace the old one manually.
 
-Linux updates replace the AppImage, while macOS updates replace the application
-bundle. On both platforms, the portable file must be stored in a location the
-current user can modify. The application must be restarted after installing an
-update. The macOS archive must be extracted before launching the application.
+The in-app updater uses the matching signed package for AppImage, `.deb`, or
+`.rpm` installs when the release provides one. AppImage and macOS portable
+updates require their files to be in a location the current user can modify.
+The application must be restarted after installing an update. The macOS archive
+must be extracted before launching the application. The Linux executable archive
+uses manual updates.
 
 Keep the version in `package.json`, `src-tauri/tauri.conf.json` and
 `src-tauri/Cargo.toml` synchronized before tagging.

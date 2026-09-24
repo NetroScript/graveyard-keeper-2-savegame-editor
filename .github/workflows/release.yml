@@ -91,7 +91,7 @@ jobs:
             args: --bundles nsis
           - platform: ubuntu-22.04
             name: linux-x86_64
-            args: --bundles appimage
+            args: --bundles appimage,deb,rpm
           - platform: macos-latest
             name: macos-aarch64
             args: --target aarch64-apple-darwin --bundles app,dmg
@@ -162,8 +162,31 @@ jobs:
           $downloads = "src-tauri/target/release-files"
           New-Item -ItemType Directory -Force -Path $downloads | Out-Null
           Copy-Item -LiteralPath "src-tauri/target/release/graveyard-keeper-2-savegame-editor.exe" -Destination "$downloads/graveyard-keeper-2-save-editor-v$version-windows-x86_64-portable.exe"
+      - name: Stage system-WebKit Linux executable
+        if: runner.os == 'Linux'
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target/portable
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          pnpm tauri build --no-bundle
+          mkdir -p src-tauri/target/release-files
+          tar -C "$CARGO_TARGET_DIR/release" -czf "src-tauri/target/release-files/graveyard-keeper-2-save-editor-v${version}-linux-x86_64-system-webkit.tar.gz" graveyard-keeper-2-savegame-editor
       - name: Upload portable Windows executable
         if: env.RELEASE_BUILD == 'true' && runner.os == 'Windows'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v${version}"
+          fi
+          gh release upload "$tag" src-tauri/target/release-files/* --clobber
+      - name: Upload system-WebKit Linux executable
+        if: env.RELEASE_BUILD == 'true' && runner.os == 'Linux'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash

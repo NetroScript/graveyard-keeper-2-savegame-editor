@@ -10,6 +10,11 @@ struct State {
 }
 type SaveState = Mutex<State>;
 #[tauri::command]
+fn update_install_supported() -> bool {
+    // An unbundled Linux executable has no matching installer in latest.json.
+    !cfg!(target_os = "linux") || tauri::utils::platform::bundle_type().is_some()
+}
+#[tauri::command]
 fn save_open(
     request: tauri::ipc::Request<'_>,
     state: tauri::State<'_, SaveState>,
@@ -208,6 +213,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            update_install_supported,
             save_open,
             save_request,
             save_export,

@@ -81,7 +81,7 @@ if (buildDesktop) {
       ? "nsis"
       : process.platform === "darwin"
         ? "app,dmg"
-        : "appimage";
+        : "appimage,deb,rpm";
   await run(
     "pnpm",
     ["tauri", "build", "--bundles", bundleTargets],
@@ -92,6 +92,22 @@ if (buildDesktop) {
         }
       : {},
   );
+  if (process.platform === "linux") {
+    const portableTarget = resolve(root, "target", "portable");
+    await run("pnpm", ["tauri", "build", "--no-bundle"], {
+      CARGO_TARGET_DIR: portableTarget,
+    });
+    await run("tar", [
+      "-C",
+      resolve(portableTarget, "release"),
+      "-czf",
+      resolve(
+        desktopOutput,
+        `graveyard-keeper-2-save-editor-v${packageInfo.version}-linux-x86_64-system-webkit.tar.gz`,
+      ),
+      "graveyard-keeper-2-savegame-editor",
+    ]);
+  }
   if (existsSync(bundles))
     await cp(bundles, desktopOutput, {
       recursive: true,

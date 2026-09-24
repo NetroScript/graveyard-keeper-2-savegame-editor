@@ -46,11 +46,12 @@ if (repository) {
   const file = `graveyard-keeper-2-save-editor-v${version}`;
   // GitHub replaces spaces in uploaded release asset names with periods.
   const tauriFile = `Graveyard.Keeper.2.Save.Editor_${version}`;
+  const rpmFile = `Graveyard.Keeper.2.Save.Editor-${version}-1.x86_64.rpm`;
   const asset = (name) => `${release}/${encodeURIComponent(name)}`;
   const downloads = `### Downloads
 
 - **Windows x64:** [Installer](${asset(`${tauriFile}_x64-setup.exe`)}) — recommended for automatic updates · [Portable executable](${release}/${file}-windows-x86_64-portable.exe) — replace it manually to remain portable
-- **Linux x64:** [AppImage](${asset(`${tauriFile}_amd64.AppImage`)})
+- **Linux x64:** [Debian/Ubuntu package](${asset(`${tauriFile}_amd64.deb`)}) · [Fedora package](${asset(rpmFile)}) · [System WebKitGTK executable](${release}/${file}-linux-x86_64-system-webkit.tar.gz) — for other distributions with WebKitGTK 4.1, update manually · [AppImage](${asset(`${tauriFile}_amd64.AppImage`)}) — portable
 - **macOS Apple Silicon:** [DMG](${asset(`${tauriFile}_aarch64.dmg`)}) · [Portable application archive](${asset(`${tauriFile}_aarch64.app.tar.gz`)})
 - **macOS Intel:** [DMG](${asset(`${tauriFile}_x64.dmg`)}) · [Portable application archive](${asset(`${tauriFile}_x64.app.tar.gz`)})
 - **Web:** [Open the web editor](https://${owner.toLowerCase()}.github.io/${name}/)

@@ -3,6 +3,13 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.1.1] - Linux download options
+
+- Added `.deb` packages for Debian/Ubuntu and `.rpm` packages for Fedora. These use the system WebKitGTK instead of the AppImage's bundled WebKitGTK and forced X11 backend.
+- Added an executable archive that uses system WebKitGTK for distributions such as Arch Linux. Extract the archive and run the executable; download a new archive to update it.
+- Kept the AppImage as a portable option. It may still feel laggy on some NVIDIA Wayland systems.
+- Documented the Linux graphics workaround and the web editor and local build options when a download does not work.
+
 ## [0.1.0] - Initial release
 
 The first public release of the unofficial Graveyard Keeper 2 Save Editor.

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
   import type { Update } from "@tauri-apps/plugin-updater";
   import Info from "~icons/ph/info";
@@ -17,6 +18,20 @@
   let update = $state<Update | null>(null);
   let message = $state("");
   let progress = $state<number>();
+  let updateAvailability = $state<"checking" | "supported" | "manual">(
+    "checking",
+  );
+
+  onMount(() => {
+    if (!desktop) return;
+    void invoke<boolean>("update_install_supported")
+      .then((supported) => {
+        updateAvailability = supported ? "supported" : "manual";
+      })
+      .catch(() => {
+        updateAvailability = "manual";
+      });
+  });
 
   const repository =
     "https://github.com/NetroScript/graveyard-keeper-2-savegame-editor";
@@ -91,18 +106,18 @@
       </dl>
       <p>
         The MIT License applies only to the editor's original source code.
-        Graveyard Keeper 2 and the game artwork and other game assets distributed
-        with the editor remain the property of Lazy Bear Games and their
-        respective rights holders. No ownership of, or license to, those assets
-        is claimed, offered, or granted by this project. Their inclusion does not
-        imply authorization, affiliation, or endorsement by Lazy Bear Games or
-        any other rights holder.
+        Graveyard Keeper 2 and the game artwork and other game assets
+        distributed with the editor remain the property of Lazy Bear Games and
+        their respective rights holders. No ownership of, or license to, those
+        assets is claimed, offered, or granted by this project. Their inclusion
+        does not imply authorization, affiliation, or endorsement by Lazy Bear
+        Games or any other rights holder.
       </p>
       <p>
         If Lazy Bear Games or another applicable rights holder requests their
-        removal, the project maintainers will promptly remove the relevant assets
-        from the hosted web editor and from future downloadable distributions
-        under their control.
+        removal, the project maintainers will promptly remove the relevant
+        assets from the hosted web editor and from future downloadable
+        distributions under their control.
       </p>
     </div>
   </section>
@@ -136,17 +151,35 @@
   <section class="panel edition-panel">
     <h2 class="strip"><Download />Web and desktop</h2>
     <div class="panel-body">
-      <p>You are using the <strong>{desktop ? "desktop application" : "web editor"}</strong>.</p>
+      <p>
+        You are using the <strong
+          >{desktop ? "desktop application" : "web editor"}</strong
+        >.
+      </p>
       <div class="edition-comparison">
         <section>
           <h3>Web editor</h3>
-          <p>Runs without installation and updates automatically with the website.</p>
-          <p>You select saves manually and receive edited files as downloads. Keep your original <code>.dat</code> and <code>.info</code> files as your backup.</p>
+          <p>
+            Runs without installation and updates automatically with the
+            website.
+          </p>
+          <p>
+            You select saves manually and receive edited files as downloads.
+            Keep your original <code>.dat</code> and <code>.info</code> files as your
+            backup.
+          </p>
         </section>
         <section>
           <h3>Desktop application</h3>
-          <p>Finds installed saves and writes them back safely with configurable compressed backups containing the matching save pair, plus external-change checks.</p>
-          <p>It can check for application updates, but must be downloaded or installed on your computer.</p>
+          <p>
+            Finds installed saves and writes them back safely with configurable
+            compressed backups containing the matching save pair, plus
+            external-change checks.
+          </p>
+          <p>
+            It can check for application updates, but must be downloaded or
+            installed on your computer.
+          </p>
         </section>
       </div>
       <a
@@ -155,48 +188,96 @@
         target="_blank"
         rel="noreferrer"
         onclick={(e) => external(e, desktop ? webEditor : desktopDownloads)}
-        ><Download />{desktop ? "Open the web editor" : "Download the desktop application"}</a
+        ><Download />{desktop
+          ? "Open the web editor"
+          : "Download the desktop application"}</a
       >
     </div>
   </section>
-  {#if desktop}<section class="panel updater-panel">
+  {#if desktop && updateAvailability !== "checking"}<section
+      class="panel updater-panel"
+    >
       <h2 class="strip"><ArrowClockwise />Updates</h2>
       <div class="panel-body">
-        <p>Updates are checked only when you request one.</p>
-        <div class="form-actions">
-          <button disabled={checking || installing} onclick={checkForUpdates}
-            ><ArrowClockwise />{checking
-              ? "Checking…"
-              : "Check for updates"}</button
-          >
-          {#if update}<button
-              class="primary"
-              disabled={installing}
-              onclick={installUpdate}
-              ><Download />{installing
-                ? "Installing…"
-                : `Download and install ${update.version}`}</button
+        {#if updateAvailability === "manual"}
+          <p>
+            This executable is updated manually. Download the latest system
+            WebKitGTK archive from the <a
+              href={desktopDownloads}
+              target="_blank"
+              rel="noreferrer"
+              onclick={(e) => external(e, desktopDownloads)}>releases page</a
+            > and replace the old executable.
+          </p>
+        {:else}
+          <p>Updates are checked only when you request one.</p>
+          <div class="form-actions">
+            <button disabled={checking || installing} onclick={checkForUpdates}
+              ><ArrowClockwise />{checking
+                ? "Checking…"
+                : "Check for updates"}</button
+            >
+            {#if update}<button
+                class="primary"
+                disabled={installing}
+                onclick={installUpdate}
+                ><Download />{installing
+                  ? "Installing…"
+                  : `Download and install ${update.version}`}</button
+              >{/if}
+          </div>
+          {#if progress !== undefined}<progress max="100" value={progress}
+              >{progress}%</progress
             >{/if}
-        </div>
-        {#if progress !== undefined}<progress max="100" value={progress}
-            >{progress}%</progress
-          >{/if}
-        {#if message}<p role="status" class="hint">{message}</p>{/if}
+          {#if message}<p role="status" class="hint">{message}</p>{/if}
+        {/if}
       </div>
-  </section>{/if}
+    </section>{/if}
 </div>
 
 <style>
-  .edition-panel { grid-column:1 / -1; }
-  .edition-comparison { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); border:1px solid var(--border); background:#20222a; }
-  .edition-comparison section { padding:12px 14px; }
-  .edition-comparison section + section { border-left:1px solid var(--border); }
-  .edition-comparison h3 { margin:0 0 7px; color:#e3c36c; font-size:14px; }
-  .edition-comparison p { margin:5px 0; color:#b8bdc7; }
-  .other-edition { display:inline-flex; align-items:center; gap:7px; margin-top:12px; color:#e3bd78; }
-  .other-edition :global(svg) { width:18px; height:18px; }
-  @media (max-width:720px) {
-    .edition-comparison { grid-template-columns:1fr; }
-    .edition-comparison section + section { border-left:0; border-top:1px solid var(--border); }
+  .edition-panel {
+    grid-column: 1 / -1;
+  }
+  .edition-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--border);
+    background: #20222a;
+  }
+  .edition-comparison section {
+    padding: 12px 14px;
+  }
+  .edition-comparison section + section {
+    border-left: 1px solid var(--border);
+  }
+  .edition-comparison h3 {
+    margin: 0 0 7px;
+    color: #e3c36c;
+    font-size: 14px;
+  }
+  .edition-comparison p {
+    margin: 5px 0;
+    color: #b8bdc7;
+  }
+  .other-edition {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 12px;
+    color: #e3bd78;
+  }
+  .other-edition :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+  @media (max-width: 720px) {
+    .edition-comparison {
+      grid-template-columns: 1fr;
+    }
+    .edition-comparison section + section {
+      border-left: 0;
+      border-top: 1px solid var(--border);
+    }
   }
 </style>
