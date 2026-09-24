@@ -10,6 +10,7 @@
   import ArrowClockwise from "~icons/ph/arrow-clockwise";
   import DesktopTower from "~icons/ph/desktop-tower";
   import Tag from "~icons/ph/tag";
+  import Warning from "~icons/ph/warning";
   import GameIcon from "./GameIcon.svelte";
   import { gameDayIcon } from "../assets/game-icons";
   let {
@@ -52,13 +53,39 @@
         >{doc.summary?.dirty ? "Unsaved changes" : "Saved"}</span
       >
     </h1>
+    {#if newerSaveVersion || doc.unknownItemIds.length}<details
+        class="compatibility-status"
+      >
+        <summary title="Show compatibility information">
+          <Warning />
+          <span class="visually-hidden">Compatibility information</span>
+        </summary>
+        <div class="compatibility-popover" role="status">
+          <strong>Compatibility information</strong>
+          {#if newerSaveVersion}<p>
+              This save is from game version {String(
+                doc.metadata?.gameSaveVersion,
+              )}, but the loaded game data describes {assetVersion}. New items
+              or progression data may be shown by ID or unavailable for
+              structured editing.
+            </p>{/if}
+          {#if doc.unknownItemIds.length}<p>
+              {doc.unknownItemIds.length} item {doc.unknownItemIds.length === 1
+                ? "definition is"
+                : "definitions are"} missing from the loaded game data. Existing data
+              is preserved, but those items cannot be safely added or replaced.
+            </p>{/if}
+        </div>
+      </details>{/if}
   </div>
   {#if doc.metadata}{@const m = doc.metadata}
     <details class="save-metadata">
       <summary title="Show complete save information">
         <GameIcon name={gameDayIcon(m.day)} />
         <strong>Day {String(m.day ?? "—")}</strong>
-        <span class="metadata-date">{String(m.saveDateTime ?? "Unknown date")}</span>
+        <span class="metadata-date"
+          >{String(m.saveDateTime ?? "Unknown date")}</span
+        >
         <span class="metadata-summary-fields">
           <span>Version {String(m.gameSaveVersion ?? "—")}</span>
           <span>{String(m.platform ?? "—")}</span>
@@ -121,20 +148,6 @@
   </div>
 </nav>
 {#if doc.error}<p class="error-banner" role="alert">{doc.error}</p>{/if}
-{#if newerSaveVersion}<p class="compatibility-note warning" role="status">
-    This save is from game version {String(doc.metadata?.gameSaveVersion)}, but
-    the loaded assets describe {assetVersion}. New items or progression data may
-    be shown by ID or unavailable for structured editing.
-  </p>{/if}
-{#if doc.unknownItemIds.length}<p
-    class="compatibility-note warning"
-    role="status"
-  >
-    {doc.unknownItemIds.length} item {doc.unknownItemIds.length === 1
-      ? "definition is"
-      : "definitions are"} missing from the loaded assets. Existing data is preserved,
-    but those items cannot be safely added or replaced.
-  </p>{/if}
 <div hidden={view !== "editor"} class="editor-view">
   <nav class="category-tabs" aria-label="Editor categories">
     <div class="tab-group">
@@ -184,7 +197,55 @@
     grid-template-columns: minmax(180px, auto) minmax(180px, 1fr) auto;
   }
   .document-title {
+    position: relative;
+    display: flex;
     min-width: 0;
+    align-items: center;
+    gap: 8px;
+  }
+  .document-title h1 {
+    min-width: 0;
+  }
+  .compatibility-status {
+    flex: 0 0 auto;
+  }
+  .compatibility-status summary {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    place-items: center;
+    color: #e2a151;
+    background: #2d2930;
+    border: 1px solid #796042;
+    cursor: pointer;
+    list-style: none;
+  }
+  .compatibility-status summary::-webkit-details-marker {
+    display: none;
+  }
+  .compatibility-status summary :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+  .compatibility-popover {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 8px);
+    left: 0;
+    width: min(460px, calc(100vw - 48px));
+    padding: 13px 15px;
+    color: #c6c8cf;
+    background: #292a33;
+    border: 1px solid #796042;
+  }
+  .compatibility-popover strong {
+    color: #e2c16d;
+  }
+  .compatibility-popover p {
+    margin: 7px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
   }
   .save-metadata {
     position: relative;
@@ -255,10 +316,6 @@
   }
   .metadata-expanded .hint {
     margin: 12px 0 0;
-  }
-  .compatibility-note {
-    margin: 10px 20px 0;
-    padding: 9px 12px;
   }
   @media (max-width: 1100px) {
     .metadata-summary-fields {
