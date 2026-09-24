@@ -6,6 +6,7 @@ release. GitHub Releases use the matching version section automatically.
 ## [0.1.2] - Unreleased
 
 - Added custom track and thumb styling for Inspiration progress and inventory durability sliders, including WebKitGTK and Firefox.
+- Prevented duplicate restore points when restoring the current version or switching between archived versions.
 
 ## [0.1.1] - Linux download options
 

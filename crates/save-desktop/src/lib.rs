@@ -62,6 +62,12 @@ pub struct BackupPreview {
     pub metadata: Option<Value>,
     pub metadata_error: Option<String>,
 }
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreResult {
+    pub restored: bool,
+    pub backup_created: bool,
+}
 fn info(path: &Path) -> PathBuf {
     path.with_extension("info")
 }
@@ -330,7 +336,14 @@ impl DesktopWorkspace {
         };
         let bytes = self.workspace.export(id).map_err(err)?;
         let metadata = source.and_then(|s| s.metadata.clone());
-        write_pair(&path, &bytes, metadata.as_deref(), expected, retention)?;
+        write_pair(
+            &path,
+            &bytes,
+            metadata.as_deref(),
+            expected,
+            retention,
+            false,
+        )?;
         let summary = self.workspace.mark_saved(id, revision).map_err(err)?;
         self.sources.insert(
             id,
@@ -387,7 +400,12 @@ impl DesktopWorkspace {
         Ok(backups)
     }
 
-    pub fn restore_backup(&mut self, path: &Path, backup: &str, retention: u8) -> Result<Preview> {
+    pub fn restore_backup(
+        &mut self,
+        path: &Path,
+        backup: &str,
+        retention: u8,
+    ) -> Result<RestoreResult> {
         if retention > 50 {
             return Err("Backup retention must be 0–50".into());
         }
@@ -408,8 +426,23 @@ impl DesktopWorkspace {
         let archive_path = backup_root(&path).join(backup);
         let (data, metadata) = read_backup(&archive_path, &path)?;
         let expected = Some(fingerprint(&path)?);
-        write_pair(&path, &data, metadata.as_deref(), expected, retention)?;
-        Ok(preview(&path))
+        if optional(&path)?.as_deref() == Some(data.as_slice())
+            && optional(&info(&path))?.as_deref() == metadata.as_deref()
+        {
+            if Some(fingerprint(&path)?) != expected {
+                return Err("EXTERNAL_CHANGE".into());
+            }
+            return Ok(RestoreResult {
+                restored: false,
+                backup_created: false,
+            });
+        }
+        let backup_created =
+            write_pair(&path, &data, metadata.as_deref(), expected, retention, true)?;
+        Ok(RestoreResult {
+            restored: true,
+            backup_created,
+        })
     }
 }
 fn journal(path: &Path) -> PathBuf {
@@ -469,6 +502,36 @@ fn backup_root(path: &Path) -> PathBuf {
         .unwrap_or_else(|| Path::new("."))
         .join(".gk2-editor-backups")
         .join(path.file_name().unwrap_or_default())
+}
+
+fn backup_contains_pair(
+    root: &Path,
+    path: &Path,
+    data: &[u8],
+    metadata: Option<&[u8]>,
+) -> Result<bool> {
+    let entries = match fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(e) => return Err(err(e)),
+    };
+    for entry in entries {
+        let entry = entry.map_err(err)?;
+        if !entry.path().is_file()
+            || entry
+                .path()
+                .extension()
+                .is_none_or(|extension| !extension.eq_ignore_ascii_case("zip"))
+        {
+            continue;
+        }
+        if let Ok((saved, saved_metadata)) = read_backup(&entry.path(), path) {
+            if saved == data && saved_metadata.as_deref() == metadata {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 fn read_backup(path: &Path, destination: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
@@ -559,7 +622,8 @@ fn write_pair(
     metadata: Option<&[u8]>,
     expected: Option<Vec<u8>>,
     retention: u8,
-) -> Result<()> {
+    avoid_duplicate_backup: bool,
+) -> Result<bool> {
     let current = if path.exists() {
         Some(fingerprint(path)?)
     } else {
@@ -601,7 +665,15 @@ fn write_pair(
     let backup_root = backup_root(path);
     let replace = (|| {
         // Prepare and sync the retained backup before touching the destination.
-        let backup = if retention > 0 && old.is_some() {
+        let already_archived = if avoid_duplicate_backup && retention > 0 {
+            match old.as_ref() {
+                Some(old) => backup_contains_pair(&backup_root, path, old, old_info.as_deref())?,
+                None => false,
+            }
+        } else {
+            false
+        };
+        let backup = if retention > 0 && old.is_some() && !already_archived {
             fs::create_dir_all(&backup_root).map_err(err)?;
             Some(backup_archive(
                 &backup_root,
@@ -620,15 +692,19 @@ fn write_pair(
         }
         // Recovery must not roll back a completed save if cleanup is interrupted.
         atomic(&stage.join("committed"), b"1")?;
+        let backup_created = backup.is_some();
         if let Some(backup) = backup {
             let _ = backup.keep();
         }
-        Ok(())
+        Ok(backup_created)
     })();
-    if let Err(e) = replace {
-        recover(path)?;
-        return Err(e);
-    }
+    let backup_created = match replace {
+        Ok(created) => created,
+        Err(e) => {
+            recover(path)?;
+            return Err(e);
+        }
+    };
     // Cleanup failures leave recoverable data and do not misreport a completed save.
     let _ = fs::remove_dir_all(stage);
     if let Ok(entries) = fs::read_dir(backup_root) {
@@ -648,7 +724,7 @@ fn write_pair(
             let _ = fs::remove_file(entry.path());
         }
     }
-    Ok(())
+    Ok(backup_created)
 }
 #[cfg(test)]
 mod tests {
@@ -775,12 +851,53 @@ mod tests {
             backups[0].name,
             archive_path.file_name().unwrap().to_string_lossy()
         );
-        workspace
-            .restore_backup(&path, &backups[0].name, 2)
+        let result = workspace
+            .restore_backup(&path, &backups[0].name, 3)
             .unwrap();
+        assert!(result.restored && result.backup_created);
 
         assert_eq!(fs::read(&path).unwrap(), original);
         assert_eq!(fs::read(info(&path)).unwrap(), original_info);
-        assert_eq!(workspace.backups(&path).unwrap().len(), 2);
+        let after_restore = workspace.backups(&path).unwrap();
+        assert_eq!(after_restore.len(), 2);
+        assert!(
+            !workspace
+                .restore_backup(&path, &backups[0].name, 3)
+                .unwrap()
+                .restored
+        );
+        let other = after_restore
+            .iter()
+            .find(|item| item.name != backups[0].name)
+            .unwrap();
+        for (name, expected) in [
+            (&other.name, b"current save".as_slice()),
+            (&backups[0].name, original.as_slice()),
+            (&other.name, b"current save".as_slice()),
+            (&backups[0].name, original.as_slice()),
+        ] {
+            let result = workspace.restore_backup(&path, name, 3).unwrap();
+            assert!(result.restored);
+            assert!(!result.backup_created);
+            assert_eq!(fs::read(&path).unwrap(), expected);
+        }
+        assert_eq!(
+            workspace
+                .backups(&path)
+                .unwrap()
+                .iter()
+                .map(|backup| &backup.name)
+                .collect::<Vec<_>>(),
+            after_restore
+                .iter()
+                .map(|backup| &backup.name)
+                .collect::<Vec<_>>()
+        );
+        fs::write(info(&path), b"changed metadata").unwrap();
+        let result = workspace
+            .restore_backup(&path, &backups[0].name, 3)
+            .unwrap();
+        assert!(result.restored && result.backup_created);
+        assert_eq!(fs::read(info(&path)).unwrap(), original_info);
     }
 }

@@ -182,7 +182,7 @@ async fn save_restore_backup(
     path: PathBuf,
     backup: String,
     app: tauri::AppHandle,
-) -> Result<gk2_save_desktop::Preview, String> {
+) -> Result<gk2_save_desktop::RestoreResult, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<SaveState>();
         let mut s = state.lock().map_err(|e| e.to_string())?;

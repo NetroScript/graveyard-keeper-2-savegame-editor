@@ -146,12 +146,17 @@
     restoring = true;
     backupMessage = "";
     try {
-      await native("save_restore_backup", {
+      const result = await native<{ restored: boolean; backupCreated: boolean }>("save_restore_backup", {
         path: backupSave.path,
         backup: selectedBackup.name,
       });
-      backupMessage =
-        "Backup restored. The previous current save was retained in the backup history.";
+      backupMessage = result.restored
+        ? result.backupCreated
+          ? "Backup restored. The previous current save was retained in the backup history."
+          : settings.backupRetention > 0
+            ? "Backup restored. The previous current save was already in the backup history."
+            : "Backup restored. Automatic backups are disabled, so the previous current save was not retained."
+        : "This backup already matches the current save. No restore point was added.";
       selectedBackup = undefined;
       await refresh();
       backups = (
@@ -372,7 +377,7 @@
         {#if selectedBackup}<p class="warning backup-warning">
             Restoring replaces the current <code>.dat</code> and matching
             <code>.info</code>. {settings.backupRetention > 0
-              ? "The current pair will first be retained as another rolling backup."
+              ? "The current pair will remain available in the backup history."
               : "Automatic backups are disabled, so the current pair will not be retained."}
           </p>{/if}
         {#if backupMessage}<p class="hint" role="status">
