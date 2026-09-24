@@ -50,7 +50,9 @@
       max="1"
       value={Number(durability)}
       title={`Durability: ${Math.round(Number(durability) * 100)}%`}
-    ></meter>{/if}
+    ></meter><span class="durability-value"
+      >{Math.round(Number(durability) * 100)}%</span
+    >{/if}
 </span>
 
 <style>
@@ -94,6 +96,17 @@
     bottom: 0;
     width: calc(100% - 8px);
     height: 5px;
+  }
+  .durability-value {
+    position: absolute;
+    left: 4px;
+    bottom: 5px;
+    padding: 0 2px;
+    color: #d9e3c5;
+    background: #15171dcc;
+    font-size: 9px;
+    line-height: 12px;
+    text-shadow: 1px 1px #15151b;
   }
   .missing {
     display: grid;

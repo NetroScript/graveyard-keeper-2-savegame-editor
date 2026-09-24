@@ -28,17 +28,33 @@
     outOfBounds: boolean;
     onclose: () => void;
   } = $props();
-  const families = $derived(catalog.forInventory(rule.allowed));
+  const allowed = $derived.by(() => {
+    if (inventory.kind !== "Tool belt") return rule.allowed;
+    const occupiedTypes = new Set(
+      inventory.items
+        .filter((item) => item.node !== existing?.node)
+        .map((item) => catalog.items[item.id]?.fields.type)
+        .filter((type): type is string => !!type),
+    );
+    return rule.allowed.filter(
+      (id) => !occupiedTypes.has(catalog.items[id]?.fields.type),
+    );
+  });
+  const families = $derived(catalog.forInventory(allowed));
   const search = $derived(itemSearch(families));
   const initial = untrack(() => ({
     id: existing?.id ?? "",
     name: existing ? catalog.items[existing.id]?.name || existing.id : "",
     count: existing?.count ?? "1",
+    durability: existing?.durability
+      ? String(Math.round(Number(existing.durability) * 100))
+      : "100",
     revision: doc.summary!.revision,
   }));
   let itemId = $state(initial.id);
   let query = $state(initial.name);
   let count = $state(initial.count);
+  let durability = $state(initial.durability);
   let expanded = $state(false);
   let resultLimit = $state(50);
   let active = $state(0);
@@ -53,15 +69,23 @@
     families.find((f) => f.variants.some((i) => i.id === itemId)),
   );
   const maximum = $derived(
-    outOfBounds ? 2147483647 : (selected?.fields.stackCount ?? 1),
+    inventory.kind === "Tool belt"
+      ? 1
+      : outOfBounds
+        ? 2147483647
+        : (selected?.fields.stackCount ?? 1),
   );
   const valid = $derived(
     !!selected &&
-      rule.allowed.includes(itemId) &&
+      allowed.includes(itemId) &&
       count.trim() !== "" &&
       Number.isInteger(Number(count)) &&
       Number(count) > 0 &&
-      Number(count) <= maximum,
+      Number(count) <= maximum &&
+      (!selected.fields.hasDurability ||
+        (Number.isFinite(Number(durability)) &&
+          Number(durability) >= 0 &&
+          Number(durability) <= 100)),
   );
   onMount(() => {
     dialog.showModal();
@@ -72,6 +96,7 @@
     query = f.name;
     expanded = false;
     count = "1";
+    durability = "100";
   }
   function changeVariant(id: string) {
     itemId = id;
@@ -97,6 +122,9 @@
             item: itemId,
             count,
             guid: crypto.randomUUID(),
+            durability: selected.fields.hasDurability
+              ? String(Number(durability) / 100)
+              : null,
           },
         },
       ]);
@@ -132,7 +160,9 @@
             {catalog}
             id={itemId}
             {count}
-            durability={existing?.id === itemId ? existing.durability : null}
+            durability={selected?.fields.hasDurability
+              ? String(Number(durability) / 100)
+              : null}
           />{/if}
       </div>
       <div class="search-box">
@@ -255,6 +285,21 @@
     {#if selected}<p class="hint">
         Stack size: {selected.fields.stackCount}
       </p>{/if}
+    {#if selected?.fields.hasDurability}<div class="durability-field">
+        <label for="item-durability">Durability</label>
+        <input
+          id="item-durability"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          bind:value={durability}
+        />
+        <output for="item-durability">{durability}%</output>
+        <button type="button" onclick={() => (durability = "100")}
+          >Repair</button
+        >
+      </div>{/if}
     {#if error}<p role="alert">{error}</p>{/if}
     <div class="dialog-actions">
       <button type="button" disabled={saving} onclick={onclose}>Cancel</button
@@ -341,6 +386,18 @@
     flex-direction: column;
     gap: 6px;
     margin-top: 18px;
+  }
+  .durability-field {
+    display: grid;
+    grid-template-columns: auto minmax(120px, 1fr) 44px auto;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .durability-field output {
+    color: var(--cream);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
   .variants {
     display: flex;

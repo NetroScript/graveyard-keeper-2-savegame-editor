@@ -6,6 +6,7 @@ export interface Preview {
   name: string;
   metadata?: Record<string, unknown> | null;
   metadataError?: string | null;
+  editorBackups?: boolean;
 }
 export interface GeneralField {
   key: string;
@@ -26,6 +27,7 @@ export class SaveDocument {
   inventoryEpoch = $state(0);
   dropEpoch = $state(0);
   progressionEpoch = $state(0);
+  unknownItemIds = $state<string[]>([]);
   error = $state("");
   private queue = Promise.resolve();
   constructor(

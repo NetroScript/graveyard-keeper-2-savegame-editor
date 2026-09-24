@@ -14,6 +14,9 @@ initSync({ module: readFileSync("static/wasm/gk2_save_wasm_bg.wasm") });
 const bytes = readFileSync(savePath);
 const pack = readFileSync(packPath);
 const catalogs = decode(pack.subarray(16, 16 + pack.readUInt32LE(12))).catalogs;
+const equipment = new Map(
+  catalogs["inventory-rules"].equipment.map((entry) => [entry.id, entry]),
+);
 const catalog = {
   items: Object.fromEntries(
     Object.values(catalogs.items)
@@ -31,6 +34,8 @@ const catalog = {
           allowed: catalogs["inventory-rules"].bags[i.id]?.complete
             ? catalogs["inventory-rules"].bags[i.id].allowedItemIds
             : null,
+          toolBelt: i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
+          equipmentType: equipment.get(i.id)?.type ?? i.fields.type,
         },
       ]),
   ),

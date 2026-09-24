@@ -26,14 +26,21 @@ pub struct Definition {
     pub capacity: i32,
     pub durability: bool,
     pub allowed: Option<Vec<String>>,
+    #[serde(default)]
+    pub tool_belt: bool,
+    #[serde(default)]
+    pub equipment_type: String,
 }
 impl Catalog {
     pub fn validate(&self) -> Result<(), Error> {
         if self.items.len() > 100_000
-            || self
-                .items
-                .iter()
-                .any(|(id, d)| id.len() > 1024 || d.stack < 1 || d.capacity < 0)
+            || self.items.iter().any(|(id, d)| {
+                id.len() > 1024
+                    || d.stack < 1
+                    || d.capacity < 0
+                    || d.equipment_type.len() > 1024
+                    || (d.tool_belt && d.equipment_type.is_empty())
+            })
         {
             return Err(failure("Invalid inventory catalog"));
         }
@@ -54,6 +61,8 @@ pub enum Edit {
         item: String,
         count: String,
         guid: String,
+        #[serde(default)]
+        durability: Option<String>,
     },
 }
 fn value(doc: &Document, parent: usize, name: &str) -> Result<String, Error> {
@@ -139,6 +148,10 @@ fn allowed(doc: &Document, catalog: &Catalog, container: usize, id: &str) -> Res
         .items
         .get(id)
         .ok_or_else(|| failure("Item definition unavailable"))?;
+    let container_id = value(doc, container, "id")?;
+    if container_id == "toolBeltInventory" && !d.tool_belt {
+        return Ok(false);
+    }
     if d.size != "Small" && d.size != "Big" {
         return Ok(false);
     }
@@ -155,7 +168,6 @@ fn allowed(doc: &Document, catalog: &Catalog, container: usize, id: &str) -> Res
             ancestor = doc.records[id].parent;
         }
     }
-    let container_id = value(doc, container, "id")?;
     if let Some(bag) = catalog.items.get(&container_id).filter(|d| d.is_bag) {
         let allowed = bag
             .allowed
@@ -193,19 +205,35 @@ fn allowed(doc: &Document, catalog: &Catalog, container: usize, id: &str) -> Res
     }
     Ok(true)
 }
-fn containers(doc: &Document, catalog: &Catalog) -> Result<Vec<(usize, String, String)>, Error> {
+fn containers(
+    doc: &Document,
+    catalog: &Catalog,
+) -> Result<Vec<(usize, String, String, Option<usize>)>, Error> {
     let root = *doc
         .roots
         .first()
         .ok_or_else(|| failure("Missing save root"))?;
-    let mut result: Vec<(usize, String, String)> = vec![];
+    let mut result: Vec<(usize, String, String, Option<usize>)> = vec![];
     let mut seen = HashSet::new();
     if let Ok(player) = field(doc, root, "playerData")
         .and_then(|p| field(doc, p, "inventory"))
         .and_then(|p| field(doc, p, "inventoryItem"))
     {
-        result.push((player, "Player".into(), "Player inventory".into()));
+        result.push((player, "Player".into(), "Player inventory".into(), None));
         seen.insert(player);
+    }
+    if let Ok(tool_belt) = field(doc, root, "playerData")
+        .and_then(|p| field(doc, p, "toolBeltInventory"))
+        .and_then(|p| field(doc, p, "inventoryItem"))
+    {
+        if seen.insert(tool_belt) {
+            result.push((
+                tool_belt,
+                "Tool belt".into(),
+                "Player tool belt".into(),
+                None,
+            ));
+        }
     }
     for id in doc.reachable()? {
         let r = &doc.records[id];
@@ -246,7 +274,7 @@ fn containers(doc: &Document, catalog: &Catalog) -> Result<Vec<(usize, String, S
         } else {
             "World object"
         };
-        result.push((item, kind.into(), title));
+        result.push((item, kind.into(), title, None));
     }
     let mut index = 0;
     while index < result.len() {
@@ -256,22 +284,23 @@ fn containers(doc: &Document, catalog: &Catalog) -> Result<Vec<(usize, String, S
             let entry = resolve(doc, *entry)?;
             let id = value(doc, entry, "id")?;
             if catalog.items.get(&id).is_some_and(|d| d.is_bag) && seen.insert(entry) {
-                result.push((entry, "Bag".into(), id));
+                result.push((entry, "Bag".into(), id, Some(item)));
             }
         }
     }
-    result.sort_by_key(|(_, kind, _)| match kind.as_str() {
+    result.sort_by_key(|(_, kind, _, _)| match kind.as_str() {
         "Player" => 0,
-        "Bag" => 1,
-        "Chest" => 2,
-        _ => 3,
+        "Tool belt" => 1,
+        "Bag" => 2,
+        "Chest" => 3,
+        _ => 4,
     });
     Ok(result)
 }
 #[cfg(test)]
 pub(crate) fn read(doc: &Document, catalog: &Catalog) -> Result<Value, Error> {
     let mut result = vec![];
-    for (node, kind, title) in containers(doc, catalog)? {
+    for (node, kind, title, _) in containers(doc, catalog)? {
         let items:Vec<_>=doc.records[contents(doc,node)?].children.iter().map(|entry|{
             let item=resolve(doc,*entry)?;
             let durability=properties(doc,item)?.iter().find(|p|short_type(doc,**p)=="DurabilitySerializedItemProperty").and_then(|p|value(doc,*p,"durability").ok());
@@ -301,6 +330,7 @@ struct Entry {
     title: String,
     location: Value,
     rule: usize,
+    parent: Option<usize>,
 }
 #[derive(Default)]
 pub(crate) struct Cache {
@@ -311,8 +341,8 @@ pub(crate) struct Cache {
 impl Cache {
     pub(crate) fn build(doc: &Document, catalog: &Catalog) -> Result<Self, Error> {
         let mut cache = Self::default();
-        for (node, kind, title) in containers(doc, catalog)? {
-            cache.register(doc, catalog, node, kind, title)?;
+        for (node, kind, title, parent) in containers(doc, catalog)? {
+            cache.register(doc, catalog, node, kind, title, parent)?;
         }
         // Initialize the allocator once, rather than scanning the whole document per new object.
         if doc.next_object_id.get().is_none() {
@@ -335,6 +365,7 @@ impl Cache {
         node: usize,
         kind: String,
         title: String,
+        parent: Option<usize>,
     ) -> Result<(), Error> {
         let mut location = json!({});
         let mut cursor = doc.records[node].parent;
@@ -406,6 +437,7 @@ impl Cache {
             .collect();
         let key = json!([
             player,
+            kind == "Tool belt",
             if bag { container_id.as_str() } else { "" },
             filters
         ])
@@ -439,6 +471,7 @@ impl Cache {
                 title,
                 location,
                 rule,
+                parent,
             },
         );
         Ok(())
@@ -450,16 +483,17 @@ impl Cache {
             Ok(json!({"node":n,"id":value(doc,item,"id")?,"count":number(doc,item,"count")?.to_string(),"durability":durability}))
         }).collect::<Result<Vec<_>,Error>>()?;
         Ok(
-            json!({"node":entry.node,"kind":entry.kind,"title":entry.title,"location":entry.location,"ruleId":entry.rule,"capacity":number(doc,entry.node,"inventorySize")?.to_string(),"items":items}),
+            json!({"node":entry.node,"kind":entry.kind,"title":entry.title,"parentNode":entry.parent,"location":entry.location,"ruleId":entry.rule,"capacity":number(doc,entry.node,"inventorySize")?.to_string(),"items":items}),
         )
     }
     pub(crate) fn snapshot(&self, doc: &Document) -> Result<Value, Error> {
         let mut entries = self.entries.values().collect::<Vec<_>>();
         entries.sort_by_key(|e| match e.kind.as_str() {
             "Player" => 0,
-            "Bag" => 1,
-            "Chest" => 2,
-            _ => 3,
+            "Tool belt" => 1,
+            "Bag" => 2,
+            "Chest" => 3,
+            _ => 4,
         });
         Ok(
             json!({"inventories":entries.into_iter().map(|e|self.entry(doc,e)).collect::<Result<Vec<_>,_>>()?,"rules":self.rules.iter().enumerate().map(|(id,v)|(id.to_string(),v.clone())).collect::<BTreeMap<_,_>>()}),
@@ -494,7 +528,7 @@ impl Cache {
                 if catalog.items.get(&id).is_some_and(|d| d.is_bag)
                     && !self.entries.contains_key(&n)
                 {
-                    self.register(doc, catalog, n, "Bag".into(), id)?;
+                    self.register(doc, catalog, n, "Bag".into(), id, Some(container))?;
                     updated.insert(n);
                     pending.push(n);
                 }
@@ -626,6 +660,7 @@ fn new_item(
     count: i32,
     guid: &str,
     d: &Definition,
+    durability: Option<&str>,
     guid_checked: bool,
 ) -> Result<usize, Error> {
     if guid.len() != 36
@@ -701,7 +736,7 @@ fn new_item(
             Some("DurabilitySerializedItemProperty, Assembly-CSharp"),
             true,
         )?;
-        add(doc, p, Some("durability"), "f32", "1")?;
+        add(doc, p, Some("durability"), "f32", durability.unwrap_or("1"))?;
     }
     Ok(item)
 }
@@ -716,7 +751,7 @@ pub(crate) fn write_inner(
     if !checked
         && !containers(doc, catalog)?
             .iter()
-            .any(|(n, _, _)| *n == container)
+            .any(|(n, _, _, _)| *n == container)
     {
         return Err(failure("Unsupported inventory"));
     }
@@ -745,6 +780,7 @@ pub(crate) fn write_inner(
             item,
             count,
             guid,
+            durability,
         } => {
             let count: i32 = count
                 .parse()
@@ -753,11 +789,50 @@ pub(crate) fn write_inner(
                 .items
                 .get(&item)
                 .ok_or_else(|| failure("Item definition unavailable"))?;
+            let durability = if d.durability {
+                let value = durability.as_deref().unwrap_or("1");
+                let number: f32 = value
+                    .parse()
+                    .map_err(|_| failure("Durability must be a number"))?;
+                if !number.is_finite() || !(0.0..=1.0).contains(&number) {
+                    return Err(failure("Durability must be between 0% and 100%"));
+                }
+                Some(value)
+            } else {
+                if durability.is_some() {
+                    return Err(failure("This item does not have durability"));
+                }
+                None
+            };
             if count < 1 || (!out_of_bounds && count > d.stack) {
                 return Err(failure("Amount exceeds the item stack size"));
             }
             if !allowed(doc, catalog, container, &item)? {
                 return Err(failure("Item is not allowed in this inventory"));
+            }
+            if value(doc, container, "id")? == "toolBeltInventory" {
+                if count != 1 {
+                    return Err(failure("Equipped items must have an amount of 1"));
+                }
+                if d.equipment_type.is_empty() {
+                    return Err(failure("Equipment type is unavailable"));
+                }
+                for candidate in &doc.records[array].children {
+                    if Some(*candidate) == existing {
+                        continue;
+                    }
+                    let candidate = resolve(doc, *candidate)?;
+                    let candidate_id = value(doc, candidate, "id")?;
+                    if catalog
+                        .items
+                        .get(&candidate_id)
+                        .is_some_and(|other| other.equipment_type == d.equipment_type)
+                    {
+                        return Err(failure(
+                            "Only one equipped item of each type can be in the tool belt",
+                        ));
+                    }
+                }
             }
             if let Some(existing) = existing {
                 if !doc.records[array].children.contains(&existing) {
@@ -776,6 +851,15 @@ pub(crate) fn write_inner(
                         set(doc, target, "id", item.clone())?;
                     }
                     set(doc, target, "count", count.to_string())?;
+                    if let Some(durability) = durability {
+                        let property = properties(doc, target)?
+                            .into_iter()
+                            .find(|property| {
+                                short_type(doc, *property) == "DurabilitySerializedItemProperty"
+                            })
+                            .ok_or_else(|| failure("Item durability is missing"))?;
+                        set(doc, property, "durability", durability.to_owned())?;
+                    }
                 } else {
                     if !doc.records[contents(doc, target)?].children.is_empty() {
                         return Err(failure("Empty this item's inventory before replacing it"));
@@ -785,7 +869,7 @@ pub(crate) fn write_inner(
                         .iter()
                         .position(|n| *n == existing)
                         .unwrap();
-                    let new = new_item(doc, array, &item, count, &guid, d, checked)?;
+                    let new = new_item(doc, array, &item, count, &guid, d, durability, checked)?;
                     apply(doc, Operation::Remove { node: existing })?;
                     apply(doc, Operation::Move { node: new, index })?;
                 }
@@ -793,7 +877,7 @@ pub(crate) fn write_inner(
                 if doc.records[array].children.len() >= capacity.max(0) as usize {
                     return Err(failure("Inventory is full"));
                 }
-                new_item(doc, array, &item, count, &guid, d, checked)?;
+                new_item(doc, array, &item, count, &guid, d, durability, checked)?;
             }
         }
     }
@@ -814,7 +898,10 @@ mod tests {
     fn catalog() -> Value {
         json!({"items":{
             "apple":{"stack":10,"size":"Small","groups":["food"],"isBag":false,"capacity":0,"durability":false,"allowed":null},
-            "tool":{"stack":1,"size":"Small","groups":["tool"],"isBag":false,"capacity":0,"durability":true,"allowed":null},
+            "tool":{"stack":1,"size":"Small","groups":["tool"],"isBag":false,"capacity":0,"durability":true,"allowed":null,"toolBelt":true,"equipmentType":"Axe"},
+            "tool2":{"stack":1,"size":"Small","groups":["tool"],"isBag":false,"capacity":0,"durability":true,"allowed":null,"toolBelt":true,"equipmentType":"Axe"},
+            "armor":{"stack":1,"size":"Small","groups":["armor"],"isBag":false,"capacity":0,"durability":true,"allowed":null,"toolBelt":true,"equipmentType":"BodyArmor"},
+            "hand_tool":{"stack":1,"size":"Small","groups":["tool"],"isBag":false,"capacity":0,"durability":false,"allowed":null,"toolBelt":true,"equipmentType":"Hand"},
             "bag":{"stack":1,"size":"Small","groups":[],"isBag":true,"capacity":2,"durability":false,"allowed":["apple"]},
             "log":{"stack":1,"size":"Big","groups":[],"isBag":false,"capacity":0,"durability":false,"allowed":null}
         }})
@@ -839,6 +926,8 @@ mod tests {
             capacity: 3,
             durability: false,
             allowed: None,
+            tool_belt: false,
+            equipment_type: String::new(),
         };
         let item = new_item(
             &mut doc,
@@ -847,6 +936,47 @@ mod tests {
             1,
             "11111111-1111-4111-8111-111111111111",
             &d,
+            None,
+            false,
+        )
+        .unwrap();
+        doc.records[item].name = Some(text("inventoryItem"));
+        doc.records[item].tag = 1;
+        doc.rebuild().unwrap();
+        doc.encode()
+    }
+    fn tool_belt_fixture() -> Vec<u8> {
+        let mut doc = Document::decode(&fixture()).unwrap();
+        let root = doc.roots[0];
+        let player = field(&doc, root, "playerData").unwrap();
+        let inventory = node(
+            &mut doc,
+            player,
+            Some("toolBeltInventory"),
+            Some("Inventory, Assembly-CSharp"),
+            true,
+        )
+        .unwrap();
+        let definition = Definition {
+            family: None,
+            stack: 1,
+            size: "Small".into(),
+            groups: vec![],
+            is_bag: false,
+            capacity: 14,
+            durability: false,
+            allowed: None,
+            tool_belt: false,
+            equipment_type: String::new(),
+        };
+        let item = new_item(
+            &mut doc,
+            inventory,
+            "toolBeltInventory",
+            1,
+            "99999999-9999-4999-8999-999999999999",
+            &definition,
+            None,
             false,
         )
         .unwrap();
@@ -929,6 +1059,73 @@ mod tests {
         Document::decode(&after).unwrap();
     }
     #[test]
+    fn tool_belt_accepts_only_equipment_and_one_item_per_type() {
+        let bytes = tool_belt_fixture();
+        let mut workspace = Workspace::default();
+        let document = workspace.open(&bytes).unwrap().document_id;
+        request(
+            &mut workspace,
+            document,
+            json!({"op":"inventory_catalog","catalog":catalog()}),
+        )
+        .unwrap();
+        let inventories = request(&mut workspace, document, json!({"op":"inventories"})).unwrap();
+        let belt = inventories
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["kind"] == "Tool belt")
+            .unwrap();
+        let container = belt["node"].as_u64().unwrap() as usize;
+        assert!(!belt["allowed"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("apple")));
+        assert!(belt["allowed"].as_array().unwrap().contains(&json!("tool")));
+
+        let put = |item: &str, count: &str, guid: &str| json!({"kind":"put","node":null,"item":item,"count":count,"guid":guid,"durability":"1"});
+        assert!(transact(
+            &mut workspace,
+            document,
+            container,
+            json!({"kind":"put","node":null,"item":"apple","count":"1","guid":"10000000-0000-4000-8000-000000000001"}),
+            true,
+        )
+        .is_err());
+        assert!(transact(
+            &mut workspace,
+            document,
+            container,
+            put("tool", "2", "10000000-0000-4000-8000-000000000002"),
+            true,
+        )
+        .is_err());
+        transact(
+            &mut workspace,
+            document,
+            container,
+            put("tool", "1", "10000000-0000-4000-8000-000000000003"),
+            false,
+        )
+        .unwrap();
+        assert!(transact(
+            &mut workspace,
+            document,
+            container,
+            put("tool2", "1", "10000000-0000-4000-8000-000000000004"),
+            false,
+        )
+        .is_err());
+        transact(
+            &mut workspace,
+            document,
+            container,
+            put("armor", "1", "10000000-0000-4000-8000-000000000005"),
+            false,
+        )
+        .unwrap();
+    }
+    #[test]
     fn inventory_insertion_limits_durability_bags_and_undo() {
         let bytes = fixture();
         let mut w = Workspace::default();
@@ -949,17 +1146,44 @@ mod tests {
         let put = |item: &str, count: &str| json!({"kind":"put","node":null,"item":item,"count":count,"guid":"22222222-2222-4222-8222-222222222222"});
         assert!(transact(&mut w, id, c, put("apple", "11"), false).is_err());
         assert_eq!(w.export(id).unwrap(), bytes);
-        transact(&mut w, id, c, put("tool", "1"), false).unwrap();
+        transact(
+            &mut w,
+            id,
+            c,
+            json!({"kind":"put","node":null,"item":"tool","count":"1","guid":"22222222-2222-4222-8222-222222222222","durability":"0.25"}),
+            false,
+        )
+        .unwrap();
         let exported = w.export(id).unwrap();
         Document::decode(&exported).unwrap();
         let inv = request(&mut w, id, json!({"op":"inventories"})).unwrap();
-        assert_eq!(inv[0]["items"][0]["durability"], "1");
+        assert_eq!(inv[0]["items"][0]["durability"], "0.25");
+        let tool = inv[0]["items"][0]["node"].as_u64().unwrap();
+        transact(
+            &mut w,
+            id,
+            c,
+            json!({"kind":"put","node":tool,"item":"tool","count":"1","guid":"33333333-3333-4333-8333-333333333333","durability":"1"}),
+            false,
+        )
+        .unwrap();
+        assert_eq!(
+            request(&mut w, id, json!({"op":"inventories"})).unwrap()[0]["items"][0]["durability"],
+            "1"
+        );
+        let revision = w.summary(id).unwrap().revision;
+        request(&mut w, id, json!({"op":"undo","revision":revision})).unwrap();
+        assert_eq!(
+            request(&mut w, id, json!({"op":"inventories"})).unwrap()[0]["items"][0]["durability"],
+            "0.25"
+        );
         let revision = w.summary(id).unwrap().revision;
         request(&mut w, id, json!({"op":"undo","revision":revision})).unwrap();
         assert_eq!(w.export(id).unwrap(), bytes);
         transact(&mut w, id, c, put("bag", "1"), false).unwrap();
         let inv = request(&mut w, id, json!({"op":"inventories"})).unwrap();
         assert_eq!(inv[1]["kind"], "Bag");
+        assert_eq!(inv[1]["parentNode"], c);
         assert_eq!(inv[1]["allowed"], json!(["apple"]));
         assert!(transact(&mut w, id, c, json!({"kind":"capacity","value":"5"}), false).is_err());
         transact(&mut w, id, c, json!({"kind":"capacity","value":"5"}), true).unwrap();
@@ -1106,6 +1330,8 @@ mod tests {
             capacity: 2,
             durability: false,
             allowed: None,
+            tool_belt: false,
+            equipment_type: String::new(),
         };
         let container = new_item(
             &mut doc,
@@ -1114,6 +1340,7 @@ mod tests {
             1,
             "44444444-4444-4444-8444-444444444444",
             &definition,
+            None,
             false,
         )
         .unwrap();

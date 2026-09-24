@@ -15,6 +15,7 @@
   } from "./catalog";
   import ItemImage from "./ItemImage.svelte";
   import ItemDialog from "./ItemDialog.svelte";
+  import LoadingIndicator from "../components/LoadingIndicator.svelte";
   let {
     doc,
     settings,
@@ -39,7 +40,12 @@
     return plainText(catalog?.items[inventory.title]?.name || inventory.title);
   }
   function category(inventory: InventoryData) {
-    if (inventory.kind === "Player" || inventory.location?.player) return "Player";
+    if (
+      inventory.kind === "Player" ||
+      inventory.kind === "Tool belt" ||
+      inventory.location?.player
+    )
+      return "Player";
     return inventory.location?.scene || inventory.location?.world || "Other";
   }
   function location(inventory: InventoryData) {
@@ -53,7 +59,9 @@
       names.push(
         position
           .map((value) =>
-            Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+            Number(value).toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            }),
           )
           .join(", "),
       );
@@ -64,7 +72,11 @@
     if (!terms.length) return true;
     const itemText = inventory.items.flatMap((item) => {
       const definition = catalog?.items[item.id];
-      return [item.id, plainText(definition?.name || ""), definition?.fields.type];
+      return [
+        item.id,
+        plainText(definition?.name || ""),
+        definition?.fields.type,
+      ];
     });
     const text = [
       inventory.kind,
@@ -80,10 +92,60 @@
       .toLocaleLowerCase();
     return terms.every((term) => text.includes(term));
   }
+  function inventoryRank(inventory: InventoryData) {
+    return inventory.kind === "Player"
+      ? 0
+      : inventory.kind === "Tool belt"
+        ? 1
+        : inventory.kind === "Chest"
+          ? 2
+          : inventory.kind === "World object"
+            ? 3
+            : 4;
+  }
+  function orderWithBags(entries: InventoryData[]) {
+    const visible = new Set(entries.map((entry) => entry.node));
+    const children = new Map<number, InventoryData[]>();
+    const roots: InventoryData[] = [];
+    const compare = (a: InventoryData, b: InventoryData) =>
+      inventoryRank(a) - inventoryRank(b) ||
+      title(a).localeCompare(title(b)) ||
+      a.node - b.node;
+    for (const entry of entries) {
+      if (entry.parentNode != null && visible.has(entry.parentNode)) {
+        const nested = children.get(entry.parentNode) ?? [];
+        nested.push(entry);
+        children.set(entry.parentNode, nested);
+      } else roots.push(entry);
+    }
+    roots.sort(compare);
+    for (const nested of children.values()) nested.sort(compare);
+    const ordered: InventoryData[] = [];
+    const visited = new Set<number>();
+    const append = (entry: InventoryData, depth: number) => {
+      if (visited.has(entry.node)) return;
+      visited.add(entry.node);
+      ordered.push({ ...entry, displayDepth: depth });
+      for (const child of children.get(entry.node) ?? [])
+        append(child, depth + 1);
+    };
+    for (const root of roots) append(root, 0);
+    for (const entry of entries) append(entry, 0);
+    return ordered;
+  }
   const groups = $derived.by(() => {
     const grouped = new Map<string, InventoryData[]>();
-    for (const inventory of inventories) {
-      if ((hideEmpty && inventory.items.length === 0) || !matches(inventory, search))
+    // A container node is its stable identity. A snapshot and an immediately
+    // following delta may briefly contain the same container while Svelte
+    // batches state updates, so collapse those inputs before presentation.
+    const unique = new Map(
+      inventories.map((inventory) => [inventory.node, inventory]),
+    );
+    for (const inventory of unique.values()) {
+      if (
+        (hideEmpty && inventory.items.length === 0) ||
+        !matches(inventory, search)
+      )
         continue;
       const label = category(inventory);
       const entries = grouped.get(label) ?? [];
@@ -94,13 +156,7 @@
       .map(([label, entries]) => ({
         label,
         id: `inventory-category-${entries[0].node}`,
-        inventories: entries.sort(
-          (a, b) =>
-            Number(b.kind === "Player") - Number(a.kind === "Player") ||
-            a.kind.localeCompare(b.kind) ||
-            title(a).localeCompare(title(b)) ||
-            a.node - b.node,
-        ),
+        inventories: orderWithBags(entries),
       }))
       .sort(
         (a, b) =>
@@ -108,6 +164,17 @@
           a.label.localeCompare(b.label),
       );
   });
+  function updateUnknownItems(value: InventoryData[]) {
+    doc.unknownItemIds = [
+      ...new Set(
+        value.flatMap((inventory) =>
+          inventory.items
+            .filter((item) => !catalog?.items[item.id])
+            .map((item) => item.id),
+        ),
+      ),
+    ].sort();
+  }
   function jumpToCategory(id: string) {
     const target = document.getElementById(id);
     target?.scrollIntoView({ block: "start" });
@@ -130,7 +197,11 @@
     )
       return;
     const index = event.key === "0" ? 9 : Number(event.key) - 1;
-    if (!Number.isInteger(index) || index < 0 || index >= Math.min(groups.length, 10))
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index >= Math.min(groups.length, 10)
+    )
       return;
     const focused = document.activeElement;
     if (
@@ -179,6 +250,7 @@
       .then((data) => {
         if (alive) {
           inventories = data.inventories;
+          updateUnknownItems(inventories);
           rules = data.rules;
           loadedEpoch = epoch;
           loading = false;
@@ -206,8 +278,10 @@
       const entries = [...updated.values()];
       inventories = [
         ...entries.filter((i) => i.kind === "Player"),
-        ...entries.filter((i) => i.kind !== "Player"),
+        ...entries.filter((i) => i.kind === "Tool belt"),
+        ...entries.filter((i) => !["Player", "Tool belt"].includes(i.kind)),
       ];
+      updateUnknownItems(inventories);
       rules = { ...rules, ...delta.rules };
     });
   });
@@ -237,22 +311,26 @@
 <div class="section-intro">
   <div>
     <h2>Inventory</h2>
-    <p>Edit items in player, bag and world inventories.</p>
+    <p>
+      Edit items in the player inventory, tool belt, bags and world containers.
+    </p>
   </div>
 </div>
 {#if error}<p role="alert" class="error-banner">{error}</p>{/if}
-{#if loading}<p role="status">Loading inventories…</p>{:else if catalog}
+{#if loading}<LoadingIndicator label="Loading inventories…" />{:else if catalog}
   <div class="inventory-tools panel">
     <label class="inventory-search">
       <span>Search containers and items</span>
-      <span class="search-field"><MagnifyingGlass /><input
+      <span class="search-field"
+        ><MagnifyingGlass /><input
           type="search"
           placeholder="Place, container or item"
           bind:value={search}
-        /></span>
+        /></span
+      >
     </label>
-    <label class="empty-toggle"><input type="checkbox" bind:checked={hideEmpty} />Hide
-      empty containers</label
+    <label class="empty-toggle"
+      ><input type="checkbox" bind:checked={hideEmpty} />Hide empty containers</label
     >
     <nav class="category-jump" aria-label="Inventory categories">
       <span>Jump to category</span>
@@ -263,133 +341,153 @@
             type="button"
             aria-label={`${group.label}: ${group.inventories.length} ${group.inventories.length === 1 ? "container" : "containers"}${shortcut ? `; shortcut ${shortcut}` : ""}`}
             onclick={() => jumpToCategory(group.id)}
-          >{#if shortcut}<kbd>{shortcut}</kbd>{/if}<span>{group.label}</span><small
-              >{group.inventories.length}</small
-            ></button
+            >{#if shortcut}<kbd>{shortcut}</kbd>{/if}<span>{group.label}</span
+            ><small>{group.inventories.length}</small></button
           >
         {/each}
       </div>
     </nav>
   </div>
   {#if groups.length}<div class="category-groups">
-    {#each groups as group (group.label)}
-      <section
-        class="inventory-category"
-        id={group.id}
-        aria-labelledby={`${group.id}-title`}
-        tabindex="-1"
-      >
-        <header class="category-heading">
-          <h3 id={`${group.id}-title`}>{group.label}</h3>
-          <span>{group.inventories.length} {group.inventories.length === 1 ? "container" : "containers"}</span>
-        </header>
-        <div class="inventories">
-    {#each group.inventories as inventory (inventory.node)}
-      {@const rule = rules[inventory.ruleId]}
-      {@const size = Math.max(
-        Number(inventory.capacity),
-        inventory.items.length,
-        0,
-      )}
-      {@const page = Math.min(
-        pages[inventory.node] ?? 0,
-        Math.max(0, Math.ceil(size / pageSize) - 1),
-      )}
-      {@const locationText = location(inventory)}
-      <section
-        class="panel inventory"
-        aria-label={inventory.kind === "Player"
-          ? "Player inventory"
-          : `${inventory.kind}: ${inventory.title}`}
-      >
-        <header class="strip inventory-heading">
-          <h3>
-            {inventory.kind}{#if inventory.kind !== "Player"}<small
-                >{plainText(
-                  catalog.items[inventory.title]?.name || inventory.title,
-                )}</small
-              >{/if}
-          </h3>
-          <label
-            >Capacity {#if settings.outOfBoundsEdits}<input
-                aria-label={`Capacity: ${inventory.title}`}
-                type="number"
-                min={inventory.items.length}
-                max="2147483647"
-                step="1"
-                value={inventory.capacity}
-                disabled={doc.busy}
-                onchange={(e) => {
-                  if (e.currentTarget.validity.valid)
-                    void edit(inventory, {
-                      kind: "capacity",
-                      value: e.currentTarget.value,
-                    });
-                }}
-              />{:else}<span>{inventory.capacity}</span>{/if}</label
-          >
-        </header>
-        {#if locationText}<p class="hint location">{locationText}</p>{/if}
-        {#if rule?.error}<p class="hint warning">{rule.error}</p>{/if}
-        <div class="inventory-grid">
-          {#each Array.from({ length: Math.min(pageSize, size - page * pageSize) }, (_, i) => i + page * pageSize) as index}
-            {@const item = inventory.items[index]}
-            <div
-              class="inventory-slot"
-              style:background-image={background
-                ? `url("${background}")`
-                : undefined}
+      {#each groups as group (group.label)}
+        <section
+          class="inventory-category"
+          id={group.id}
+          aria-labelledby={`${group.id}-title`}
+          tabindex="-1"
+        >
+          <header class="category-heading">
+            <h3 id={`${group.id}-title`}>{group.label}</h3>
+            <span
+              >{group.inventories.length}
+              {group.inventories.length === 1
+                ? "container"
+                : "containers"}</span
             >
-              {#if item}
-                <button
-                  class="slot-content"
-                  aria-label={`Edit ${plainText(catalog.items[item.id]?.name || item.id)}, amount ${item.count}`}
-                  title={plainText(catalog.items[item.id]?.name || item.id)}
-                  disabled={doc.busy}
-                  onclick={() => (editing = { inventory, existing: item })}
-                  ><ItemImage
-                    {catalog}
-                    id={item.id}
-                    count={item.count}
-                    durability={item.durability}
-                  /></button
-                >
-                <button
-                  class="remove-item"
-                  aria-label={`Remove ${plainText(catalog.items[item.id]?.name || item.id)}`}
-                  disabled={doc.busy}
-                  onclick={() =>
-                    edit(inventory, { kind: "remove", node: item.node })}
-                  ><X /></button
-                >
-              {:else if index === inventory.items.length}<button
-                  class="slot-content add-item"
-                  aria-label={`Add item to ${inventory.title}`}
-                  disabled={doc.busy || !!rule?.error || !rule?.allowed.length}
-                  onclick={() => (editing = { inventory })}><Plus /></button
-                >{/if}
-            </div>
-          {/each}
-        </div>
-        {#if size > pageSize}<div class="slot-pages">
-            <button
-              disabled={page === 0}
-              onclick={() => (pages[inventory.node] = page - 1)}
-              >Previous slots</button
-            ><span
-              >{page * pageSize + 1}–{Math.min(size, (page + 1) * pageSize)} of {size}</span
-            ><button
-              disabled={(page + 1) * pageSize >= size}
-              onclick={() => (pages[inventory.node] = page + 1)}
-              >Next slots</button
-            >
-          </div>{/if}
-      </section>
-    {/each}
-        </div>
-      </section>
-    {/each}
-  </div>{:else}<p class="inventory-empty">
+          </header>
+          <div class="inventories">
+            {#each group.inventories as inventory (inventory.node)}
+              {@const rule = rules[inventory.ruleId]}
+              {@const size = Math.max(
+                Number(inventory.capacity),
+                inventory.items.length,
+                0,
+              )}
+              {@const page = Math.min(
+                pages[inventory.node] ?? 0,
+                Math.max(0, Math.ceil(size / pageSize) - 1),
+              )}
+              {@const locationText = location(inventory)}
+              <section
+                class="panel inventory"
+                class:nested={!!inventory.displayDepth}
+                style:--bag-depth={inventory.displayDepth ?? 0}
+                aria-label={inventory.kind === "Player"
+                  ? "Player inventory"
+                  : inventory.kind === "Tool belt"
+                    ? "Player tool belt"
+                    : `${inventory.kind}: ${inventory.title}`}
+              >
+                <header class="strip inventory-heading">
+                  <h3>
+                    {inventory.kind}{#if !["Player", "Tool belt"].includes(inventory.kind)}<small
+                        >{plainText(
+                          catalog.items[inventory.title]?.name ||
+                            inventory.title,
+                        )}</small
+                      >{/if}
+                  </h3>
+                  <label
+                    >Capacity {#if settings.outOfBoundsEdits}<input
+                        aria-label={`Capacity: ${inventory.title}`}
+                        type="number"
+                        min={inventory.items.length}
+                        max="2147483647"
+                        step="1"
+                        value={inventory.capacity}
+                        disabled={doc.busy}
+                        onchange={(e) => {
+                          if (e.currentTarget.validity.valid)
+                            void edit(inventory, {
+                              kind: "capacity",
+                              value: e.currentTarget.value,
+                            });
+                        }}
+                      />{:else}<span>{inventory.capacity}</span>{/if}</label
+                  >
+                </header>
+                {#if locationText}<p class="hint location">
+                    {locationText}
+                  </p>{/if}
+                {#if rule?.error}<p class="hint warning">{rule.error}</p>{/if}
+                <div class="inventory-grid">
+                  {#each Array.from({ length: Math.min(pageSize, size - page * pageSize) }, (_, i) => i + page * pageSize) as index}
+                    {@const item = inventory.items[index]}
+                    <div
+                      class="inventory-slot"
+                      style:background-image={background
+                        ? `url("${background}")`
+                        : undefined}
+                    >
+                      {#if item}
+                        <button
+                          class="slot-content"
+                          aria-label={`Edit ${plainText(catalog.items[item.id]?.name || item.id)}, amount ${item.count}${item.durability === null ? "" : `, durability ${Math.round(Number(item.durability) * 100)}%`}`}
+                          title={`${plainText(catalog.items[item.id]?.name || item.id)}${item.durability === null ? "" : ` · ${Math.round(Number(item.durability) * 100)}% durability`}`}
+                          disabled={doc.busy}
+                          onclick={() =>
+                            (editing = { inventory, existing: item })}
+                          ><ItemImage
+                            {catalog}
+                            id={item.id}
+                            count={item.count}
+                            durability={item.durability}
+                          /></button
+                        >
+                        <button
+                          class="remove-item"
+                          aria-label={`Remove ${plainText(catalog.items[item.id]?.name || item.id)}`}
+                          disabled={doc.busy}
+                          onclick={() =>
+                            edit(inventory, {
+                              kind: "remove",
+                              node: item.node,
+                            })}><X /></button
+                        >
+                      {:else if index === inventory.items.length}<button
+                          class="slot-content add-item"
+                          aria-label={`Add item to ${inventory.title}`}
+                          disabled={doc.busy ||
+                            !!rule?.error ||
+                            !rule?.allowed.length}
+                          onclick={() => (editing = { inventory })}
+                          ><Plus /></button
+                        >{/if}
+                    </div>
+                  {/each}
+                </div>
+                {#if size > pageSize}<div class="slot-pages">
+                    <button
+                      disabled={page === 0}
+                      onclick={() => (pages[inventory.node] = page - 1)}
+                      >Previous slots</button
+                    ><span
+                      >{page * pageSize + 1}–{Math.min(
+                        size,
+                        (page + 1) * pageSize,
+                      )} of {size}</span
+                    ><button
+                      disabled={(page + 1) * pageSize >= size}
+                      onclick={() => (pages[inventory.node] = page + 1)}
+                      >Next slots</button
+                    >
+                  </div>{/if}
+              </section>
+            {/each}
+          </div>
+        </section>
+      {/each}
+    </div>{:else}<p class="inventory-empty">
       {inventories.length
         ? "No containers match the current filters."
         : "No supported inventories were found."}
@@ -416,6 +514,22 @@
     gap: 16px;
     padding: 16px;
     margin-bottom: 28px;
+  }
+  .inventory.nested {
+    position: relative;
+    width: calc(100% - min(calc(var(--bag-depth) * 28px), 112px));
+    margin-left: min(calc(var(--bag-depth) * 28px), 112px);
+    border-color: #71664f;
+  }
+  .inventory.nested::before {
+    content: "";
+    position: absolute;
+    right: 100%;
+    top: -18px;
+    width: 20px;
+    height: 38px;
+    border-left: 1px solid #71664f;
+    border-bottom: 1px solid #71664f;
   }
   .inventory-tools label {
     font-size: 12px;
@@ -476,7 +590,10 @@
     color: #edc15b;
     background: #30343e;
     border: 1px solid #5c5e66;
-    font: 500 11px/1.4 Roboto, Arial, sans-serif;
+    font:
+      500 11px/1.4 Roboto,
+      Arial,
+      sans-serif;
     text-align: center;
   }
   .category-links small {

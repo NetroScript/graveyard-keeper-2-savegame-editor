@@ -382,6 +382,11 @@ test("local real save round trip through browser", async ({ page }) => {
     exact: true,
   });
   await expect(player).toBeVisible({ timeout: 30000 });
+  const toolBelt = page.getByRole("region", {
+    name: "Player tool belt",
+    exact: true,
+  });
+  await expect(toolBelt).toBeVisible();
   await expect(player.locator(".sprite").first()).toBeVisible();
   const categoryNames = await page.locator(".category-heading h3").allTextContents();
   expect(categoryNames[0]).toBe("Player");
@@ -438,6 +443,18 @@ test("local real save round trip through browser", async ({ page }) => {
     "true",
   );
   await page.screenshot({ path: "test-results/inventory-variants-real.png" });
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await toolBelt
+    .getByRole("button", { name: "Add item to Player tool belt", exact: true })
+    .click();
+  await page.getByRole("combobox", { name: "Item", exact: true }).fill("Cheese");
+  const toolBeltOptions = page
+    .getByRole("listbox", { name: "Valid items" })
+    .getByRole("option");
+  await expect(toolBeltOptions).not.toHaveCount(0);
+  await expect(
+    page.getByRole("option", { name: /^Cheese\b/i }),
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 });
 

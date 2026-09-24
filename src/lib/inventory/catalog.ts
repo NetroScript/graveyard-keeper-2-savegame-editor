@@ -36,6 +36,8 @@ export interface InventoryData {
   node: number;
   kind: string;
   title: string;
+  parentNode?: number | null;
+  displayDepth?: number;
   capacity: string;
   items: InventoryItem[];
   ruleId: number;
@@ -83,9 +85,17 @@ export class ItemCatalog {
   constructor(readonly pack: AssetPack) {
     this.items = pack.catalog("items");
     this.sprites = pack.catalog("icons");
-    const bags = pack.catalog<{
+    const inventoryRules = pack.catalog<{
       bags: Record<string, { complete: boolean; allowedItemIds: string[] }>;
-    }>("inventory-rules").bags;
+      equipment?: {
+        id: string;
+        canBeEquipped: boolean;
+        type: string;
+      }[];
+    }>("inventory-rules");
+    const equipment = new Map(
+      (inventoryRules.equipment ?? []).map((entry) => [entry.id, entry]),
+    );
     this.rules = {
       items: Object.fromEntries(
         Object.values(this.items)
@@ -107,7 +117,11 @@ export class ItemCatalog {
                 ? i.fields.bagSize
                 : i.fields.inventorySize,
               durability: i.fields.hasDurability,
-              allowed: bags[i.id]?.complete ? bags[i.id].allowedItemIds : null,
+              allowed: inventoryRules.bags[i.id]?.complete
+                ? inventoryRules.bags[i.id].allowedItemIds
+                : null,
+              toolBelt: i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
+              equipmentType: equipment.get(i.id)?.type ?? i.fields.type,
             },
           ]),
       ),
