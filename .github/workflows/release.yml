@@ -77,9 +77,11 @@ jobs:
             args: --bundles appimage
           - platform: macos-latest
             name: macos-aarch64
+            target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin --bundles app,dmg
           - platform: macos-latest
             name: macos-x86_64
+            target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin --bundles app,dmg
     runs-on: ${{ matrix.platform }}
     steps:
@@ -116,7 +118,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
         shell: bash
-        run: node scripts/release-notes.mjs --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
+        run: node scripts/release-notes.mjs --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --github-output "$GITHUB_OUTPUT"
       - name: Build desktop bundles
         if: env.RELEASE_BUILD != 'true'
         env:
@@ -137,11 +139,60 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+      - name: Stage Windows downloads
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $downloads = "src-tauri/target/release-files"
+          $installer = Get-ChildItem -LiteralPath "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Windows installer was not produced" }
+          New-Item -ItemType Directory -Force -Path $downloads | Out-Null
+          Copy-Item -LiteralPath $installer.FullName -Destination "$downloads/graveyard-keeper-2-save-editor-v$version-windows-x86_64-installer.exe"
+          Copy-Item -LiteralPath "src-tauri/target/release/graveyard-keeper-2-savegame-editor.exe" -Destination "$downloads/graveyard-keeper-2-save-editor-v$version-windows-x86_64-portable.exe"
+      - name: Stage Linux download
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          downloads="src-tauri/target/release-files"
+          appimage="$(find src-tauri/target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' -print -quit)"
+          test -n "$appimage"
+          mkdir -p "$downloads"
+          cp "$appimage" "$downloads/graveyard-keeper-2-save-editor-v${version}-linux-x86_64.AppImage"
+      - name: Stage macOS downloads
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          downloads="src-tauri/target/release-files"
+          application="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Graveyard Keeper 2 Save Editor.app"
+          dmg="$(find 'src-tauri/target/${{ matrix.target }}/release/bundle/dmg' -maxdepth 1 -name '*.dmg' -print -quit)"
+          test -n "$dmg"
+          mkdir -p "$downloads"
+          cp "$dmg" "$downloads/graveyard-keeper-2-save-editor-v${version}-${{ matrix.name }}.dmg"
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$application" \
+            "$downloads/graveyard-keeper-2-save-editor-v${version}-${{ matrix.name }}-portable.zip"
+      - name: Upload direct-download release files
+        if: env.RELEASE_BUILD == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="v${version}"
+          fi
+          gh release upload "$tag" src-tauri/target/release-files/* --clobber
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.name }}-${{ github.sha }}
           path: |
             src-tauri/target/**/release/bundle/**/*
+            src-tauri/target/release-files/*
           if-no-files-found: error
 
   deploy-pages:

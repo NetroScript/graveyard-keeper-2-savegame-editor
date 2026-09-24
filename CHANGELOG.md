@@ -38,3 +38,13 @@ The first public release of the unofficial Graveyard Keeper 2 Save Editor.
 
 - Web browsers with WebAssembly support.
 - Windows, Linux, and macOS desktop builds.
+- Portable Windows executables, macOS application ZIPs for Intel and Apple
+  Silicon, and Linux AppImages.
+
+### Portable update behavior
+
+- Accepting an update from the portable Windows executable launches the Windows
+  installer. Download and replace the portable executable manually to keep using
+  it without installation.
+- Portable macOS application bundles and Linux AppImages can only replace
+  themselves when they are stored in a location the current user can modify.

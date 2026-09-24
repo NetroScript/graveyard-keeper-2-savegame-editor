@@ -32,8 +32,15 @@ it creates a compressed ZIP backup containing its `.dat` and `.info` files by
 default; the number of retained backups is configurable in Settings. Earlier
 versions can be restored from the save list. It also detects if another program
 changed a save and can install signed application updates. On Windows, use the
-installer if you want automatic updates. The standalone `.exe` can be run without
-installation, but accepting an update will launch an installer.
+installer if you want automatic updates. Portable downloads are also available:
+a standalone `.exe` for Windows, zipped application bundles for both macOS
+architectures, and an AppImage for Linux.
+
+The Windows portable executable can be run without installation, but accepting
+an automatic update launches the installer and changes it into an installed
+application. Download and replace the portable executable manually if it should
+remain portable. Portable macOS and Linux updates require the application bundle
+or AppImage to be in a location the current user can modify.
 
 The editor checks the save structure, but only the game can confirm that every
 edited value is valid for a particular game version. Keep the desktop backup, or
@@ -45,17 +52,17 @@ successfully.
 The desktop and web versions share the same editing interface. Click a screenshot
 to view it at full size.
 
-| Save discovery and backups | General values |
-| --- | --- |
+| Save discovery and backups                                                                                                                   | General values                                                                                                                                    |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Discovered Graveyard Keeper 2 saves with metadata and backup controls](docs/screenshots/load-saves.png)](docs/screenshots/load-saves.png) | [![General save values including health, money, and technology points](docs/screenshots/general-editor.png)](docs/screenshots/general-editor.png) |
 
-| Inventory, bags, and tool belt | Technology tree |
-| --- | --- |
+| Inventory, bags, and tool belt                                                                                                               | Technology tree                                                                                                                                       |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Player inventory with a nested bag and equipped tool belt](docs/screenshots/inventory-editor.png)](docs/screenshots/inventory-editor.png) | [![Building technology tree with unlock dependencies and reward details](docs/screenshots/technology-tree.png)](docs/screenshots/technology-tree.png) |
 
 [![Inspirations and perk tree with progression controls and perk details](docs/screenshots/inspirations.png)](docs/screenshots/inspirations.png)
 
-*Inspirations, progression controls, and the perk tree.*
+_Inspirations, progression controls, and the perk tree._
 
 ## What can be edited
 
