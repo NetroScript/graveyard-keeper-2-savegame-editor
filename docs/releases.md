@@ -47,8 +47,8 @@ Run **Build release** from the Actions tab with `publish` disabled. The workflow
 builds the WebAssembly site plus Windows x64, Linux x64, macOS Apple Silicon and
 macOS Intel desktop bundles. Each result is retained as a private workflow
 artifact. The Windows artifact includes a portable executable, both macOS
-artifacts include a portable application ZIP, and the Linux AppImage is already
-portable. It does not deploy Pages or create a public GitHub release.
+artifacts include a portable application archive, and the Linux AppImage is
+already portable. It does not deploy Pages or create a public GitHub release.
 
 For a current-platform local build:
 
@@ -94,8 +94,8 @@ The workflow publishes the following user-facing formats:
 | ------------------- | ---------------- | -------------------- |
 | Windows x64         | NSIS installer   | Standalone `.exe`    |
 | Linux x64           | —                | AppImage             |
-| macOS Apple Silicon | DMG              | Zipped `.app` bundle |
-| macOS Intel         | DMG              | Zipped `.app` bundle |
+| macOS Apple Silicon | DMG              | `.app.tar.gz` bundle |
+| macOS Intel         | DMG              | `.app.tar.gz` bundle |
 
 The standalone Windows executable can be run directly when the Microsoft
 WebView2 runtime is available. Checking for updates works there, but applying an
@@ -106,7 +106,7 @@ download the new portable executable and replace the old one manually.
 Linux updates replace the AppImage, while macOS updates replace the application
 bundle. On both platforms, the portable file must be stored in a location the
 current user can modify. The application must be restarted after installing an
-update. The macOS ZIP must be extracted before launching the application.
+update. The macOS archive must be extracted before launching the application.
 
 Keep the version in `package.json`, `src-tauri/tauri.conf.json` and
 `src-tauri/Cargo.toml` synchronized before tagging.

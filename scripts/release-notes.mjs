@@ -44,12 +44,14 @@ if (repository) {
   const [owner, name] = repository.split("/");
   const release = `https://github.com/${repository}/releases/download/v${version}`;
   const file = `graveyard-keeper-2-save-editor-v${version}`;
+  const tauriFile = `Graveyard Keeper 2 Save Editor_${version}`;
+  const asset = (name) => `${release}/${encodeURIComponent(name)}`;
   const downloads = `### Downloads
 
-- **Windows x64:** [Installer](${release}/${file}-windows-x86_64-installer.exe) — recommended for automatic updates · [Portable executable](${release}/${file}-windows-x86_64-portable.exe) — replace it manually to remain portable
-- **Linux x64:** [AppImage](${release}/${file}-linux-x86_64.AppImage)
-- **macOS Apple Silicon:** [DMG](${release}/${file}-macos-aarch64.dmg) · [Portable application ZIP](${release}/${file}-macos-aarch64-portable.zip)
-- **macOS Intel:** [DMG](${release}/${file}-macos-x86_64.dmg) · [Portable application ZIP](${release}/${file}-macos-x86_64-portable.zip)
+- **Windows x64:** [Installer](${asset(`${tauriFile}_x64-setup.exe`)}) — recommended for automatic updates · [Portable executable](${release}/${file}-windows-x86_64-portable.exe) — replace it manually to remain portable
+- **Linux x64:** [AppImage](${asset(`${tauriFile}_amd64.AppImage`)})
+- **macOS Apple Silicon:** [DMG](${asset(`${tauriFile}_aarch64.dmg`)}) · [Portable application archive](${asset(`${tauriFile}_aarch64.app.tar.gz`)})
+- **macOS Intel:** [DMG](${asset(`${tauriFile}_x64.dmg`)}) · [Portable application archive](${asset(`${tauriFile}_x64.app.tar.gz`)})
 - **Web:** [Open the web editor](https://${owner.toLowerCase()}.github.io/${name}/)
 
 The Windows portable executable checks for updates, but accepting one launches the installer. Download a newer portable executable manually if you do not want to install the application.`;

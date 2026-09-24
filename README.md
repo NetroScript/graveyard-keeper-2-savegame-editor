@@ -33,7 +33,7 @@ default; the number of retained backups is configurable in Settings. Earlier
 versions can be restored from the save list. It also detects if another program
 changed a save and can install signed application updates. On Windows, use the
 installer if you want automatic updates. Portable downloads are also available:
-a standalone `.exe` for Windows, zipped application bundles for both macOS
+a standalone `.exe` for Windows, compressed application bundles for both macOS
 architectures, and an AppImage for Linux.
 
 The Windows portable executable can be run without installation, but accepting
