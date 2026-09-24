@@ -103,7 +103,8 @@ WebKitGTK. The AppImage bundles WebKitGTK from the build environment and forces
 the X11 backend, which caused lag on the NVIDIA/Wayland system tested here.
 The archive is an option for other distributions, including Arch Linux, when
 WebKitGTK 4.1 is installed. Archive users download and replace it manually to
-update. See the README for details.
+update. Some NVIDIA Wayland systems may need `__NV_DISABLE_EXPLICIT_SYNC=1`
+when launching its executable. See the README for the command.
 
 The standalone Windows executable can be run directly when the Microsoft
 WebView2 runtime is available. Checking for updates works there, but applying an

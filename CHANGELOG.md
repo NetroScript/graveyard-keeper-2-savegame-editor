@@ -7,6 +7,7 @@ release. GitHub Releases use the matching version section automatically.
 
 - Added `.deb` packages for Debian/Ubuntu and `.rpm` packages for Fedora. These use the system WebKitGTK instead of the AppImage's bundled WebKitGTK and forced X11 backend.
 - Added an executable archive that uses system WebKitGTK for distributions such as Arch Linux. Extract the archive and run the executable; download a new archive to update it.
+- On some NVIDIA Wayland systems, launch the archive's executable with `__NV_DISABLE_EXPLICIT_SYNC=1`. The same workaround can resolve the `Error 71` crash during desktop development.
 - Kept the AppImage as a portable option. It may still feel laggy on some NVIDIA Wayland systems.
 - Documented the Linux graphics workaround and the web editor and local build options when a download does not work.
 

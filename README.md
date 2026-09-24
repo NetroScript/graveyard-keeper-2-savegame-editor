@@ -62,6 +62,14 @@ archive. The archive is intended for distributions such as Arch Linux and
 requires compatible system libraries, including WebKitGTK 4.1. Extract it, run
 `graveyard-keeper-2-savegame-editor`, and download a new archive to update it.
 
+On some NVIDIA Wayland systems, the executable from the archive may need
+`__NV_DISABLE_EXPLICIT_SYNC=1` to start. This was required on the system tested
+here. From the directory where you extracted it, run:
+
+```sh
+__NV_DISABLE_EXPLICIT_SYNC=1 ./graveyard-keeper-2-savegame-editor
+```
+
 If none of the Linux downloads works on your system, use the
 [web editor](#web-version) or build the desktop executable locally with
 `pnpm tauri build --no-bundle`.
@@ -70,8 +78,8 @@ which is not included in Git. See the [build instructions](docs/builds.md) and
 [game asset exporter](src-assets/README.md) to prepare a local build.
 
 If `pnpm tauri dev` crashes with `Error 71 (Protocol error)` on NVIDIA Wayland,
-try `__NV_DISABLE_EXPLICIT_SYNC=1 pnpm tauri dev`. This resolved the crash on
-the system tested here without disabling the faster rendering path.
+try `__NV_DISABLE_EXPLICIT_SYNC=1 pnpm tauri dev`. This resolved the development
+crash on the system tested here without disabling the faster rendering path.
 
 ## Screenshots
 
