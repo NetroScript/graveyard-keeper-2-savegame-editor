@@ -110,6 +110,13 @@ jobs:
         run: |
           mkdir -p static/assets
           gh release download "$ASSET_RELEASE_TAG" --pattern game.gk2pack --dir static/assets
+      - name: Prepare release notes
+        id: release-notes
+        if: env.RELEASE_BUILD == 'true'
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+        shell: bash
+        run: node scripts/release-notes.mjs --tag "$RELEASE_TAG" --github-output "$GITHUB_OUTPUT"
       - name: Build desktop bundles
         if: env.RELEASE_BUILD != 'true'
         env:
@@ -126,7 +133,7 @@ jobs:
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'v__VERSION__' }}
           releaseName: Graveyard Keeper 2 Save Editor v__VERSION__
-          releaseBody: Download the installer or bundle for your platform from the assets below.
+          releaseBody: ${{ steps.release-notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

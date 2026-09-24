@@ -96,6 +96,7 @@ Useful commands:
 
 More technical documentation:
 
+- [Release history](CHANGELOG.md)
 - [Desktop and browser builds](docs/builds.md)
 - [Release builds and updates](docs/releases.md)
 - [Save library API](crates/save-core/README.md)

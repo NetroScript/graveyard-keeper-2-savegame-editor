@@ -63,6 +63,11 @@ signatures and `latest.json`. The packed game asset remains on the separate draf
 input release and is not attached to the public release as a standalone file. It
 is embedded in desktop applications and served as part of the public web build.
 
+Before publishing, add a section for the application version to
+[`CHANGELOG.md`](../CHANGELOG.md). The workflow extracts that section and uses it
+as the GitHub Release description. A version tag that does not match the version
+in `package.json` fails before publishing desktop bundles.
+
 ## Installed and standalone desktop builds
 
 The standalone Windows executable can be run directly. Checking for updates also
