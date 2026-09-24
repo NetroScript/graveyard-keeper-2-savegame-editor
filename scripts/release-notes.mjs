@@ -44,7 +44,8 @@ if (repository) {
   const [owner, name] = repository.split("/");
   const release = `https://github.com/${repository}/releases/download/v${version}`;
   const file = `graveyard-keeper-2-save-editor-v${version}`;
-  const tauriFile = `Graveyard Keeper 2 Save Editor_${version}`;
+  // GitHub replaces spaces in uploaded release asset names with periods.
+  const tauriFile = `Graveyard.Keeper.2.Save.Editor_${version}`;
   const asset = (name) => `${release}/${encodeURIComponent(name)}`;
   const downloads = `### Downloads
 
