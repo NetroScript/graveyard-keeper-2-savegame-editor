@@ -102,6 +102,10 @@ More technical documentation:
 - [Save library API](crates/save-core/README.md)
 - [Game asset exporter](src-assets/README.md)
 
+## Development
+
+This repository was created with assistance from AI coding agents.
+
 ## License and game assets
 
 The editor source code is available under the [MIT License](LICENSE).
