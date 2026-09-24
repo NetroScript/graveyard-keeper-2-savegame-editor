@@ -9,42 +9,31 @@ The first public release of the unofficial Graveyard Keeper 2 Save Editor.
 
 ### Save editing
 
-- Edit health, energy, stamina, money, happiness, insanity, and technology
-  points.
-- Manage the player inventory, equipped tool belt, bags, chests, and supported
-  world containers with game-aware item rules.
-- Change item counts, quality, durability, and container capacity; add, replace,
-  repair, or remove supported items.
-- Unlock technology trees with their dependencies and edit inspiration progress,
-  levels, talents, and perk trees.
+- Edit health, energy, stamina, money, happiness, insanity, and technology points.
+- Manage the player inventory, equipped tool belt, bags, chests, and supported world containers with game-aware item rules.
+- Change item counts, quality, durability, and container capacity; add, replace, repair, or remove supported items.
+- Unlock technology trees with their dependencies and edit inspiration progress, levels, talents, and perk trees.
 - Find and remove unwanted item drops from the world.
-- Inspect unsupported save structures with the Save Inspector and undo or redo
-  accepted edits.
+- Inspect unsupported save structures with the Save Inspector and undo or redo accepted edits.
 
 ### Desktop application
 
 - Discover local saves and display their game metadata.
-- Write saves safely with compressed rolling backups of matching `.dat` and
-  `.info` files, including backup restoration and external-change detection.
+- Write saves safely with compressed rolling backups of matching `.dat` and `.info` files, including backup restoration and external-change detection.
 - Check for signed application updates.
 
 ### Web application
 
 - Edit saves locally in the browser without uploading them to a server.
-- Download the edited save as a new file while leaving the selected original
-  untouched.
+- Download the edited save as a new file while leaving the selected original untouched.
 
 ### Platforms
 
 - Web browsers with WebAssembly support.
 - Windows, Linux, and macOS desktop builds.
-- Portable Windows executables, compressed macOS application bundles for Intel
-  and Apple Silicon, and Linux AppImages.
+- Portable Windows executables, compressed macOS application bundles for Intel and Apple Silicon, and Linux AppImages.
 
 ### Portable update behavior
 
-- Accepting an update from the portable Windows executable launches the Windows
-  installer. Download and replace the portable executable manually to keep using
-  it without installation.
-- Portable macOS application bundles and Linux AppImages can only replace
-  themselves when they are stored in a location the current user can modify.
+- Accepting an update from the portable Windows executable launches the Windows installer. Download and replace the portable executable manually to keep using it without installation.
+- Portable macOS application bundles and Linux AppImages can only replace themselves when they are stored in a location the current user can modify.
