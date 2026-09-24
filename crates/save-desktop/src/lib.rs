@@ -5,10 +5,11 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     fs,
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
+    time::UNIX_EPOCH,
 };
-use zip::{write::SimpleFileOptions, CompressionMethod, ZipWriter};
+use zip::{write::SimpleFileOptions, CompressionMethod, ZipArchive, ZipWriter};
 type Result<T> = std::result::Result<T, String>;
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
@@ -50,6 +51,16 @@ pub struct Preview {
     pub metadata: Option<Value>,
     pub metadata_error: Option<String>,
     pub backup: bool,
+    pub editor_backups: bool,
+}
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupPreview {
+    pub name: String,
+    pub modified: u64,
+    pub bytes: u64,
+    pub metadata: Option<Value>,
+    pub metadata_error: Option<String>,
 }
 fn info(path: &Path) -> PathBuf {
     path.with_extension("info")
@@ -89,11 +100,24 @@ pub fn preview(path: &Path) -> Preview {
         .into_owned();
     Preview {
         backup: name.contains("_backup_"),
+        editor_backups: has_editor_backups(path),
         path: path.into(),
         name,
         metadata,
         metadata_error,
     }
+}
+
+fn has_editor_backups(path: &Path) -> bool {
+    fs::read_dir(backup_root(path)).is_ok_and(|entries| {
+        entries.flatten().any(|entry| {
+            let path = entry.path();
+            path.is_file()
+                && path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("zip"))
+        })
+    })
 }
 pub fn list(directories: &[PathBuf], include_backups: bool) -> Vec<Preview> {
     let mut found = vec![];
@@ -322,6 +346,71 @@ impl DesktopWorkspace {
             preview: preview(&path),
         })
     }
+
+    pub fn backups(&self, path: &Path) -> Result<Vec<BackupPreview>> {
+        let path = fs::canonicalize(path).map_err(err)?;
+        let root = backup_root(&path);
+        let mut backups = vec![];
+        let entries = match fs::read_dir(root) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(backups),
+            Err(e) => return Err(err(e)),
+        };
+        for entry in entries.flatten() {
+            let archive_path = entry.path();
+            if !archive_path.is_file()
+                || archive_path
+                    .extension()
+                    .is_none_or(|extension| !extension.eq_ignore_ascii_case("zip"))
+            {
+                continue;
+            }
+            let metadata_on_disk = entry.metadata().map_err(err)?;
+            let (metadata, metadata_error) = backup_metadata(&archive_path, &path);
+            backups.push(BackupPreview {
+                name: entry.file_name().to_string_lossy().into_owned(),
+                modified: metadata_on_disk
+                    .modified()
+                    .ok()
+                    .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+                    .map_or(0, |duration| duration.as_secs()),
+                bytes: metadata_on_disk.len(),
+                metadata,
+                metadata_error,
+            });
+        }
+        backups.sort_by(|a, b| {
+            b.modified
+                .cmp(&a.modified)
+                .then_with(|| b.name.cmp(&a.name))
+        });
+        Ok(backups)
+    }
+
+    pub fn restore_backup(&mut self, path: &Path, backup: &str, retention: u8) -> Result<Preview> {
+        if retention > 50 {
+            return Err("Backup retention must be 0–50".into());
+        }
+        let path = fs::canonicalize(path).map_err(err)?;
+        if self.sources.values().any(|source| source.path == path) {
+            return Err("Close this save before restoring a backup".into());
+        }
+        if backup.is_empty()
+            || backup
+                != Path::new(backup)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+            || !backup.to_ascii_lowercase().ends_with(".zip")
+        {
+            return Err("Invalid backup name".into());
+        }
+        let archive_path = backup_root(&path).join(backup);
+        let (data, metadata) = read_backup(&archive_path, &path)?;
+        let expected = Some(fingerprint(&path)?);
+        write_pair(&path, &data, metadata.as_deref(), expected, retention)?;
+        Ok(preview(&path))
+    }
 }
 fn journal(path: &Path) -> PathBuf {
     path.with_file_name(format!(
@@ -373,6 +462,77 @@ fn backup_archive(
     }
     file.as_file().sync_all().map_err(err)?;
     Ok(file)
+}
+
+fn backup_root(path: &Path) -> PathBuf {
+    path.parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(".gk2-editor-backups")
+        .join(path.file_name().unwrap_or_default())
+}
+
+fn read_backup(path: &Path, destination: &Path) -> Result<(Vec<u8>, Option<Vec<u8>>)> {
+    const MAX_ENTRY_BYTES: u64 = 512 * 1024 * 1024;
+    let file = fs::File::open(path).map_err(err)?;
+    let mut archive = ZipArchive::new(file).map_err(err)?;
+    let data_name = destination
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    let info_name = info(destination)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    let read = |archive: &mut ZipArchive<fs::File>, name: &str| -> Result<Option<Vec<u8>>> {
+        let mut entry = match archive.by_name(name) {
+            Ok(entry) => entry,
+            Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+            Err(e) => return Err(err(e)),
+        };
+        if !entry.is_file() || entry.size() > MAX_ENTRY_BYTES {
+            return Err("Invalid backup entry".into());
+        }
+        let mut bytes = Vec::with_capacity(entry.size() as usize);
+        entry.read_to_end(&mut bytes).map_err(err)?;
+        Ok(Some(bytes))
+    };
+    let data = read(&mut archive, &data_name)?.ok_or("Backup does not contain the save file")?;
+    let metadata = read(&mut archive, &info_name)?;
+    Ok((data, metadata))
+}
+
+fn backup_metadata(path: &Path, destination: &Path) -> (Option<Value>, Option<String>) {
+    const MAX_METADATA_BYTES: u64 = 16 * 1024 * 1024;
+    let result = (|| -> Result<Option<Vec<u8>>> {
+        let file = fs::File::open(path).map_err(err)?;
+        let mut archive = ZipArchive::new(file).map_err(err)?;
+        let name = info(destination)
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        let mut entry = match archive.by_name(&name) {
+            Ok(entry) => entry,
+            Err(zip::result::ZipError::FileNotFound) => return Ok(None),
+            Err(e) => return Err(err(e)),
+        };
+        if !entry.is_file() || entry.size() > MAX_METADATA_BYTES {
+            return Err("Invalid backup metadata entry".into());
+        }
+        let mut bytes = Vec::with_capacity(entry.size() as usize);
+        entry.read_to_end(&mut bytes).map_err(err)?;
+        Ok(Some(bytes))
+    })();
+    match result {
+        Ok(Some(bytes)) => match serde_json::from_slice(&bytes) {
+            Ok(value) => (Some(value), None),
+            Err(e) => (None, Some(err(e))),
+        },
+        Ok(None) => (None, None),
+        Err(e) => (None, Some(e)),
+    }
 }
 /// A journal retains the complete previous pair until both replacements have succeeded.
 pub fn recover(path: &Path) -> Result<()> {
@@ -438,11 +598,7 @@ fn write_pair(
         fs::remove_dir_all(stage).map_err(err)?;
         return Err("EXTERNAL_CHANGE".into());
     }
-    let backup_root = path
-        .parent()
-        .unwrap()
-        .join(".gk2-editor-backups")
-        .join(path.file_name().unwrap());
+    let backup_root = backup_root(path);
     let replace = (|| {
         // Prepare and sync the retained backup before touching the destination.
         let backup = if retention > 0 && old.is_some() {
@@ -592,5 +748,39 @@ mod tests {
         assert_eq!(fs::read(&path).unwrap(), bytes);
         assert_eq!(fs::read(info(&path)).unwrap(), metadata);
         assert!(!stage.exists());
+    }
+
+    #[test]
+    fn lists_and_restores_paired_archives() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("slot.dat");
+        let original = b"original save";
+        let original_info = b"{\"day\":7,\"gameSaveVersion\":\"1.2.3\"}";
+        fs::write(&path, original).unwrap();
+        fs::write(info(&path), original_info).unwrap();
+        let root = backup_root(&path);
+        assert!(!preview(&path).editor_backups);
+        fs::create_dir_all(&root).unwrap();
+        let archive = backup_archive(&root, &path, original, Some(original_info)).unwrap();
+        let (_, archive_path) = archive.keep().unwrap();
+        assert!(preview(&path).editor_backups);
+        fs::write(&path, b"current save").unwrap();
+        fs::write(info(&path), b"{\"day\":8}").unwrap();
+
+        let mut workspace = DesktopWorkspace::default();
+        let backups = workspace.backups(&path).unwrap();
+        assert_eq!(backups.len(), 1);
+        assert_eq!(backups[0].metadata.as_ref().unwrap()["day"], 7);
+        assert_eq!(
+            backups[0].name,
+            archive_path.file_name().unwrap().to_string_lossy()
+        );
+        workspace
+            .restore_backup(&path, &backups[0].name, 2)
+            .unwrap();
+
+        assert_eq!(fs::read(&path).unwrap(), original);
+        assert_eq!(fs::read(info(&path)).unwrap(), original_info);
+        assert_eq!(workspace.backups(&path).unwrap().len(), 2);
     }
 }

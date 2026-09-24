@@ -29,10 +29,11 @@ Download the version for your operating system from the
 
 The desktop application can find saves automatically. Before replacing a save,
 it creates a compressed ZIP backup containing its `.dat` and `.info` files by
-default; the number of retained backups is configurable in Settings. It also detects if another
-program changed a save and can install signed application updates. On Windows,
-use the installer if you want automatic updates. The standalone `.exe` can be run
-without installation, but accepting an update will launch an installer.
+default; the number of retained backups is configurable in Settings. Earlier
+versions can be restored from the save list. It also detects if another program
+changed a save and can install signed application updates. On Windows, use the
+installer if you want automatic updates. The standalone `.exe` can be run without
+installation, but accepting an update will launch an installer.
 
 The editor checks the save structure, but only the game can confirm that every
 edited value is valid for a particular game version. Keep the desktop backup, or
@@ -42,7 +43,8 @@ successfully.
 ## What can be edited
 
 - Health, energy, stamina, money, happiness, insanity, and technology points.
-- Player inventory, bags, chests, and supported world containers.
+- Player inventory, equipped tool belt, bags, chests, and supported world
+  containers. Bags appear beneath the inventory that contains them.
 - Item counts, quality variants, durability, capacity, insertion, replacement,
   and removal where the game rules are known.
 - Technology trees, including dependency-aware unlocks and the game's rewards.

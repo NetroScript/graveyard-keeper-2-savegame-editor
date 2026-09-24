@@ -162,6 +162,31 @@ async fn save_write(
     let retention = s.settings.backup_retention;
     s.desktop.save(document, revision, destination, retention)
 }
+#[tauri::command]
+async fn save_backups(path: PathBuf, app: tauri::AppHandle) -> Result<serde_json::Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<SaveState>();
+        let s = state.lock().map_err(|e| e.to_string())?;
+        Ok(serde_json::json!({ "backups": s.desktop.backups(&path)? }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn save_restore_backup(
+    path: PathBuf,
+    backup: String,
+    app: tauri::AppHandle,
+) -> Result<gk2_save_desktop::Preview, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<SaveState>();
+        let mut s = state.lock().map_err(|e| e.to_string())?;
+        let retention = s.settings.backup_retention;
+        s.desktop.restore_backup(&path, &backup, retention)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -190,6 +215,8 @@ pub fn run() {
             save_open_path,
             save_dialog,
             save_write,
+            save_backups,
+            save_restore_backup,
             settings_get,
             settings_set
         ])

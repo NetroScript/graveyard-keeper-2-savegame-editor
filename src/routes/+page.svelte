@@ -15,6 +15,7 @@
   import SettingsView from "$lib/components/Settings.svelte";
   import About from "$lib/components/About.svelte";
   import DocumentView from "$lib/components/DocumentView.svelte";
+  import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { loadAssetManifest } from "$lib/assets/game-icons";
   import { preloadProgressionAssets } from "$lib/progression/catalog";
   import FolderOpen from "~icons/ph/folder-open";
@@ -234,9 +235,9 @@
     </nav>
     <div
       class="asset-version"
-      title="Game version represented by the loaded asset pack"
+      title="Game version represented by the loaded game data"
     >
-      Asset game version <b>{assetVersion}</b>
+      Game data version <b>{assetVersion}</b>
     </div>
     <button
       class="about-link"
@@ -252,7 +253,7 @@
     {#if error}<p class="error-banner" role="alert">
         {error}
       </p>{/if}{#if ready}<div class="page-content" hidden={active !== "load"}>
-        <LoadSaves {onfiles} {onpath} {settings} {onsettings} />
+        <LoadSaves {onfiles} {onpath} {settings} {onsettings} {assetVersion} />
       </div>
       <div class="page-content" hidden={active !== "settings"}>
         <SettingsView {settings} {onsettings} />
@@ -264,8 +265,8 @@
           class="document-workspace"
           hidden={active !== doc.id}
         >
-          <DocumentView {doc} {settings} onsave={save} />
-        </div>{/each}{:else}<p class="page-content">Loading editor…</p>{/if}
+          <DocumentView {doc} {settings} {assetVersion} onsave={save} />
+        </div>{/each}{:else}<div class="page-content"><LoadingIndicator label="Loading editor…" /></div>{/if}
   </main>
 </div>
 {#if conflict}<div class="modal-backdrop">
