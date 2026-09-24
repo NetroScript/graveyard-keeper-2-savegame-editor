@@ -3,6 +3,10 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.1.2] - Unreleased
+
+- Added custom track and thumb styling for Inspiration progress and inventory durability sliders, including WebKitGTK and Firefox.
+
 ## [0.1.1] - Linux download options
 
 - Added `.deb` packages for Debian/Ubuntu and `.rpm` packages for Fedora. These use the system WebKitGTK instead of the AppImage's bundled WebKitGTK and forced X11 backend.
