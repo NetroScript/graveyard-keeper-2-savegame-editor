@@ -40,6 +40,23 @@ edited value is valid for a particular game version. Keep the desktop backup, or
 your own backup when using the web editor, until the edited save has loaded
 successfully.
 
+## Screenshots
+
+The desktop and web versions share the same editing interface. Click a screenshot
+to view it at full size.
+
+| Save discovery and backups | General values |
+| --- | --- |
+| [![Discovered Graveyard Keeper 2 saves with metadata and backup controls](docs/screenshots/load-saves.png)](docs/screenshots/load-saves.png) | [![General save values including health, money, and technology points](docs/screenshots/general-editor.png)](docs/screenshots/general-editor.png) |
+
+| Inventory, bags, and tool belt | Technology tree |
+| --- | --- |
+| [![Player inventory with a nested bag and equipped tool belt](docs/screenshots/inventory-editor.png)](docs/screenshots/inventory-editor.png) | [![Building technology tree with unlock dependencies and reward details](docs/screenshots/technology-tree.png)](docs/screenshots/technology-tree.png) |
+
+[![Inspirations and perk tree with progression controls and perk details](docs/screenshots/inspirations.png)](docs/screenshots/inspirations.png)
+
+*Inspirations, progression controls, and the perk tree.*
+
 ## What can be edited
 
 - Health, energy, stamina, money, happiness, insanity, and technology points.
