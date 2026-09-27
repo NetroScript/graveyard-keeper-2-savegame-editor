@@ -3,6 +3,17 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.2.0] - Save Inspector search
+
+- Added simple and advanced Save Inspector search with field, class, type,
+  substring, exact, wildcard, Boolean, path, reference and numeric-range
+  matching. Structural child, descendant and parent predicates can return
+  containers or elements based on related fields. Results include match
+  explanations and a detailed syntax and examples dialog.
+- Added a dismissible Save Inspector warning about backups and the risks of raw
+  structural edits.
+- Updated the bundled game data for Graveyard Keeper 2 version 1.006.
+
 ## [0.1.2] - Improvements and fixes
 
 - Updated the bundled game data for Graveyard Keeper 2 version 1.005.
