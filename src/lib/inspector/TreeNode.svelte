@@ -10,6 +10,7 @@
     selected,
     onselect,
     expanded,
+    revealOffsets,
     active = true,
   }: {
     doc: SaveDocument;
@@ -17,6 +18,7 @@
     selected: number | null;
     onselect: (node: NodeView) => void | Promise<void>;
     expanded: Set<number>;
+    revealOffsets: Record<number, number>;
     active?: boolean;
   } = $props();
   let row = $state<HTMLDivElement>();
@@ -35,6 +37,7 @@
   );
   let children = $state<NodeView[]>([]);
   let total = $state(0);
+  let pageStart = $state(0);
   let error = $state("");
   async function load(offset = 0) {
     try {
@@ -44,7 +47,16 @@
         offset,
         limit: 100,
       });
-      children = offset ? [...children, ...page.nodes] : page.nodes;
+      const revealedPage = offset > 0 && revealOffsets[node.id] === offset;
+      if (!offset) {
+        children = page.nodes;
+        pageStart = 0;
+      } else if (revealedPage) {
+        children = page.nodes;
+        pageStart = offset;
+      } else {
+        children = [...children, ...page.nodes];
+      }
       total = page.total;
     } catch (e) {
       error = String(e);
@@ -52,7 +64,7 @@
   }
   $effect(() => {
     const revision = doc.summary!.revision;
-    if (active && isExpanded) void load();
+    if (active && isExpanded) void load(revealOffsets[node.id] ?? 0);
   });
   $effect(() => {
     if (selected === node.id && row) {
@@ -94,11 +106,11 @@
         {selected}
         {onselect}
         {expanded}
+        {revealOffsets}
         {active}
-      />{/each}{#if children.length < total}<li>
-        <button onclick={() => load(children.length)}
-          >Load more ({total - children.length})</button
-        >
+      />{/each}{#if pageStart > 0}<li><button onclick={() => load(0)}>Load from beginning</button></li>{/if}{#if pageStart + children.length < total}<li>
+        <button onclick={() => load(pageStart + children.length)}
+          >Load more ({total - pageStart - children.length})</button>
       </li>{/if}
   </ul>
   {#if error}<small class="warning">{error}</small>{/if}

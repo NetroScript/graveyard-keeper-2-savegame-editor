@@ -747,6 +747,236 @@ dd {
   min-height: 0;
   overflow: auto;
 }
+.inspector-search {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-bottom: 1px solid #555760;
+  background: #24262e;
+}
+.search-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: #555760;
+  border: 1px solid #555760;
+}
+.search-mode button {
+  border: 0;
+  background: #292a33;
+  color: #bbb4a8;
+}
+.search-mode button.active {
+  background: #3a342a;
+  color: var(--gold);
+}
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-left: 8px;
+  border: 1px solid #66636a;
+  background: var(--deep);
+}
+.search-input > svg {
+  width: 18px;
+  flex: 0 0 auto;
+  color: #aaa49a;
+}
+.search-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding-left: 0;
+}
+.search-input button {
+  min-width: 32px;
+  border: 0;
+  background: transparent;
+  padding: 5px;
+}
+.search-input button svg {
+  width: 15px;
+}
+.search-filters summary,
+.search-help summary {
+  color: #c9c1b3;
+  cursor: pointer;
+  font-size: 12px;
+}
+.search-filters > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 8px;
+}
+.search-filters label {
+  display: grid;
+  gap: 3px;
+  color: #a9a39a;
+  font-size: 10px;
+}
+.search-filters input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  font-size: 11px;
+}
+.search-help p {
+  margin: 6px 0 0;
+  color: #aaa49a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.search-help code {
+  color: #d8c89d;
+}
+.search-options,
+.search-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+.search-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.search-options button {
+  min-height: 30px;
+  padding: 5px 12px;
+}
+.search-options > span {
+  display: flex;
+  gap: 6px;
+}
+.search-options .search-help-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.search-help-button svg {
+  width: 15px;
+}
+.search-view-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  padding: 7px 10px;
+  border-bottom: 1px solid #484a52;
+  background: #20222a;
+}
+.search-view-toggle button {
+  min-height: 28px;
+  border-color: #555760;
+  background: #292a33;
+  color: #aaa49a;
+  font-size: 11px;
+}
+.search-view-toggle button.active {
+  border-color: #8f7448;
+  background: #3a342a;
+  color: var(--gold);
+}
+.search-results-view {
+  display: contents;
+}
+.search-results-view[hidden] {
+  display: none;
+}
+.search-summary {
+  padding: 7px 10px;
+  border-bottom: 1px solid #484a52;
+  color: #aaa49a;
+}
+.search-warning {
+  margin: 6px 10px;
+  font-size: 11px;
+}
+.search-result-list {
+  position: relative;
+  flex: 1;
+  min-height: 160px;
+  overflow: auto;
+  outline: none;
+}
+.search-result-list:focus-visible {
+  border-color: var(--gold);
+}
+.search-result-space {
+  position: relative;
+  min-width: 0;
+}
+.search-result-slot {
+  position: absolute;
+  inset: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 72px;
+  border-bottom: 1px solid #41434b;
+}
+.search-result-slot > button:first-child {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 7px 9px;
+  text-align: left;
+}
+.search-result-slot > button:first-child.selected {
+  background: #80643830;
+}
+.search-result-slot span,
+.search-result-slot small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-result-slot span {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+.search-result-slot b {
+  color: var(--cream);
+  font-size: 12px;
+}
+.search-result-slot em {
+  color: #7ca9c9;
+  font-size: 9px;
+  font-style: normal;
+}
+.search-result-slot i {
+  color: #9b8c74;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 400;
+}
+.search-result-slot small {
+  color: #a6ad8a;
+  font-size: 10px;
+}
+.search-result-slot .result-path {
+  color: #808895;
+}
+.reveal-result {
+  align-self: center;
+  margin-right: 7px;
+  padding: 4px 7px;
+  min-height: 26px;
+  font-size: 10px;
+}
+.result-loading {
+  align-self: center;
+  padding: 10px;
+  color: #858a93;
+  font-size: 11px;
+}
 .details-pane {
   display: flex;
   flex-direction: column;

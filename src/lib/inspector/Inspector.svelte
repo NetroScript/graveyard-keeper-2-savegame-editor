@@ -3,6 +3,8 @@
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView, Operation } from "../save-api";
   import TreeNode from "./TreeNode.svelte";
+  import SearchPane from "./SearchPane.svelte";
+  import type { NodeLocation } from "../save-api";
   import { matchWidget } from "./widgets";
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
   let { doc, active = true }: { doc: SaveDocument; active?: boolean } = $props();
@@ -24,6 +26,9 @@
   let templates = $state<{ id: string; typeName: string }[]>([]);
   let layout = $state<HTMLDivElement>();
   let treeWidth = $state<number | null>(null);
+  let searchActive = $state(false);
+  let revealOffsets = $state<Record<number, number>>({});
+  let rootOffset = $state(0);
   const expanded = new SvelteSet<number>();
   let widget = $derived(node ? matchWidget(node, children) : undefined);
   async function refresh() {
@@ -33,7 +38,7 @@
         await doc.query<{ nodes: NodeView[] }>({
           op: "children",
           parent: null,
-          offset: 0,
+          offset: rootOffset,
           limit: 200,
         })
       ).nodes;
@@ -69,19 +74,44 @@
     const id = selected;
     void refresh();
   });
-  async function select(n: NodeView) {
+  async function select(n: NodeView, expand = true) {
     selected = n.id;
     raw = false;
     error = "";
     try {
       let cursor = n;
-      while (cursor.parent !== null) {
+      while (expand && cursor.parent !== null) {
         expanded.add(cursor.parent);
         cursor = (await doc.nodes([cursor.parent]))[0];
       }
     } catch (e) {
       error = String(e);
     }
+  }
+  async function reveal(location: NodeLocation, target: NodeView) {
+    const offsets: Record<number, number> = {};
+    for (const step of location.trail) {
+      if (step.parent !== null) {
+        expanded.add(step.parent);
+        offsets[step.parent] = Math.floor(step.index / 100) * 100;
+      }
+    }
+    revealOffsets = offsets;
+    const root = location.trail[0];
+    if (root) {
+      rootOffset = Math.floor(root.index / 200) * 200;
+      roots = (
+        await doc.query<{ nodes: NodeView[] }>({
+          op: "children",
+          parent: null,
+          offset: rootOffset,
+          limit: 200,
+        })
+      ).nodes;
+      treeRevision++;
+    }
+    searchActive = false;
+    await select(target, false);
   }
   function boundedTreeWidth(width: number, total: number) {
     return Math.max(220, Math.min(width, total - 320));
@@ -149,13 +179,23 @@
 >
   <div class="panel tree-pane">
     <h3 class="strip">Save structure</h3>
-    <ul class="tree">
+    <SearchPane
+      {doc}
+      {active}
+      showResults={searchActive}
+      {selected}
+      onselect={(record) => select(record, false)}
+      onreveal={reveal}
+      onactive={(value) => (searchActive = value)}
+    />
+    <ul class="tree" hidden={searchActive}>
       {#each roots as root (`${treeRevision}:${root.id}`)}<TreeNode
           {doc}
           node={root}
           {selected}
           onselect={select}
           {expanded}
+          {revealOffsets}
           {active}
         />{/each}
     </ul>

@@ -75,6 +75,7 @@ function fixture() {
     ]),
     objectNode("wgo", 1, "WgoData, Assembly-CSharp", 7, [
       textScalar("id", "graveyard_gate"),
+      textScalar("worldId", "Prison"),
     ]),
     objectNode("scene", 2, "GameSceneData, Assembly-CSharp", 8, [
       textScalar("id", "Village"),
@@ -101,6 +102,14 @@ function fixture() {
       textScalar("id", "12345678-1234-1234-1234-123456789abc"),
     ]),
   ]);
+}
+function largeSearchFixture(matches: number) {
+  return node(
+    "",
+    Array.from({ length: matches }, (_, index) =>
+      textScalar(`field${index}`, `needle_${index}`),
+    ),
+  );
 }
 async function open(page: Page, name = "one.dat") {
   await page.getByLabel("Select save files").setInputFiles({
@@ -456,6 +465,120 @@ test("local real save round trip through browser", async ({ page }) => {
     page.getByRole("option", { name: /^Cheese\b/i }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+test("Inspector simple and advanced search select and reveal records", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await open(page);
+  await page
+    .getByRole("button", { name: "Save Inspector", exact: true })
+    .click();
+
+  const search = page.getByRole("searchbox", {
+    name: "Search save structure",
+  });
+  await page.getByRole("button", { name: "Syntax help", exact: true }).click();
+  const help = page.getByRole("dialog", { name: "Inspector search syntax" });
+  await expect(help).toBeVisible();
+  await expect(help.getByText(/nearest typed object containing the record/i)).toBeVisible();
+  await expect(help.locator(".search-example")).toHaveCount(10);
+  await expect(
+    help.locator(".search-example").filter({
+      hasText: "Exact field with alternative values",
+    }),
+  ).toBeVisible();
+  await expect(
+    help.locator(".search-example").filter({
+      hasText: "parent:(child:(name==id value==PalaceSewer))",
+    }),
+  ).toBeVisible();
+  await help
+    .locator(".search-example")
+    .filter({ hasText: "Inventory item string IDs" })
+    .getByRole("button", { name: "Use query" })
+    .click();
+  await expect(help).toHaveCount(0);
+  await expect(search).toHaveValue(
+    "path:*playerInventory* ancestor:Item type:string name:id value:*iron*",
+  );
+  await page.getByRole("button", { name: "Simple", exact: true }).click();
+  await search.fill("simple_iron_parts");
+  await expect(page.getByText("1 matches", { exact: true })).toBeVisible();
+  await expect(page.getByText("Complete", { exact: true })).toBeVisible();
+  const result = page.getByRole("option", { name: /id.*simple_iron_parts/ });
+  await expect(result).toBeVisible();
+  await result.click();
+  await expect(page.locator(".details-pane h3.strip")).toHaveText("id");
+
+  await page.getByRole("button", { name: "Advanced", exact: true }).click();
+  await search.fill(
+    "class:WgoData child:(name==worldId value==(Prison | RuinedTemple))",
+  );
+  await expect(page.getByText("1 matches", { exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: /wgo.*class match/ })).toBeVisible();
+
+  await search.fill(
+    "type:(int | float) (name:count | name:value) value>=10 value<=20",
+  );
+  await expect(page.getByText("2 matches", { exact: true })).toBeVisible();
+  await expect(page.getByText("Complete", { exact: true })).toBeVisible();
+
+  await search.fill("path:*item* ancestor:Item type:string name:id value:*iron*");
+  await expect(page.getByText("1 matches", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Reveal", exact: true }).click();
+  await expect(page.locator(".tree-row.selected")).toContainText("id");
+  await page
+    .getByRole("button", { name: "Results (1)", exact: true })
+    .click();
+  await expect(page.getByRole("option", { name: /id.*value match/ })).toBeVisible();
+  await expect(page.locator(".search-warning[role=alert]")).toHaveCount(0);
+});
+
+test("Inspector virtualizes a hundred thousand search matches", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto("/");
+  await page.getByLabel("Select save files").setInputFiles({
+    name: "large-search.dat",
+    mimeType: "application/octet-stream",
+    buffer: largeSearchFixture(100_001),
+  });
+  await expect(page.getByRole("heading", { name: /large-search\.dat/ })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page
+    .getByRole("button", { name: "Save Inspector", exact: true })
+    .click();
+  await page
+    .getByRole("searchbox", { name: "Search save structure" })
+    .fill("needle");
+  await expect(page.getByText("100,001 matches", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByText("Complete", { exact: true })).toBeVisible();
+  const list = page.getByRole("listbox", { name: "Search results" });
+  await expect(list.locator(".search-result-slot")).not.toHaveCount(0);
+  expect(await list.locator(".search-result-slot").count()).toBeLessThan(60);
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  const bottomOption = list.getByRole("option").last();
+  await expect(bottomOption).toBeVisible();
+  const bottomName = (await bottomOption.locator("b").textContent())!;
+  expect(await list.locator(".search-result-slot").count()).toBeLessThan(60);
+  const bottomScroll = await list.evaluate((element) => element.scrollTop);
+  await page.getByRole("button", { name: "Reveal", exact: true }).last().click();
+  await expect(page.locator(".tree-row.selected")).toContainText(bottomName);
+  await page
+    .getByRole("button", { name: "Results (100,001)", exact: true })
+    .click();
+  await expect(
+    list.getByRole("option").filter({ hasText: bottomName }).last(),
+  ).toBeVisible();
+  expect(await list.evaluate((element) => element.scrollTop)).toBe(bottomScroll);
+  await expect(page.locator(".search-warning[role=alert]")).toHaveCount(0);
 });
 
 test("real save renders progression trees and undo restores unlocks", async ({ page }) => {
