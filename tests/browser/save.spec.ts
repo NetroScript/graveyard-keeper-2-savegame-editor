@@ -476,6 +476,20 @@ test("Inspector simple and advanced search select and reveal records", async ({
     .getByRole("button", { name: "Save Inspector", exact: true })
     .click();
 
+  const safetyNote = page.getByRole("note", {
+    name: "Save Inspector warning",
+  });
+  await expect(safetyNote).toBeVisible();
+  await safetyNote
+    .getByRole("button", { name: "Dismiss Save Inspector warning" })
+    .click();
+  await expect(safetyNote).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem("gk2-inspector-warning-dismissed-v1"),
+    ),
+  ).toBe("1");
+
   const search = page.getByRole("searchbox", {
     name: "Search save structure",
   });

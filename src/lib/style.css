@@ -723,6 +723,51 @@ dd {
 .settings-panel h3 {
   margin: 25px 0 10px;
 }
+.inspector-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.inspector-safety-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  margin: 12px 12px 0;
+  padding: 10px 12px;
+  color: #d7c4a3;
+  background: #352d27;
+  border: 1px solid #806442;
+}
+.inspector-safety-note > svg {
+  width: 19px;
+  height: 19px;
+  margin-top: 1px;
+  color: #e0ad55;
+}
+.inspector-safety-note strong {
+  color: #ead3aa;
+  font-size: 12px;
+}
+.inspector-safety-note p {
+  margin: 3px 0 0;
+  color: #bdb2a1;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.inspector-safety-note button {
+  width: 28px;
+  min-height: 28px;
+  padding: 5px;
+  color: #c8b89e;
+  background: #2a2727;
+  border-color: #685540;
+}
+.inspector-safety-note button svg {
+  width: 16px;
+  height: 16px;
+}
 .inspector-layout {
   display: grid;
   grid-template-columns: minmax(220px, var(--tree-width)) 10px minmax(
@@ -731,7 +776,8 @@ dd {
     );
   gap: 0;
   align-items: stretch;
-  height: 100%;
+  flex: 1;
+  height: auto;
   min-height: 0;
   padding: 12px;
 }
@@ -1336,6 +1382,12 @@ dd {
   .inspector-layout {
     display: block;
     height: auto;
+  }
+  .inspector-shell {
+    height: auto;
+  }
+  .inspector-safety-note {
+    margin: 12px 0 0;
   }
   .inspector-view {
     overflow: auto;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView, Operation } from "../save-api";
@@ -7,6 +8,8 @@
   import type { NodeLocation } from "../save-api";
   import { matchWidget } from "./widgets";
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
+  import Warning from "~icons/ph/warning";
+  import X from "~icons/ph/x";
   let { doc, active = true }: { doc: SaveDocument; active?: boolean } = $props();
   let roots = $state<NodeView[]>([]);
   let treeRevision = $state(-1);
@@ -29,8 +32,21 @@
   let searchActive = $state(false);
   let revealOffsets = $state<Record<number, number>>({});
   let rootOffset = $state(0);
+  let safetyWarningDismissed = $state(false);
   const expanded = new SvelteSet<number>();
   let widget = $derived(node ? matchWidget(node, children) : undefined);
+  onMount(() => {
+    try {
+      safetyWarningDismissed =
+        localStorage.getItem("gk2-inspector-warning-dismissed-v1") === "1";
+    } catch {}
+  });
+  function dismissSafetyWarning() {
+    safetyWarningDismissed = true;
+    try {
+      localStorage.setItem("gk2-inspector-warning-dismissed-v1", "1");
+    } catch {}
+  }
   async function refresh() {
     try {
       const revision = doc.summary!.revision;
@@ -172,11 +188,33 @@
   }
 </script>
 
-<div
-  bind:this={layout}
-  class="inspector-layout"
-  style:--tree-width={treeWidth === null ? "38%" : `${treeWidth}px`}
->
+<div class="inspector-shell">
+  {#if !safetyWarningDismissed}<aside
+      class="inspector-safety-note"
+      role="note"
+      aria-label="Save Inspector warning"
+    >
+      <Warning />
+      <div>
+        <strong>Save Inspector edits can break a save.</strong>
+        <p>
+          Keep an independent backup and change only fields you understand. Raw
+          structural edits may make the save unreadable or cause problems in the
+          game.
+        </p>
+      </div>
+      <button
+        type="button"
+        aria-label="Dismiss Save Inspector warning"
+        title="Dismiss"
+        onclick={dismissSafetyWarning}><X /></button
+      >
+    </aside>{/if}
+  <div
+    bind:this={layout}
+    class="inspector-layout"
+    style:--tree-width={treeWidth === null ? "38%" : `${treeWidth}px`}
+  >
   <div class="panel tree-pane">
     <h3 class="strip">Save structure</h3>
     <SearchPane
@@ -376,4 +414,5 @@
       {#if error}<p class="warning" role="alert">{error}</p>{/if}
     </div>
   </section>
+  </div>
 </div>
