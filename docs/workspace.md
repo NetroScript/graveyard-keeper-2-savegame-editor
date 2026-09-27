@@ -8,6 +8,33 @@ Opening bytes returns a summary with `documentId`, `revision`, byte counts, `dir
 
 Queries include `summary`, `children` (offset/limit, maximum 200), `nodes` (up to 200 handles), `general`, `drops` and `templates`. Close releases a document. Numeric field values cross transport boundaries as strings; input/output files use binary buffers.
 
+Inspector search is incremental and revision-bound. `search_start` accepts the
+query and case-sensitivity option, `search_step` advances a bounded traversal,
+and `search_page` returns at most 200 lightweight matches. `search_cancel`
+releases the current search and `node_location` returns stored-tree ancestor
+positions for revealing a result without loading every preceding sibling.
+
+Advanced queries use spaces for AND, `|` for OR, `!` for NOT and parentheses
+for grouping. `name:`, `path:`, `type:`, `class:`, `owner:`, `ancestor:` and
+`value:` limit text terms. Unquoted `*` and `?` are whole-field wildcards;
+quoted terms are literal. Numeric values use comparisons such as `value>=10`.
+Exact text uses `==`, including qualified alternatives such as
+`name==worldId value==(Prison | RuinedTemple)`. A single `=` remains numeric
+equality.
+Unqualified matches are ranked by direct value, name, class, type and then path
+matches. Each result reports `matchField` so the Inspector can explain why a
+record matched; explicit qualifiers continue to filter without changing their
+semantics.
+
+Structural predicates return the outer record while testing related stored
+records. `child:(name==worldId value==(Prison | RuinedTemple))` returns nodes
+with a matching direct child. `descendant:(...)` searches at any stored depth.
+`parent:(child:(name==id value==PalaceSewer)) !name==id` returns the other
+direct children of a parent identified by its `id` field. Structural scopes may
+use `name`, `type`, `class`, `value`, numeric comparisons and nested structural
+predicates; route-relative `path`, `owner` and `ancestor` filters remain outside
+the scope. Descendant results are memoized within a bounded per-search cache.
+
 ```json
 {
   "op": "transact",

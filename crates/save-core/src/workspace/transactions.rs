@@ -32,6 +32,8 @@ struct Session {
     references: HashMap<i32, HashSet<usize>>,
     guids: HashMap<String, HashSet<usize>>,
     encoded_bytes: std::cell::Cell<Option<usize>>,
+    search: Option<crate::search::SearchState>,
+    next_search_id: u32,
 }
 #[derive(Default)]
 pub struct Workspace {
@@ -292,6 +294,8 @@ impl Workspace {
             references: HashMap::new(),
             guids: HashMap::new(),
             encoded_bytes: std::cell::Cell::new(Some(bytes.len())),
+            search: None,
+            next_search_id: 0,
         };
         for id in ids {
             let record = s.doc.records[id].clone();
@@ -384,6 +388,104 @@ impl Workspace {
                     })
                     .collect::<Result<Vec<_>, Error>>()?;
                 Ok(json!(nodes))
+            }
+            Command::SearchStart {
+                revision,
+                query,
+                case_sensitive,
+            } => {
+                self.check_revision(id, revision)?;
+                let s = self.sessions.get_mut(&id).unwrap();
+                s.next_search_id = s
+                    .next_search_id
+                    .checked_add(1)
+                    .ok_or_else(|| failure("Search ID limit exceeded"))?;
+                let search = crate::search::SearchState::new(
+                    &s.doc,
+                    revision,
+                    s.next_search_id,
+                    &query,
+                    case_sensitive,
+                )?;
+                let status = search.status();
+                s.search = Some(search);
+                Ok(json!(status))
+            }
+            Command::SearchStep {
+                revision,
+                search_id,
+            } => {
+                self.check_revision(id, revision)?;
+                let s = self.sessions.get_mut(&id).unwrap();
+                let search = s
+                    .search
+                    .as_mut()
+                    .ok_or_else(|| failure("Search is no longer active"))?;
+                if search.id() != search_id || search.revision() != revision {
+                    return Err(failure("Search is no longer active"));
+                }
+                search.step(&s.doc);
+                Ok(json!(search.status()))
+            }
+            Command::SearchPage {
+                revision,
+                search_id,
+                offset,
+                limit,
+            } => {
+                self.check_revision(id, revision)?;
+                if limit == 0 || limit > 200 {
+                    return Err(failure("Search page size must be 1..200"));
+                }
+                let s = self.session(id)?;
+                let search = s
+                    .search
+                    .as_ref()
+                    .ok_or_else(|| failure("Search is no longer active"))?;
+                if search.id() != search_id || search.revision() != revision {
+                    return Err(failure("Search is no longer active"));
+                }
+                Ok(
+                    json!({"results":search.page(offset,limit),"offset":offset,"status":search.status()}),
+                )
+            }
+            Command::SearchCancel {
+                revision,
+                search_id,
+            } => {
+                self.check_revision(id, revision)?;
+                let s = self.sessions.get_mut(&id).unwrap();
+                if s.search
+                    .as_ref()
+                    .is_some_and(|search| search.id() == search_id)
+                {
+                    s.search = None;
+                }
+                Ok(json!({"cancelled":search_id}))
+            }
+            Command::NodeLocation { revision, node } => {
+                self.check_revision(id, revision)?;
+                active(doc, node)?;
+                let mut cursor = node;
+                let mut trail = vec![];
+                loop {
+                    let record = &doc.records[cursor];
+                    let siblings = record
+                        .parent
+                        .map(|parent| &doc.records[parent].children)
+                        .unwrap_or(&doc.roots);
+                    let index = siblings
+                        .iter()
+                        .position(|id| *id == cursor)
+                        .ok_or_else(|| failure("Invalid node location"))?;
+                    trail.push(json!({"node":cursor,"parent":record.parent,"index":index}));
+                    let Some(parent) = record.parent else {
+                        break;
+                    };
+                    cursor = parent;
+                }
+                trail.reverse();
+                Ok(json!({"revision":revision,"trail":trail}))
             }
             Command::General => Ok(crate::general::read(doc)),
             Command::Drops => crate::drops::read(doc),
@@ -654,6 +756,7 @@ impl Workspace {
             rehash(s, &touched);
             s.revision = next_revision;
             s.redo.clear();
+            s.search = None;
         }
         let inventory = delta(s, &patch);
         let inventory_invalidated =
@@ -711,6 +814,7 @@ impl Workspace {
         let touched: Vec<_> = patch.changes.iter().map(|c| c.id).collect();
         rehash(s, &touched);
         s.revision = next_revision;
+        s.search = None;
         let inventory = delta(s, &patch);
         let invalidated =
             patch.invalidated || (!patch.containers.is_empty() && inventory.is_none());

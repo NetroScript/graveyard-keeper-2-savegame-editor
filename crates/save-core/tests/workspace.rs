@@ -94,6 +94,307 @@ fn value_node(name: &str, children: Vec<u8>) -> Vec<u8> {
     b.push(5);
     b
 }
+fn text_value(name: &str, value: &str) -> Vec<u8> {
+    let mut b = vec![39];
+    b.extend(string(name));
+    b.extend(string(value));
+    b
+}
+fn object_node(name: &str, type_name: &str, object: i32, children: Vec<u8>) -> Vec<u8> {
+    let mut b = vec![1];
+    b.extend(string(name));
+    b.push(47);
+    b.extend(0i32.to_le_bytes());
+    b.extend(string(type_name));
+    b.extend(object.to_le_bytes());
+    b.extend(children);
+    b.push(5);
+    b
+}
+fn internal_reference(name: &str, object: i32) -> Vec<u8> {
+    let mut b = vec![9];
+    b.extend(string(name));
+    b.extend(object.to_le_bytes());
+    b
+}
+
+fn search_count(workspace: &mut Workspace, id: u32, query: &str) -> u64 {
+    let started = request(
+        workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":query,"caseSensitive":false}),
+    );
+    let search_id = started["searchId"].as_u64().unwrap();
+    request(
+        workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":search_id}),
+    )["discovered"]
+        .as_u64()
+        .unwrap()
+}
+
+#[test]
+fn inspector_search_filters_pages_locations_and_invalidates_on_edit() {
+    let mut count = vec![27];
+    count.extend(string("count"));
+    count.extend(9_223_372_036_854_775_000i64.to_le_bytes());
+    let item = object_node(
+        "entry",
+        "Game.Items.Item, Assembly-CSharp",
+        1,
+        [text_value("id", "simple_iron_parts"), count].concat(),
+    );
+    let bytes = value_node(
+        "",
+        [
+            value_node("playerInventory", item),
+            value_node(
+                "environmentData",
+                text_value("timeOfDayPresetName", "indoor"),
+            ),
+            value_node(
+                "worlds",
+                [
+                    text_value("worldId", "Prison"),
+                    text_value("otherworldId", "Prison"),
+                    text_value("worldId", "RuinedTemple"),
+                ]
+                .concat(),
+            ),
+        ]
+        .concat(),
+    );
+    let mut workspace = Workspace::default();
+    let id = workspace.open(&bytes).unwrap().document_id;
+    let started = request(
+        &mut workspace,
+        id,
+        json!({
+            "op":"search_start",
+            "revision":1,
+            "query":"path:*playerInventory* ancestor:Item type:string name:id value:*iron*",
+            "caseSensitive":false
+        }),
+    );
+    let search_id = started["searchId"].as_u64().unwrap();
+    let status = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":search_id}),
+    );
+    assert_eq!(status["status"], "complete");
+    assert_eq!(status["discovered"], 1);
+    let page = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_page","revision":1,"searchId":search_id,"offset":0,"limit":100}),
+    );
+    assert_eq!(page["results"][0]["name"], "id");
+    assert!(page["results"][0]["path"]
+        .as_str()
+        .unwrap()
+        .contains("playerInventory"));
+    let node = page["results"][0]["node"].as_u64().unwrap();
+    let location = request(
+        &mut workspace,
+        id,
+        json!({"op":"node_location","revision":1,"node":node}),
+    );
+    assert_eq!(
+        location["trail"].as_array().unwrap().last().unwrap()["node"],
+        node
+    );
+
+    let numeric = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":"type:int value>9223372036854774999","caseSensitive":false}),
+    );
+    let numeric_id = numeric["searchId"].as_u64().unwrap();
+    let numeric = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":numeric_id}),
+    );
+    assert_eq!(numeric["discovered"], 1);
+
+    let ranked = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":"iron","caseSensitive":false}),
+    );
+    let ranked_id = ranked["searchId"].as_u64().unwrap();
+    request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":ranked_id}),
+    );
+    let ranked = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_page","revision":1,"searchId":ranked_id,"offset":0,"limit":100}),
+    );
+    assert!(ranked["results"].as_array().unwrap().len() >= 2);
+    assert_eq!(ranked["results"][0]["name"], "id");
+    assert_eq!(ranked["results"][0]["matchField"], "value");
+    assert!(ranked["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|result| result["matchField"] == "path"));
+
+    let exact = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":"name==worldId value==(Prison | RuinedTemple)","caseSensitive":false}),
+    );
+    let exact_id = exact["searchId"].as_u64().unwrap();
+    let exact = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":exact_id}),
+    );
+    assert_eq!(exact["discovered"], 2);
+    let exact_page = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_page","revision":1,"searchId":exact_id,"offset":0,"limit":100}),
+    );
+    assert!(exact_page["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|result| result["name"] == "worldId"));
+
+    let substring = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":"name:worldId value:Prison","caseSensitive":false}),
+    );
+    let substring_id = substring["searchId"].as_u64().unwrap();
+    let substring = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":substring_id}),
+    );
+    assert_eq!(substring["discovered"], 2);
+    let substring_page = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_page","revision":1,"searchId":substring_id,"offset":0,"limit":100}),
+    );
+    assert!(substring_page["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|result| result["name"] == "otherworldId"));
+
+    request(
+        &mut workspace,
+        id,
+        json!({"op":"transact","revision":1,"operations":[{"op":"set","node":node,"tag":39,"value":"copper"}]}),
+    );
+    let stale: Command = serde_json::from_value(
+        json!({"op":"search_page","revision":1,"searchId":ranked_id,"offset":0,"limit":100}),
+    )
+    .unwrap();
+    assert!(workspace.request(id, stale).is_err());
+}
+
+#[test]
+fn inspector_search_follows_reference_routes_and_stops_cycles() {
+    let item = object_node(
+        "storedItem",
+        "Item, Assembly-CSharp",
+        1,
+        [text_value("id", "iron_part"), internal_reference("self", 1)].concat(),
+    );
+    let bytes = value_node("", [item, internal_reference("linkedItem", 1)].concat());
+    let mut workspace = Workspace::default();
+    let id = workspace.open(&bytes).unwrap().document_id;
+    let started = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_start","revision":1,"query":"path:*linkedItem* ancestor:Item name:id value:*iron*","caseSensitive":false}),
+    );
+    let search_id = started["searchId"].as_u64().unwrap();
+    let status = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_step","revision":1,"searchId":search_id}),
+    );
+    assert_eq!(status["status"], "complete");
+    assert_eq!(status["discovered"], 1);
+    assert!(status["visited"].as_u64().unwrap() < 20);
+    let page = request(
+        &mut workspace,
+        id,
+        json!({"op":"search_page","revision":1,"searchId":search_id,"offset":0,"limit":100}),
+    );
+    assert!(page["results"][0]["path"]
+        .as_str()
+        .unwrap()
+        .contains("linkedItem"));
+}
+
+#[test]
+fn inspector_search_matches_children_descendants_and_parents() {
+    let bytes = value_node(
+        "",
+        [
+            value_node("direct", text_value("worldId", "Prison")),
+            value_node(
+                "nested",
+                value_node("details", text_value("worldId", "RuinedTemple")),
+            ),
+            value_node(
+                "palace",
+                [
+                    text_value("id", "PalaceSewer"),
+                    text_value("member", "gate"),
+                ]
+                .concat(),
+            ),
+        ]
+        .concat(),
+    );
+    let mut workspace = Workspace::default();
+    let id = workspace.open(&bytes).unwrap().document_id;
+
+    assert_eq!(
+        search_count(
+            &mut workspace,
+            id,
+            "name==direct child:(name==worldId value==(Prison | RuinedTemple))"
+        ),
+        1
+    );
+    assert_eq!(
+        search_count(
+            &mut workspace,
+            id,
+            "name==nested child:(name==worldId value==RuinedTemple)"
+        ),
+        0
+    );
+    assert_eq!(
+        search_count(
+            &mut workspace,
+            id,
+            "name==nested descendant:(name==worldId value==RuinedTemple)"
+        ),
+        1
+    );
+    assert_eq!(
+        search_count(
+            &mut workspace,
+            id,
+            "name==member parent:(child:(name==id value==PalaceSewer))"
+        ),
+        1
+    );
+}
 #[test]
 fn clone_cycles_shared_references_and_relocate_type_declaration() {
     let mut child = vec![2, 47];

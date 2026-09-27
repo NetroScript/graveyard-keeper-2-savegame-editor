@@ -34,6 +34,27 @@ export interface TreeField {
   tag: number;
   value: string;
 }
+export interface SearchStatus {
+  searchId: number;
+  revision: number;
+  status: "searching" | "complete" | "incomplete";
+  discovered: number;
+  visited: number;
+  completionReason: string | null;
+}
+export interface SearchResult {
+  node: number;
+  name: string;
+  kind: string;
+  typeName: string | null;
+  value: string | null;
+  path: string;
+  matchField: string;
+}
+export interface NodeLocation {
+  revision: number;
+  trail: { node: number; parent: number | null; index: number }[];
+}
 export type Operation = { op: string; [key: string]: unknown };
 export interface SaveBackend {
   open(bytes: Uint8Array): Promise<Summary>;

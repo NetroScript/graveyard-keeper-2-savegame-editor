@@ -33,6 +33,33 @@ pub enum Command {
     Nodes {
         ids: Vec<usize>,
     },
+    SearchStart {
+        revision: u32,
+        query: String,
+        #[serde(default, rename = "caseSensitive")]
+        case_sensitive: bool,
+    },
+    SearchStep {
+        revision: u32,
+        #[serde(rename = "searchId")]
+        search_id: u32,
+    },
+    SearchPage {
+        revision: u32,
+        #[serde(rename = "searchId")]
+        search_id: u32,
+        offset: usize,
+        limit: usize,
+    },
+    SearchCancel {
+        revision: u32,
+        #[serde(rename = "searchId")]
+        search_id: u32,
+    },
+    NodeLocation {
+        revision: u32,
+        node: usize,
+    },
     General,
     Drops,
     Progression,
