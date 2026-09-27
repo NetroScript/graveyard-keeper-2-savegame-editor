@@ -98,6 +98,10 @@ to view it at full size.
 
 _Inspirations, progression controls, and the perk tree._
 
+| Save Inspector tree and record details                                                                                                       | Save Inspector search and query filtering                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Save Inspector record tree with breadcrumbs and field editing](docs/screenshots/save-inspector.png)](docs/screenshots/save-inspector.png) | [![Save Inspector search query matching item IDs and nested fields](docs/screenshots/save-inspector-search.png)](docs/screenshots/save-inspector-search.png) |
+
 ## What can be edited
 
 - Health, energy, stamina, money, happiness, insanity, and technology points.
@@ -113,6 +117,52 @@ _Inspirations, progression controls, and the perk tree._
 The side rail shows the game version represented by the included asset catalog.
 If that version is older than the installed game, definitions or icons may be
 outdated even when the save itself still opens.
+
+## Save Inspector
+
+The Save Inspector lets you explore and edit the raw structure of your save
+file. It is useful for viewing and changing data that does not have a dedicated
+menu yet - such as world objects, scene data, quest flags, and other game
+properties.
+
+### Tree browsing and editing
+
+- **Two-panel layout:** Browse the save structure on the left and see the
+  details of the selected entry on the right. You can drag the divider to resize
+  the panels or use the keyboard (Arrow keys to resize, Home to reset).
+- **Smooth navigation:** Large collections of entries load in pages of 200 items
+  at a time, keeping the interface snappy. A breadcrumb bar at the top always
+  shows your current path in the save hierarchy.
+- **Friendly widgets with raw toggle:** Common data types like game GUIDs and
+  coordinates have dedicated friendly editors, with a toggle to inspect the raw
+  fields whenever you need to.
+- **Direct editing:** Modify numbers, booleans, and text directly.
+- **Structure editing:** Add new fields or arrays, pick from common templates,
+  reorder entries, duplicate subtrees, remove items, or reconnect object
+  references.
+- **Full undo support:** A dismissible safety banner warns that raw edits can
+  corrupt saves. All changes support full undo and redo (`Ctrl+Z` / `Ctrl+Y`),
+  letting you easily step back if something goes wrong.
+
+### Searching the save
+
+The inspector includes a fast search to help you track down specific items,
+values, or objects across the entire save:
+
+- **Simple and Advanced search:** Simple mode lets you filter by typing a word,
+  matching a field name, or picking a numeric range. Advanced mode lets you write
+  flexible query expressions.
+- **Text & exact matching:** Supports wildcards (like `*iron*`), exact matches
+  using `==` (for example `name==worldId` or `value==Prison`), and quoted words.
+- **Combining search terms:** Combine conditions with AND (spaces), OR (`|`),
+  NOT (`!`), and parentheses `()` for grouping.
+- **Numeric ranges:** Filter numbers with comparisons such as `value>=10`,
+  `value<=100`, or `value=50`.
+- **Relationship filters:** Target containers based on what is inside them using
+  `child:(...)`, `descendant:(...)`, or `parent:(...)` queries.
+- **Jump to result:** Clicking any search result opens its place in the tree,
+  automatically expanding all parent folders and highlighting the matching
+  entry.
 
 ## Finding saves
 
