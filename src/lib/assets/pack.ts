@@ -19,6 +19,23 @@ export interface PackMetadata {
   images: Record<string, PackedImage>;
 }
 
+/**
+ * The packer gzips the whole pack, mostly for the MessagePack metadata; PNG
+ * payloads barely shrink. Uncompressed packs are returned unchanged.
+ */
+export async function inflatePack(bytes: Uint8Array): Promise<Uint8Array> {
+  if (bytes[0] !== 0x1f || bytes[1] !== 0x8b) return bytes;
+  if (typeof DecompressionStream === "undefined") {
+    // WebKitGTK before 2.48 and Safari before 16.4 lack DecompressionStream.
+    const { gunzipSync } = await import("fflate");
+    return gunzipSync(bytes);
+  }
+  const stream = new Blob([new Uint8Array(bytes)])
+    .stream()
+    .pipeThrough(new DecompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
 export function parsePack(bytes: Uint8Array) {
   if (bytes.length < HEADER_SIZE || bytes.length > MAX_PACK)
     throw new Error("Invalid asset pack size");

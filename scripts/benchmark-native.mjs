@@ -3,10 +3,11 @@
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { decode } from "@msgpack/msgpack";
+import { inflatePack } from "../src/lib/assets/pack.ts";
 
 const [savePath, packPath = "static/assets/game.gk2pack"] = process.argv.slice(2);
 if (!savePath) throw new Error("Usage: node scripts/benchmark-native.mjs <save.dat> [game.gk2pack]");
-const pack = readFileSync(packPath);
+const pack = Buffer.from(await inflatePack(readFileSync(packPath)));
 const catalogs = decode(pack.subarray(16, 16 + pack.readUInt32LE(12))).catalogs;
 const equipment = new Map(
   catalogs["inventory-rules"].equipment.map((entry) => [entry.id, entry]),

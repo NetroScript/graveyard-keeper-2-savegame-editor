@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { decode } from "@msgpack/msgpack";
 import { initSync, SaveSession } from "../static/wasm/gk2_save_wasm.js";
+import { inflatePack } from "../src/lib/assets/pack.ts";
 
 const [savePath, packPath = "static/assets/game.gk2pack"] =
   process.argv.slice(2);
@@ -12,7 +13,7 @@ if (!savePath)
   );
 initSync({ module: readFileSync("static/wasm/gk2_save_wasm_bg.wasm") });
 const bytes = readFileSync(savePath);
-const pack = readFileSync(packPath);
+const pack = Buffer.from(await inflatePack(readFileSync(packPath)));
 const catalogs = decode(pack.subarray(16, 16 + pack.readUInt32LE(12))).catalogs;
 const equipment = new Map(
   catalogs["inventory-rules"].equipment.map((entry) => [entry.id, entry]),

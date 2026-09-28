@@ -1,4 +1,4 @@
-import { applyStripLut, parsePack, replaceBlue } from "./pack";
+import { applyStripLut, inflatePack, parsePack, replaceBlue } from "./pack";
 
 export interface ImageRenderOptions {
   /** Replace the game's pure-blue shader mask with this CSS hex color. */
@@ -42,7 +42,9 @@ export class AssetPack {
     const response = await fetch(url, { signal });
     if (!response.ok)
       throw new Error(`Could not load assets (${response.status})`);
-    return new AssetPack(new Uint8Array(await response.arrayBuffer()));
+    return new AssetPack(
+      await inflatePack(new Uint8Array(await response.arrayBuffer())),
+    );
   }
 
   /** Catalog names match exporter JSON basenames, including future modules. */

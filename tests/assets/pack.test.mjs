@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { packAssets } from "../../scripts/pack-assets.mjs";
 import {
   applyStripLut,
+  inflatePack,
   parsePack,
   replaceBlue,
 } from "../../src/lib/assets/pack.ts";
@@ -88,7 +89,17 @@ test("packs shared images once, drops controller icons, and rejects corruption",
     ]);
     const output = join(root, "game.gk2pack");
     assert.equal((await packAssets(input, output)).images, 1);
-    const bytes = await readFile(output);
+    const stored = await readFile(output);
+    assert.deepEqual([...stored.subarray(0, 2)], [0x1f, 0x8b], "Packs are gzipped");
+    const bytes = await inflatePack(stored);
+    assert.equal(await inflatePack(bytes), bytes, "Uncompressed packs pass through");
+    const native = globalThis.DecompressionStream;
+    try {
+      delete globalThis.DecompressionStream;
+      assert.deepEqual(await inflatePack(stored), bytes, "fflate fallback");
+    } finally {
+      globalThis.DecompressionStream = native;
+    }
     const pack = parsePack(bytes);
     assert.deepEqual(Buffer.from(pack.imageBytes(hash)), png);
     assert.deepEqual(Object.keys(pack.metadata.catalogs.icons.fontIcons), [
@@ -97,7 +108,7 @@ test("packs shared images once, drops controller icons, and rejects corruption",
     assert.equal(pack.metadata.catalogs.items.test.fields.id, "test");
     assert.equal(pack.metadata.catalogs.icons.images[hash].path, undefined);
     await packAssets(input, output);
-    assert.deepEqual(await readFile(output), bytes, "Packing is deterministic");
+    assert.deepEqual(await readFile(output), stored, "Packing is deterministic");
     assert.throws(() => parsePack(bytes.subarray(0, bytes.length - 1)));
     const bad = Buffer.from(bytes);
     bad.writeUInt32LE(99, 8);

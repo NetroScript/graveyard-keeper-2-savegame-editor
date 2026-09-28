@@ -30,6 +30,14 @@ catalog must not be treated as authoritative for inventory insertion rules.
 
 ## Binary format, version 1
 
+The packer writes the pack below as a single gzip stream (level 9, host OS byte
+set to "unknown" so output is identical across platforms). This mainly shrinks
+the MessagePack metadata; the PNG payloads are already compressed. `inflatePack()`
+in `src/lib/assets/pack.ts` detects the gzip signature and decompresses with the
+platform `DecompressionStream`, or with a lazily loaded `fflate` gunzip on engines
+without it (WebKitGTK before 2.48, Safari before 16.4). Uncompressed packs are
+accepted unchanged.
+
 | Offset         | Contents                                                    |
 | -------------- | ----------------------------------------------------------- |
 | 0              | Eight bytes: `GK2PACK` followed by a zero byte              |
@@ -43,7 +51,8 @@ Image entries contain `offset` relative to the PNG payload start, `length`,
 are removed from the image index. All top-level JSON catalogs are included,
 including future exporter modules. Packing is deterministic for identical input.
 Controller font icons are removed and unused images are omitted.
-PNG retains lossless compression; metadata uses MessagePack.
+PNG retains lossless compression; metadata uses MessagePack inside the gzip
+stream.
 
 ## Browser and Tauri rendering
 

@@ -2,6 +2,7 @@ import { readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { resolve, dirname, relative, isAbsolute } from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { gzipSync } from "node:zlib";
 import { encode } from "@msgpack/msgpack";
 import { validateExport } from "../src-assets/validate-export.mjs";
 import {
@@ -10,6 +11,7 @@ import {
   HEADER_SIZE,
   MAX_METADATA,
   MAX_PACK,
+  inflatePack,
   parsePack,
 } from "../src/lib/assets/pack.ts";
 
@@ -88,8 +90,13 @@ export async function packAssets(input, output, { allowPartial = false } = {}) {
   header.set(PACK_MAGIC);
   header.writeUInt32LE(PACK_VERSION, 8);
   header.writeUInt32LE(metadata.length, 12);
-  const result = Buffer.concat([header, metadata, ...chunks]);
-  parsePack(result); // Check with the same reader used by the application.
+  const result = gzipSync(Buffer.concat([header, metadata, ...chunks]), {
+    level: 9,
+  });
+  // zlib records the host OS in the gzip header; use "unknown" so packs match across platforms.
+  result[9] = 255;
+  // Check with the same reader used by the application.
+  parsePack(await inflatePack(result));
   await mkdir(dirname(resolve(output)), { recursive: true });
   await writeFile(output, result);
   return {
