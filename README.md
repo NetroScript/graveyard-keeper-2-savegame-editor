@@ -1,8 +1,8 @@
 # Graveyard Keeper 2 Save Editor
 
 An unofficial save editor for **Graveyard Keeper 2**. It can edit player values,
-manage supported inventories, undo changes, and inspect data that does not yet
-have a dedicated editor.
+manage supported inventories, customize zombie workers, undo changes, and
+inspect data that does not yet have a dedicated editor.
 
 The editor runs on your own device. The web version processes saves in your
 browser and does not upload them to a server.
@@ -100,6 +100,14 @@ to view it at full size.
 
 _Inspirations, progression controls, and the perk tree._
 
+| Zombie overview and quick improvements                                                                                                            | Zombie body, equipment, and pockets                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Zombie worker list, overview, technology points, and optimization controls](docs/screenshots/zombie-overview.png)](docs/screenshots/zombie-overview.png) | [![Zombie organs, body treatments, equipment, and body pockets](docs/screenshots/zombie-body-equipment.png)](docs/screenshots/zombie-body-equipment.png) |
+
+| Zombie talent trees                                                                                                                               | Zombie appearance                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [![Zombie metallurgy talent tree and specialty optimization](docs/screenshots/zombie-talents.png)](docs/screenshots/zombie-talents.png) | [![Zombie appearance editor with worker preview, head, and palette controls](docs/screenshots/zombie-appearance.png)](docs/screenshots/zombie-appearance.png) |
+
 | Save Inspector tree and record details                                                                                                       | Save Inspector search and query filtering                                                                                                         |
 | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Save Inspector record tree with breadcrumbs and field editing](docs/screenshots/save-inspector.png)](docs/screenshots/save-inspector.png) | [![Save Inspector search query matching item IDs and nested fields](docs/screenshots/save-inspector-search.png)](docs/screenshots/save-inspector-search.png) |
@@ -113,6 +121,10 @@ _Inspirations, progression controls, and the perk tree._
   and removal where the game rules are known.
 - Technology trees, including dependency-aware unlocks and the game's rewards.
 - Inspiration progress, unlocked levels, talent values, and perk trees.
+- Zombie worker names, technology points, organs, body treatments, body pockets,
+  equipment, role-specific storage, and optimized body setups.
+- Zombie talent trees, specialty optimization, heads, bodies, and color palettes,
+  with composited appearance previews.
 - Raw save fields and structures through the Save Inspector.
 - Undo and redo for accepted edits.
 
