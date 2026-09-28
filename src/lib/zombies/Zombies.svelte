@@ -6,6 +6,7 @@
   import type { SaveDocument, Settings } from "../document.svelte";
   import { gameAssets } from "../assets/game-assets";
   import GameIcon from "../components/GameIcon.svelte";
+  import LoadingIndicator from "../components/LoadingIndicator.svelte";
   import {
     ItemCatalog,
     plainText,
@@ -525,21 +526,21 @@
   }
 </script>
 
+<div class="section-intro">
+  <div>
+    <h2>Zombies</h2>
+    <p>Customize each worker’s body, equipment, talents and appearance.</p>
+  </div>
+  {#if selected}<button
+      class="primary"
+      onclick={() => void perfectBody().catch(notifyError)}
+      ><MagicWand />Optimize body</button
+    >{/if}
+</div>
 <section class="zombie-editor">
-  <header class="section-heading">
-    <div>
-      <h2>Zombies</h2>
-      <p>Customize each worker’s body, equipment, talents and appearance.</p>
-    </div>
-    {#if selected}<button
-        class="primary"
-        onclick={() => void perfectBody().catch(notifyError)}
-        ><MagicWand />Optimize body</button
-      >{/if}
-  </header>
-  {#if loading}<p class="empty">
-      Loading zombies…
-    </p>{:else if loadError}<p class="error-banner" role="alert">
+  {#if loading}<LoadingIndicator
+      label="Loading zombie definitions and save state…"
+    />{:else if loadError}<p class="error-banner" role="alert">
       {loadError}
     </p>{:else if !snapshot?.zombies.length}<p class="empty">
       No zombies were found in this save.
@@ -1063,26 +1064,21 @@
     display: grid;
     gap: 12px;
   }
-  .section-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
+  .section-intro {
     gap: 16px;
   }
-  .section-heading h2,
   .detail h3,
   .panel h4,
   .body-panel h4,
   .talent-heading h4 {
     margin: 0;
   }
-  .section-heading p,
   .identity p,
   .talent-heading p {
     margin: 4px 0;
     color: #aeb4be;
   }
-  .section-heading button,
+  .section-intro button,
   .talent-heading button {
     display: flex;
     align-items: center;
@@ -1471,7 +1467,7 @@
     }
   }
   @media (max-width: 700px) {
-    .section-heading,
+    .section-intro,
     .talent-heading {
       align-items: stretch;
       flex-direction: column;
