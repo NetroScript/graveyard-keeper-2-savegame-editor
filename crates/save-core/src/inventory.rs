@@ -14,7 +14,7 @@ use std::collections::{BTreeMap, HashSet};
 pub struct Catalog {
     pub items: BTreeMap<String, Definition>,
 }
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Definition {
     #[serde(default)]
@@ -30,6 +30,24 @@ pub struct Definition {
     pub tool_belt: bool,
     #[serde(default)]
     pub equipment_type: String,
+    #[serde(default)]
+    pub item_type: String,
+    #[serde(default)]
+    pub is_main_organ: bool,
+    #[serde(default)]
+    pub is_organ_mistake: bool,
+    #[serde(default)]
+    pub red_skulls: i32,
+    #[serde(default)]
+    pub white_skulls: i32,
+    #[serde(default)]
+    pub red_skulls_min_collar: i32,
+    #[serde(default)]
+    pub red_skulls_max_collar: i32,
+    #[serde(default)]
+    pub talent_bonus: i32,
+    #[serde(default)]
+    pub talent_ids: Vec<String>,
 }
 impl Catalog {
     pub fn validate(&self) -> Result<(), Error> {
@@ -587,7 +605,7 @@ fn set(doc: &mut Document, parent: usize, name: &str, value: String) -> Result<(
     )
 }
 // Construct only the verified Item layout; never copy another item's identity or properties.
-fn node(
+pub(crate) fn node(
     doc: &mut Document,
     parent: usize,
     name: Option<&str>,
@@ -639,7 +657,7 @@ fn node(
         },
     )
 }
-fn add(
+pub(crate) fn add(
     doc: &mut Document,
     parent: usize,
     name: Option<&str>,
@@ -653,7 +671,7 @@ fn add(
         scalar(kind, name.map(str::to_owned), value)?,
     )
 }
-fn new_item(
+pub(crate) fn new_item(
     doc: &mut Document,
     parent: usize,
     id: &str,
@@ -747,6 +765,7 @@ pub(crate) fn write_inner(
     edit: Edit,
     out_of_bounds: bool,
     checked: bool,
+    enforce_rules: bool,
 ) -> Result<(), Error> {
     if !checked
         && !containers(doc, catalog)?
@@ -807,7 +826,7 @@ pub(crate) fn write_inner(
             if count < 1 || (!out_of_bounds && count > d.stack) {
                 return Err(failure("Amount exceeds the item stack size"));
             }
-            if !allowed(doc, catalog, container, &item)? {
+            if enforce_rules && !allowed(doc, catalog, container, &item)? {
                 return Err(failure("Item is not allowed in this inventory"));
             }
             if value(doc, container, "id")? == "toolBeltInventory" {
@@ -928,6 +947,7 @@ mod tests {
             allowed: None,
             tool_belt: false,
             equipment_type: String::new(),
+            ..Definition::default()
         };
         let item = new_item(
             &mut doc,
@@ -968,6 +988,7 @@ mod tests {
             allowed: None,
             tool_belt: false,
             equipment_type: String::new(),
+            ..Definition::default()
         };
         let item = new_item(
             &mut doc,
@@ -1332,6 +1353,7 @@ mod tests {
             allowed: None,
             tool_belt: false,
             equipment_type: String::new(),
+            ..Definition::default()
         };
         let container = new_item(
             &mut doc,

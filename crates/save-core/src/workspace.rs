@@ -63,6 +63,10 @@ pub enum Command {
     General,
     Drops,
     Progression,
+    ZombieCatalog {
+        catalog: crate::zombies::Catalog,
+    },
+    Zombies,
     InventoryCatalog {
         catalog: crate::inventory::Catalog,
     },
@@ -134,6 +138,10 @@ pub enum Operation {
     },
     Progression {
         action: crate::progression::Edit,
+    },
+    Zombie {
+        zombie: usize,
+        action: crate::zombies::Edit,
     },
 }
 mod transactions;
@@ -488,6 +496,7 @@ pub(crate) fn apply(doc: &mut Document, op: Operation) -> Result<(), Error> {
         Operation::Progression { .. } => {
             return Err(failure("Progression edits require a transaction"))
         }
+        Operation::Zombie { .. } => return Err(failure("Zombie edits require a transaction")),
     }
     Ok(())
 }

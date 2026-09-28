@@ -7,6 +7,7 @@ mod search;
 mod service;
 mod wire;
 mod workspace;
+pub mod zombies;
 
 pub use workspace::{Command, DocumentSummary, Operation, Workspace};
 

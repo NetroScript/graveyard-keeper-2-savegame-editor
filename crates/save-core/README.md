@@ -13,6 +13,14 @@ fn round_trip(input: &[u8]) -> Result<Vec<u8>, gk2_save_core::Error> {
 
 For inspection/editing use `Service::default()`, `open(&bytes)`, `request(Request::Children { parent, offset, limit })`, `request(Request::SetValue { edit })`, and `export()`. `Request`/`Response` are the shared Serde protocol for native and WebAssembly adapters. `Close` releases the document. Failed loads and edits leave the existing document intact.
 
+The higher-level `Workspace` protocol also provides structured General,
+Inventory, Progression, Drops and Zombies commands. Zombie editing first loads
+the item and zombie definition catalogs, then discovers every reachable
+`ZombieWgoData`. Name, personal points, appearance, body inventory, equipment and
+talent/perk changes are revision-checked atomic transactions and share the normal
+undo/redo journal. Final-state validation covers body slots, skull capacity,
+collars, equipment references and talent dependencies.
+
 `NodeView.id` is a session-local record index; it is not a semantic field identifier and must not be persisted across saves. `original_offset` is an input-file offset. Edit requests require the expected wire tag and current revision, preventing stale/type-mismatched edits. A successful load or edit advances the revision. Integers cross JSON as decimal strings, including i64/u64; original floating-point bits remain untouched unless edited. Non-finite float edits, char/decimal/GUID changes, reference edits and container edits are currently read-only. Editing a string replaces its code units; untouched strings retain even unpaired surrogates and their encoding choice.
 
 The default parser limits are 128 MiB input, one million records and 256 nested containers. `Document::decode_with_limits` allows callers to choose their limits. In-memory storage is larger than the input because it includes owned payloads and indexes. Unknown game type names are supported without loading their classes. Unknown wire tokens, invalid lengths, dangling references, duplicate IDs, mismatched arrays, trailing data and incomplete documents return errors. Encryption/compression and `.info` metadata are outside this initial codec.

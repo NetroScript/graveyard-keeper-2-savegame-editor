@@ -14,6 +14,8 @@ struct Patch {
     containers: HashSet<usize>,
     general: bool,
     invalidated: bool,
+    zombies: HashSet<usize>,
+    zombies_invalidated: bool,
     types_before: HashMap<i32, String>,
     types_after: HashMap<i32, String>,
 }
@@ -25,7 +27,10 @@ struct Session {
     undo: VecDeque<Patch>,
     redo: Vec<Patch>,
     catalog: crate::inventory::Catalog,
+    zombie_catalog: crate::zombies::Catalog,
     inventory_cache: Option<crate::inventory::Cache>,
+    zombie_cache: Option<crate::zombies::Cache>,
+    zombie_handles: Option<Vec<usize>>,
     hashes: Vec<Vec<u8>>,
     live: Vec<bool>,
     live_count: usize,
@@ -128,6 +133,13 @@ fn guid(doc: &Document, record: &Record) -> Option<String> {
     };
     let name = doc.types.get(id)?.split(',').next()?.trim();
     (name == "SGuid").then(|| value.display().to_ascii_lowercase())
+}
+fn identity_guid(doc: &Document, record: &Record) -> Option<String> {
+    let parent = record.parent?;
+    if doc.records[parent].name.as_ref()?.display() != "uniqueId" {
+        return None;
+    }
+    guid(doc, record)
 }
 fn record_size(record: &Record) -> usize {
     let mut bytes = vec![];
@@ -255,6 +267,28 @@ fn delta(s: &mut Session, patch: &Patch) -> Option<Value> {
         }
     }
 }
+
+fn refresh_zombies(s: &mut Session, handles: &HashSet<usize>, invalidated: bool) {
+    if invalidated {
+        s.zombie_cache = None;
+        s.zombie_handles = None;
+        return;
+    }
+    let Some(mut cache) = s.zombie_cache.take() else {
+        return;
+    };
+    if cache
+        .refresh(
+            &s.doc,
+            &s.catalog,
+            &s.zombie_catalog,
+            handles.iter().copied(),
+        )
+        .is_ok()
+    {
+        s.zombie_cache = Some(cache);
+    }
+}
 impl Workspace {
     pub fn open(&mut self, bytes: &[u8]) -> Result<DocumentSummary, Error> {
         let doc = Document::decode(bytes)?;
@@ -279,6 +313,11 @@ impl Workspace {
             live[*id] = true;
         }
         let hash = root_hash(&doc, &hashes);
+        let zombie_handles = ids
+            .iter()
+            .copied()
+            .filter(|node| crate::zombies::is_zombie(&doc, *node))
+            .collect();
         let mut s = Session {
             doc,
             revision: 1,
@@ -287,7 +326,10 @@ impl Workspace {
             undo: VecDeque::new(),
             redo: vec![],
             catalog: Default::default(),
+            zombie_catalog: Default::default(),
             inventory_cache: None,
+            zombie_cache: None,
+            zombie_handles: Some(zombie_handles),
             hashes,
             live,
             live_count: ids.len(),
@@ -490,6 +532,26 @@ impl Workspace {
             Command::General => Ok(crate::general::read(doc)),
             Command::Drops => crate::drops::read(doc),
             Command::Progression => crate::progression::read(doc),
+            Command::Zombies => {
+                let s = self.sessions.get_mut(&id).unwrap();
+                if s.zombie_cache.is_none() {
+                    let handles = match &s.zombie_handles {
+                        Some(handles) => handles.clone(),
+                        None => {
+                            let handles = crate::zombies::zombies(&s.doc)?;
+                            s.zombie_handles = Some(handles.clone());
+                            handles
+                        }
+                    };
+                    s.zombie_cache = Some(crate::zombies::Cache::build_for(
+                        &s.doc,
+                        &s.catalog,
+                        &s.zombie_catalog,
+                        handles,
+                    )?);
+                }
+                Ok(s.zombie_cache.as_ref().unwrap().snapshot())
+            }
             Command::Inventories => {
                 let s = self.sessions.get_mut(&id).unwrap();
                 if s.inventory_cache.is_none() {
@@ -502,6 +564,14 @@ impl Workspace {
                 let s = self.sessions.get_mut(&id).unwrap();
                 s.catalog = catalog;
                 s.inventory_cache = None;
+                s.zombie_cache = None;
+                Ok(json!({"loaded":true}))
+            }
+            Command::ZombieCatalog { catalog } => {
+                catalog.validate()?;
+                let s = self.sessions.get_mut(&id).unwrap();
+                s.zombie_catalog = catalog;
+                s.zombie_cache = None;
                 Ok(json!({"loaded":true}))
             }
             Command::Templates => Ok(json!(TEMPLATES
@@ -532,12 +602,30 @@ impl Workspace {
             .checked_add(1)
             .ok_or_else(|| failure("Revision limit exceeded"))?;
         let s = self.sessions.get_mut(&id).unwrap();
+        let zombie_handles: HashSet<_> = operations
+            .iter()
+            .filter_map(|operation| match operation {
+                Operation::Zombie { zombie, .. } => Some(*zombie),
+                _ => None,
+            })
+            .collect();
+        let zombies_invalidated = operations.iter().any(|operation| {
+            !matches!(
+                operation,
+                Operation::Inventory { .. }
+                    | Operation::General { .. }
+                    | Operation::Drops { .. }
+                    | Operation::Progression { .. }
+                    | Operation::Zombie { .. }
+            )
+        });
         let general_unchanged = operations.iter().all(|op| {
             matches!(
                 op,
                 Operation::Inventory { .. }
                     | Operation::Drops { .. }
                     | Operation::Progression { .. }
+                    | Operation::Zombie { .. }
             )
         });
         if operations
@@ -594,14 +682,34 @@ impl Workspace {
                         action,
                         out_of_bounds,
                         true,
+                        true,
                     )?;
                 } else if let Operation::Drops { action } = op {
                     crate::drops::write(&mut s.doc, action)?;
                 } else if let Operation::Progression { action } = op {
                     crate::progression::write(&mut s.doc, action)?;
+                } else if let Operation::Zombie { zombie, action } = op {
+                    if let crate::zombies::Edit::BodyInventory { action, .. }
+                    | crate::zombies::Edit::CargoInventory { action, .. } = &action
+                    {
+                        if let Some(guid) = crate::inventory::new_guid(&s.doc, &s.catalog, action)?
+                        {
+                            new_guids.insert(guid.to_ascii_lowercase());
+                        }
+                    }
+                    crate::zombies::write(
+                        &mut s.doc,
+                        &s.catalog,
+                        &s.zombie_catalog,
+                        zombie,
+                        action,
+                    )?;
                 } else {
                     apply(&mut s.doc, op)?;
                 }
+            }
+            if !zombie_handles.is_empty() {
+                crate::zombies::validate(&s.doc, &s.catalog, zombie_handles.iter().copied())?;
             }
             if s.doc.records.len() > crate::wire::Limits::default().max_records {
                 return Err(failure("Record limit exceeded"));
@@ -697,7 +805,7 @@ impl Workspace {
                 let affected: HashSet<_> = changes.iter().map(|c| c.id).collect();
                 let mut counts = HashMap::<String, usize>::new();
                 for c in changes.iter().filter(|c| c.after_live) {
-                    if let Some(guid) = guid(&s.doc, &c.after) {
+                    if let Some(guid) = identity_guid(&s.doc, &c.after) {
                         *counts.entry(guid).or_default() += 1;
                     }
                 }
@@ -705,7 +813,15 @@ impl Workspace {
                     let retained = s
                         .guids
                         .get(&guid)
-                        .map(|nodes| nodes.iter().filter(|n| !affected.contains(n)).count())
+                        .map(|nodes| {
+                            nodes
+                                .iter()
+                                .filter(|n| {
+                                    !affected.contains(n)
+                                        && identity_guid(&s.doc, &s.doc.records[**n]).is_some()
+                                })
+                                .count()
+                        })
                         .unwrap_or(0);
                     if retained + counts.get(&guid).copied().unwrap_or(0) > 1 {
                         return Err(failure("Duplicate item GUID"));
@@ -735,6 +851,8 @@ impl Workspace {
             containers,
             general: !general_unchanged,
             invalidated,
+            zombies: zombie_handles,
+            zombies_invalidated,
             types_before: types,
             types_after: s.doc.types.clone(),
         };
@@ -758,6 +876,7 @@ impl Workspace {
             s.redo.clear();
             s.search = None;
         }
+        refresh_zombies(s, &patch.zombies, patch.zombies_invalidated);
         let inventory = delta(s, &patch);
         let inventory_invalidated =
             patch.invalidated || (!patch.containers.is_empty() && inventory.is_none());
@@ -815,6 +934,7 @@ impl Workspace {
         rehash(s, &touched);
         s.revision = next_revision;
         s.search = None;
+        refresh_zombies(s, &patch.zombies, patch.zombies_invalidated);
         let inventory = delta(s, &patch);
         let invalidated =
             patch.invalidated || (!patch.containers.is_empty() && inventory.is_none());
