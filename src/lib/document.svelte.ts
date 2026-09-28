@@ -113,17 +113,22 @@ export class SaveDocument {
   }
 }
 export const desktop = import.meta.env.MODE === "desktop";
+export type UpdateCheckInterval = "never" | "daily" | "weekly";
 export interface Settings {
   outOfBoundsEdits: boolean;
   backupRetention: number;
   customDirectories: string[];
   interfaceScale: number;
+  updateCheckInterval: UpdateCheckInterval | null;
+  lastUpdateCheck: number | null;
 }
 export const defaultSettings: Settings = {
   outOfBoundsEdits: false,
   backupRetention: 5,
   customDirectories: [],
   interfaceScale: 1,
+  updateCheckInterval: null,
+  lastUpdateCheck: null,
 };
 export async function native<T>(
   command: string,

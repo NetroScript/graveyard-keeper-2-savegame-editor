@@ -3,6 +3,13 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [Unreleased]
+
+- Added configurable desktop update checks with Never, Daily, and Weekly
+  schedules. New and existing installations that have not chosen a schedule
+  are prompted on startup, with Weekly preselected.
+- Added a side-rail notification when a new application version is available.
+
 ## [0.2.0] - Save Inspector search
 
 - Added simple and advanced Save Inspector search with field, class, type,

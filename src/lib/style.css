@@ -311,6 +311,27 @@ small,
   letter-spacing: 0;
   text-transform: none;
 }
+.update-notice {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 8px 0 2px;
+  padding: 9px 12px;
+  color: #efc027;
+  background: #35343a;
+  border-color: #6d5b3e;
+  text-align: left;
+}
+.update-notice span {
+  min-width: 0;
+  font-size: 12px;
+}
+.update-notice b {
+  display: block;
+  margin-top: 2px;
+  color: var(--cream);
+  font-size: 10px;
+  font-weight: 500;
+}
 .rail-footer {
   font-size: 8px;
   letter-spacing: 0.14em;

@@ -31,8 +31,10 @@ The desktop application can find saves automatically. Before replacing a save,
 it creates a compressed ZIP backup containing its `.dat` and `.info` files by
 default; the number of retained backups is configurable in Settings. Earlier
 versions can be restored from the save list. It also detects if another program
-changed a save and can install signed application updates. On Windows, use the
-installer if you want automatic updates. Linux downloads include `.deb` and
+changed a save and can check for signed application updates daily, weekly, or
+only on request. Weekly is preselected when the desktop application first asks
+for a schedule. Available updates also appear in the side rail. On Windows, use
+the installer if you want automatic updates. Linux downloads include `.deb` and
 `.rpm` packages, an executable archive that uses system WebKitGTK, and an
 AppImage. Portable downloads also include a standalone `.exe` for Windows and
 compressed application bundles for both macOS architectures.

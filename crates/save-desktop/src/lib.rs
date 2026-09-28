@@ -14,6 +14,14 @@ type Result<T> = std::result::Result<T, String>;
 fn err(e: impl std::fmt::Display) -> String {
     e.to_string()
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UpdateCheckInterval {
+    Never,
+    Daily,
+    Weekly,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -21,6 +29,8 @@ pub struct Settings {
     pub backup_retention: u8,
     pub custom_directories: Vec<PathBuf>,
     pub interface_scale: f64,
+    pub update_check_interval: Option<UpdateCheckInterval>,
+    pub last_update_check: Option<u64>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -29,6 +39,8 @@ impl Default for Settings {
             backup_retention: 5,
             custom_directories: vec![],
             interface_scale: 1.0,
+            update_check_interval: None,
+            last_update_check: None,
         }
     }
 }
@@ -729,6 +741,20 @@ fn write_pair(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn settings_migrate_update_schedule_and_serialize_it() {
+        let mut settings: Settings = serde_json::from_str(r#"{"backupRetention":3}"#).unwrap();
+        assert_eq!(settings.backup_retention, 3);
+        assert_eq!(settings.update_check_interval, None);
+        assert_eq!(settings.last_update_check, None);
+
+        settings.update_check_interval = Some(UpdateCheckInterval::Weekly);
+        settings.last_update_check = Some(1_725_000_000_000);
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["updateCheckInterval"], "weekly");
+        assert_eq!(json["lastUpdateCheck"], 1_725_000_000_000_u64);
+    }
+
     #[test]
     fn synthetic_native_proton_and_sidecars() {
         let temp = tempfile::tempdir().unwrap();

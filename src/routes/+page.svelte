@@ -14,6 +14,9 @@
   import LoadSaves from "$lib/components/LoadSaves.svelte";
   import SettingsView from "$lib/components/Settings.svelte";
   import About from "$lib/components/About.svelte";
+  import DesktopUpdates, {
+    type UpdateState,
+  } from "$lib/components/DesktopUpdates.svelte";
   import DocumentView from "$lib/components/DocumentView.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import { loadAssetManifest } from "$lib/assets/game-icons";
@@ -38,6 +41,7 @@
   let conflict = $state<SaveDocument>();
   let closing = $state<SaveDocument>();
   let assetVersion = $state("Loading…");
+  let updates = $state.raw<UpdateState>();
   onMount(() => {
     let alive = true;
     void preloadProgressionAssets();
@@ -51,8 +55,9 @@
     createBackend()
       .then(async (b) => {
         backend = b;
-        if (desktop) settings = await native<Settings>("settings_get");
-        else {
+        if (desktop) {
+          settings = await native<Settings>("settings_get");
+        } else {
           try {
             settings = {
               ...defaultSettings,
@@ -68,7 +73,7 @@
       backend?.dispose();
     };
   });
-  async function onsettings(value: Settings) {
+  async function saveSettings(value: Settings) {
     if (
       !Number.isFinite(value.interfaceScale) ||
       value.interfaceScale < 0.75 ||
@@ -78,6 +83,9 @@
     if (desktop) await native("settings_set", { settings: value });
     else localStorage.setItem("gk2-settings", JSON.stringify(value));
     settings = value;
+  }
+  async function onsettings(value: Settings) {
+    await saveSettings(value);
   }
   function activate(id: typeof active) {
     active = id;
@@ -233,6 +241,15 @@
     >
       Game data version <b>{assetVersion}</b>
     </div>
+    {#if updates?.update}<button
+        class="update-notice"
+        aria-live="polite"
+        onclick={() => activate("about")}
+      >
+        <Info /><span
+          >Update available<b>Version {updates.update.version}</b></span
+        >
+      </button>{/if}
     <button
       class="about-link"
       class:active={active === "about"}
@@ -253,16 +270,24 @@
         <SettingsView {settings} {onsettings} />
       </div>
       <div class="page-content" hidden={active !== "about"}>
-        <About {assetVersion} />
+        {#if updates}<About {assetVersion} {updates} />{/if}
       </div>
       {#each documents as doc (doc.id)}<div
           class="document-workspace"
           hidden={active !== doc.id}
         >
           <DocumentView {doc} {settings} {assetVersion} onsave={save} />
-        </div>{/each}{:else}<div class="page-content"><LoadingIndicator label="Loading editor…" /></div>{/if}
+        </div>{/each}{:else}<div class="page-content">
+        <LoadingIndicator label="Loading editor…" />
+      </div>{/if}
   </main>
 </div>
+<DesktopUpdates
+  {ready}
+  {settings}
+  {onsettings}
+  onstate={(state) => (updates = state)}
+/>
 {#if conflict}<div class="modal-backdrop">
     <dialog
       use:showModal

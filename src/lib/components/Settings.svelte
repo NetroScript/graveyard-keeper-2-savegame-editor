@@ -56,6 +56,30 @@
   </div>
 </section>
 {#if desktop}<section class="panel settings-panel">
+    <h2 class="strip">Application updates</h2>
+    <div class="panel-body">
+      <label class="field"
+        >Check for updates<select
+          value={settings.updateCheckInterval ?? "weekly"}
+          onchange={(e) =>
+            update({
+              ...settings,
+              updateCheckInterval: e.currentTarget.value as
+                "never" | "daily" | "weekly",
+            })}
+        >
+          <option value="never">Never</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+        </select></label
+      >
+      <p class="hint">
+        The desktop application checks on this schedule while it is open and
+        when it starts. You can still check manually from About.
+      </p>
+    </div>
+  </section>
+  <section class="panel settings-panel">
     <h2 class="strip">Save protection</h2>
     <div class="panel-body">
       <label class="field"

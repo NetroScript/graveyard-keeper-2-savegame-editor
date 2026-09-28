@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import { invoke } from "@tauri-apps/api/core";
   import { openUrl } from "@tauri-apps/plugin-opener";
-  import type { Update } from "@tauri-apps/plugin-updater";
+  import type { UpdateState } from "./DesktopUpdates.svelte";
   import Info from "~icons/ph/info";
   import GithubLogo from "~icons/ph/github-logo";
   import RedditLogo from "~icons/ph/reddit-logo";
@@ -13,26 +11,13 @@
   import { desktop } from "../document.svelte";
   import packageInfo from "../../../package.json";
 
-  let { assetVersion }: { assetVersion: string } = $props();
-  let checking = $state(false);
-  let installing = $state(false);
-  let update = $state<Update | null>(null);
-  let message = $state("");
-  let progress = $state<number>();
-  let updateAvailability = $state<"checking" | "supported" | "manual">(
-    "checking",
-  );
-
-  onMount(() => {
-    if (!desktop) return;
-    void invoke<boolean>("update_install_supported")
-      .then((supported) => {
-        updateAvailability = supported ? "supported" : "manual";
-      })
-      .catch(() => {
-        updateAvailability = "manual";
-      });
-  });
+  let {
+    assetVersion,
+    updates,
+  }: {
+    assetVersion: string;
+    updates: UpdateState;
+  } = $props();
 
   const repository =
     "https://github.com/NetroScript/graveyard-keeper-2-savegame-editor";
@@ -46,48 +31,6 @@
     event.preventDefault();
     await openUrl(url);
   }
-
-  async function checkForUpdates() {
-    checking = true;
-    message = "Checking for updates…";
-    progress = undefined;
-    try {
-      await update?.close();
-      const { check } = await import("@tauri-apps/plugin-updater");
-      update = await check({ timeout: 20_000 });
-      message = update
-        ? `Version ${update.version} is available.`
-        : "This application is up to date.";
-    } catch (error) {
-      message = `Update check failed: ${String(error)}`;
-    } finally {
-      checking = false;
-    }
-  }
-
-  async function installUpdate() {
-    if (!update) return;
-    installing = true;
-    message = `Downloading version ${update.version}…`;
-    let downloaded = 0;
-    let total: number | undefined;
-    try {
-      await update.downloadAndInstall((event) => {
-        if (event.event === "Started") total = event.data.contentLength;
-        if (event.event === "Progress") downloaded += event.data.chunkLength;
-        if (total)
-          progress = Math.min(100, Math.round((downloaded / total) * 100));
-        if (event.event === "Finished") message = "Installing update…";
-      });
-      message = "Update installed. Restart the application to use it.";
-    } catch (error) {
-      message = `Update failed: ${String(error)}`;
-    } finally {
-      installing = false;
-    }
-  }
-
-  onDestroy(() => void update?.close());
 </script>
 
 <header class="page-heading">
@@ -149,15 +92,14 @@
         >Read the MIT License</a
       >
       <p>
-        For bugs and feature requests, please open a GitHub issue. If that is not
-        possible, you can also reach me on Reddit:
+        For bugs and feature requests, please open a GitHub issue. If that is
+        not possible, you can also reach me on Reddit:
       </p>
       <a
         href={redditProfile}
         target="_blank"
         rel="noreferrer"
-        onclick={(e) => external(e, redditProfile)}
-        ><RedditLogo />u/Jack_5515</a
+        onclick={(e) => external(e, redditProfile)}><RedditLogo />u/Jack_5515</a
       >
     </div>
   </section>
@@ -207,12 +149,12 @@
       >
     </div>
   </section>
-  {#if desktop && updateAvailability !== "checking"}<section
+  {#if desktop && updates.availability !== "checking"}<section
       class="panel updater-panel"
     >
       <h2 class="strip"><ArrowClockwise />Updates</h2>
       <div class="panel-body">
-        {#if updateAvailability === "manual"}
+        {#if updates.availability === "manual"}
           <p>
             This executable is updated manually. Download the latest system
             WebKitGTK archive from the <a
@@ -223,26 +165,34 @@
             > and replace the old executable.
           </p>
         {:else}
-          <p>Updates are checked only when you request one.</p>
+          <p>
+            Automatic checks follow the schedule selected in Settings. You can
+            also check at any time.
+          </p>
           <div class="form-actions">
-            <button disabled={checking || installing} onclick={checkForUpdates}
-              ><ArrowClockwise />{checking
+            <button
+              disabled={updates.checking || updates.installing}
+              onclick={updates.check}
+              ><ArrowClockwise />{updates.checking
                 ? "Checking…"
                 : "Check for updates"}</button
             >
-            {#if update}<button
+            {#if updates.update}<button
                 class="primary"
-                disabled={installing}
-                onclick={installUpdate}
-                ><Download />{installing
+                disabled={updates.installing}
+                onclick={updates.install}
+                ><Download />{updates.installing
                   ? "Installing…"
-                  : `Download and install ${update.version}`}</button
+                  : `Download and install ${updates.update.version}`}</button
               >{/if}
           </div>
-          {#if progress !== undefined}<progress max="100" value={progress}
-              >{progress}%</progress
+          {#if updates.progress !== undefined}<progress
+              max="100"
+              value={updates.progress}>{updates.progress}%</progress
             >{/if}
-          {#if message}<p role="status" class="hint">{message}</p>{/if}
+          {#if updates.message}<p role="status" class="hint">
+              {updates.message}
+            </p>{/if}
         {/if}
       </div>
     </section>{/if}
