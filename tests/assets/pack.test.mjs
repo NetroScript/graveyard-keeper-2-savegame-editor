@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { packAssets } from "../../scripts/pack-assets.mjs";
-import { parsePack, replaceBlue } from "../../src/lib/assets/pack.ts";
+import {
+  applyStripLut,
+  parsePack,
+  replaceBlue,
+} from "../../src/lib/assets/pack.ts";
 
 test("packs shared images once, drops controller icons, and rejects corruption", async () => {
   const root = await mkdtemp(join(tmpdir(), "gk2-pack-"));
@@ -28,6 +32,7 @@ test("packs shared images once, drops controller icons, and rejects corruption",
           "items",
           "resources",
           "progression",
+          "zombies",
           "inventory-rules",
           "font-icons",
         ],
@@ -58,7 +63,16 @@ test("packs shared images once, drops controller icons, and rejects corruption",
           expLevels: [],
           inspirations: [],
           levelUps: [],
+          zombieLevelUps: [],
         },
+        perks: {},
+      }),
+      write("zombies", {
+        schemaVersion: 1,
+        bodies: [{ id: "body", linkedBodyItemId: "test", parts: [], pockets: [], burialRewards: [], armorId: "", handsId: "" }],
+        crafts: [{ id: "craft", linkedPerks: [], needs: [], needsFromWgo: [], removeItemsFromWgo: [], zombieSpeedItems: [] }],
+        workstations: [], fighters: [],
+        customization: { available: true, sets: [{ id: "zombie_worker", bodyIds: [1], headIds: [1], bodyVariants: [{ id: 1, sprite: "item", overlaySprite: null }], headVariants: [{ id: 1, sprite: "item" }], bodyLuts: [], headLuts: [] }], portrait: { stoneSprite: "item" }, fighterBodyPalettes: [], fighterArmorPalettes: [] },
       }),
       write("localization.en", { test: "Test item" }),
       write("icons", {
@@ -108,5 +122,35 @@ test("outline replacement preserves alpha and all non-key colors", () => {
   assert.deepEqual(
     [...pixels],
     [10, 20, 30, 128, 0, 1, 255, 255, 255, 0, 0, 255],
+  );
+});
+
+test("horizontal 3D LUT uses trilinear RGB sampling and preserves alpha", () => {
+  const size = 2;
+  const width = size * size;
+  const lut = new Uint8ClampedArray(width * size * 4);
+  for (let green = 0; green < size; green++)
+    for (let blue = 0; blue < size; blue++)
+      for (let red = 0; red < size; red++) {
+        const offset =
+          (((size - 1 - green) * width + blue * size + red) * 4);
+        lut.set([red * 255, green * 255, blue * 255, 255], offset);
+      }
+  const pixels = new Uint8ClampedArray([
+    0, 0, 0, 255,
+    255, 255, 255, 255,
+    128, 64, 192, 127,
+    23, 45, 67, 0,
+  ]);
+  applyStripLut(pixels, lut, width, size);
+  assert.deepEqual([...pixels], [
+    0, 0, 0, 255,
+    255, 255, 255, 255,
+    128, 64, 192, 127,
+    23, 45, 67, 0,
+  ]);
+  assert.throws(
+    () => applyStripLut(pixels, lut, width + 1, size),
+    /Invalid horizontal 3D LUT/,
   );
 });

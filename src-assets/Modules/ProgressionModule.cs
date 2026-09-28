@@ -83,6 +83,83 @@ namespace Gk2.AssetExporter
             }).ToArray();
         }
 
+        private static object[] Resources(GameRes resources)
+        {
+            return resources == null ? new object[0] : resources.List.Select(x => (object)new { type = x.type, value = x.value }).ToArray();
+        }
+
+        private static string[] Expressions(IEnumerable<LazyExpression> expressions)
+        {
+            return expressions == null ? new string[0] : expressions.Select(x => x?.GetRawExpressionString()).ToArray();
+        }
+
+        private static object Perk(ExportContext context, PerkDef perk)
+        {
+            return new
+            {
+                id = perk.id,
+                name = context.Localize(perk.id),
+                description = context.Localize(perk.id + "_d"),
+                sprite = context.Sprites.Sprite("perk/" + perk.id, perk.Icon),
+                type = perk.perkType.ToString(),
+                addType = perk.perkAddType.ToString(),
+                perk.energyAdd,
+                perk.insanityAdd,
+                perk.craftStartTicks,
+                perk.craftTotalProgressTicksBonus,
+                perk.craftMasteryBonus,
+                perk.duration,
+                perk.hiddenTimer,
+                perk.isHidden,
+                perk.tickRate,
+                perk.fertilizerItemId,
+                perk.worldFxPrefabId,
+                perk.hudFxPrefabId,
+                effects = new
+                {
+                    setResourcesOnAdd = Resources(perk.setGameResOnAdd),
+                    addResourcesOnAdd = Resources(perk.addGameResOnAdd),
+                    expressionsOnAdd = Expressions(perk.onAddExpressions),
+                    setResourcesOnRemove = Resources(perk.setGameResOnRemove),
+                    addResourcesOnRemove = Resources(perk.addGameResOnRemove),
+                    expressionsOnRemove = Expressions(perk.onRemoveExpressions),
+                    addResourcesPerTick = Resources(perk.addGameResPerTick),
+                    expressionsPerTick = Expressions(perk.onPerTickExpressions)
+                }
+            };
+        }
+
+        private static object LevelUp(ExportContext context, TalentLevelUpDef levelUp, IDictionary<string, object> perks)
+        {
+            var perk = string.IsNullOrEmpty(levelUp.linkedPerk) ? null : GameBalance.Me.GetDataOrNull<PerkDef>(levelUp.linkedPerk);
+            var nameKey = context.English.ContainsKey(levelUp.id) ? levelUp.id : (perk == null ? levelUp.id : perk.id);
+            var descriptionKey = context.English.ContainsKey(levelUp.id + "_d") ? levelUp.id + "_d" : (perk == null ? levelUp.id + "_d" : perk.id + "_d");
+            object perkData = null;
+            if (perk != null) perks.TryGetValue(perk.id, out perkData);
+            return new
+            {
+                id = levelUp.id,
+                name = context.Localize(nameKey),
+                description = context.Localize(descriptionKey),
+                talent = levelUp.talentId,
+                x = levelUp.TreePos.x,
+                y = levelUp.TreePos.y,
+                parents = levelUp.parents,
+                lockType = levelUp.lockType.ToString(),
+                availableAtStart = levelUp.availableAtStart,
+                hidden = levelUp.isHidden,
+                unknown = levelUp.isUnknown,
+                freeCoordinates = levelUp.isFreeCoordinates,
+                talentValue = levelUp.talentValueAdd,
+                pointPrice = levelUp.talentExpPointsPrice,
+                technologyPrice = new { red = levelUp.techRed, green = levelUp.techGreen, blue = levelUp.techBlue },
+                expressionsOnBuy = Expressions(levelUp.expressionsOnBuy),
+                sprite = context.Sprites.Sprite("talent-level/" + levelUp.id, levelUp.Icon),
+                perkId = levelUp.linkedPerk,
+                perk = perkData
+            };
+        }
+
         public IEnumerator Export(ExportContext context)
         {
             foreach (var icon in new[] { "tech_red", "tech_green", "tech_blue", "talent_orange", "talent_red", "talent_green", "talent_yellow", "talent_blue" })
@@ -222,37 +299,19 @@ namespace Gk2.AssetExporter
                 questLocks = x.questLocks,
                 sprite = context.Sprites.Sprite("inspiration/" + x.id, x.Icon)
             }).ToArray();
-            var levelUps = GameBalance.Me.talentLevelUpDefs.Where(x => !x.isZombiePerk).OrderBy(x => x.talentId).ThenBy(x => x.TreePos.x).ThenBy(x => x.TreePos.y).Select(x =>
-            {
-                var perk = string.IsNullOrEmpty(x.linkedPerk) ? null : GameBalance.Me.GetDataOrNull<PerkDef>(x.linkedPerk);
-                var nameKey = context.English.ContainsKey(x.id) ? x.id : (perk == null ? x.id : perk.id);
-                var descriptionKey = context.English.ContainsKey(x.id + "_d") ? x.id + "_d" : (perk == null ? x.id + "_d" : perk.id + "_d");
-                return new
-                {
-                    id = x.id,
-                    name = context.Localize(nameKey),
-                    description = context.Localize(descriptionKey),
-                    talent = x.talentId,
-                    x = x.TreePos.x,
-                    y = x.TreePos.y,
-                    parents = x.parents,
-                    lockType = x.lockType.ToString(),
-                    availableAtStart = x.availableAtStart,
-                    hidden = x.isHidden,
-                    unknown = x.isUnknown,
-                    freeCoordinates = x.isFreeCoordinates,
-                    talentValue = x.talentValueAdd,
-                    pointPrice = x.talentExpPointsPrice,
-                    sprite = context.Sprites.Sprite("talent-level/" + x.id, x.Icon),
-                    perk = perk == null ? null : new { id = perk.id, name = context.Localize(perk.id), description = context.Localize(perk.id + "_d"), sprite = context.Sprites.Sprite(perk.IconId) }
-                };
-            }).ToArray();
+            var perks = GameBalance.Me.perkDefs.OrderBy(x => x.id, StringComparer.Ordinal)
+                .ToDictionary(x => x.id, x => Perk(context, x), StringComparer.Ordinal);
+            var orderedLevelUps = GameBalance.Me.talentLevelUpDefs.OrderBy(x => x.talentId)
+                .ThenBy(x => x.TreePos.x).ThenBy(x => x.TreePos.y).ToArray();
+            var levelUps = orderedLevelUps.Where(x => !x.isZombiePerk).Select(x => LevelUp(context, x, perks)).ToArray();
+            var zombieLevelUps = orderedLevelUps.Where(x => x.isZombiePerk).Select(x => LevelUp(context, x, perks)).ToArray();
 
             context.Write("progression.json", new
             {
                 schemaVersion = 1,
                 technology = new { tabs, nodes = technologies },
-                talents = new { branches, expLevels, inspirations, levelUps }
+                perks,
+                talents = new { branches, expLevels, inspirations, levelUps, zombieLevelUps }
             });
         }
     }

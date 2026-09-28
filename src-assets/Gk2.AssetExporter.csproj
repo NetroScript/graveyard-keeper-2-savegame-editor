@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyName>Gk2.AssetExporter</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>

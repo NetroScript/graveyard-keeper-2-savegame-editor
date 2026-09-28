@@ -85,6 +85,35 @@ namespace Gk2.AssetExporter
             return Save(width, height, pixels);
         }
 
+        /// <summary>
+        /// Exports a complete texture through the same deduplicated image table used by
+        /// sprites. This is used for palette/LUT assets which are not Unity Sprites.
+        /// </summary>
+        public string Texture(string name, Texture source)
+        {
+            if (string.IsNullOrEmpty(name) || source == null) return null;
+            if (Sprites.ContainsKey(name)) return name;
+            try
+            {
+                var image = Save(source.width, source.height, Read(source));
+                Sprites[name] = new
+                {
+                    image,
+                    width = source.width,
+                    height = source.height,
+                    pivot = new { x = 0f, y = 0f },
+                    pixelsPerUnit = 1f,
+                    kind = "texture"
+                };
+            }
+            catch (Exception error)
+            {
+                Sprites[name] = new { image = (string)null, error = error.Message };
+                context.Warn("texture:" + name, error.Message);
+            }
+            return name;
+        }
+
         private Color32[] Read(Texture texture)
         {
             if (texture.GetInstanceID() == cachedTextureId && cachedPixels != null) return cachedPixels;

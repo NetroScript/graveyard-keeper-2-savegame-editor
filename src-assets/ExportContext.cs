@@ -59,7 +59,7 @@ namespace Gk2.AssetExporter
             Write("localization.en.json", English);
             Write("manifest.json", new
             {
-                schemaVersion = 1, exporterVersion = "0.1.0", gameVersion = Application.version,
+                schemaVersion = 1, exporterVersion = "0.2.0", gameVersion = Application.version,
                 unityVersion = Application.unityVersion, product = Application.productName,
                 gameAssemblyMvid = typeof(ItemDef).Module.ModuleVersionId.ToString(),
                 exportedAtUtc = DateTime.UtcNow.ToString("O"), locale = "en",

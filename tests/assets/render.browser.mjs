@@ -42,15 +42,38 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
       ctx.fillRect(1, 1, 1, 1);
       ctx.fillStyle = "#ff0000";
       ctx.fillRect(2, 1, 1, 1);
-      return canvas.toDataURL().split(",")[1];
+      const source = canvas.toDataURL().split(",")[1];
+      canvas.width = 4;
+      canvas.height = 2;
+      const lut = canvas.getContext("2d");
+      const pixels = lut.createImageData(4, 2);
+      for (let green = 0; green < 2; green++)
+        for (let blue = 0; blue < 2; blue++)
+          for (let red = 0; red < 2; red++) {
+            const offset = (((1 - green) * 4 + blue * 2 + red) * 4);
+            pixels.data.set(
+              [red * 255, green * 255, blue * 255, 255],
+              offset,
+            );
+          }
+      lut.putImageData(pixels, 0, 0);
+      return { source, lut: canvas.toDataURL().split(",")[1] };
     });
-    const png = Buffer.from(encoded, "base64");
+    const png = Buffer.from(encoded.source, "base64");
+    const lutPng = Buffer.from(encoded.lut, "base64");
     const hash = createHash("sha256").update(png).digest("hex");
+    const lutHash = createHash("sha256").update(lutPng).digest("hex");
     const metadata = encode({
       schemaVersion: 1,
       catalogs: { perks: { example: { name: "Example perk" } } },
       images: {
         [hash]: { offset: 0, length: png.length, width: 4, height: 3 },
+        [lutHash]: {
+          offset: png.length,
+          length: lutPng.length,
+          width: 4,
+          height: 2,
+        },
       },
     });
     const header = Buffer.alloc(16);
@@ -58,7 +81,7 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
     header.writeUInt32LE(1, 8);
     header.writeUInt32LE(metadata.length, 12);
     const result = await page.evaluate(
-      async ({ bytes, hash }) => {
+      async ({ bytes, hash, lutHash }) => {
         const { AssetPack } = await import("/src/lib/assets/asset-pack.ts");
         const original = document.createElement.bind(document);
         let canvases = 0;
@@ -85,6 +108,10 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
           first,
           assets.imageUrl(hash, { outline: "#abcdef", crop: true }),
         ]);
+        const lutUrl = await assets.imageUrl(hash, { lut: lutHash, crop: true });
+        const composite = await assets.compositeImageUrl([
+          { hash, pivot: { x: 0, y: 0 }, lut: lutHash },
+        ]);
         const rendererCanvases = canvases;
         async function pixels(url) {
           const bitmap = await createImageBitmap(
@@ -104,6 +131,8 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
         }
         const normalPixels = await pixels(normal);
         const hoverPixels = await pixels(hover);
+        const lutPixels = await pixels(lutUrl);
+        const compositePixels = await pixels(composite);
         assets.dispose();
         let revoked = false;
         try {
@@ -125,11 +154,17 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
           rendererCanvases,
           normalPixels,
           hoverPixels,
+          lutPixels,
+          compositePixels,
           revoked,
           disposed,
         };
       },
-      { bytes: [...Buffer.concat([header, metadata, png])], hash },
+      {
+        bytes: [...Buffer.concat([header, metadata, png, lutPng])],
+        hash,
+        lutHash,
+      },
     );
     assert.deepEqual(result, {
       perkName: "Example perk",
@@ -145,6 +180,20 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
         width: 2,
         height: 1,
         values: [171, 205, 239, 255, 255, 0, 0, 255],
+      },
+      lutPixels: {
+        width: 2,
+        height: 1,
+        values: [0, 0, 255, 255, 255, 0, 0, 255],
+      },
+      compositePixels: {
+        width: 4,
+        height: 3,
+        values: [
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 255, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
       },
       revoked: true,
       disposed: true,

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Gk2.AssetExporter
 {
-    [BepInPlugin("gk2.saveeditor.assetexporter", "GK2 Asset Exporter", "0.1.0")]
+    [BepInPlugin("gk2.saveeditor.assetexporter", "GK2 Asset Exporter", "0.2.0")]
     public sealed class Plugin : BaseUnityPlugin
     {
         private ConfigEntry<KeyboardShortcut> shortcut;

@@ -15,7 +15,7 @@ export function loadGameIcon(
   options: ImageRenderOptions = {},
 ): Promise<string | undefined> {
   const outline = options.outline?.toLowerCase();
-  const key = `${kind}:${name}:${outline ?? "original"}:${options.crop ? "crop" : "full"}`;
+  const key = `${kind}:${name}:${outline ?? "original"}:${options.crop ? "crop" : "full"}:lut=${options.lut ?? "none"}`;
   const existing = cache.get(key);
   if (existing) return existing;
   const result = (async () => {

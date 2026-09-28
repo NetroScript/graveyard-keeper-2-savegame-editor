@@ -104,3 +104,55 @@ export function replaceBlue(
     }
   }
 }
+
+/**
+ * Applies Unity's flattened 3D LUT layout: blue slices run horizontally, red
+ * runs within a slice, and green runs upward. PNG/canvas rows run downward.
+ */
+export function applyStripLut(
+  pixels: Uint8ClampedArray,
+  lut: Uint8ClampedArray,
+  width: number,
+  height: number,
+) {
+  const size = height;
+  if (
+    !Number.isInteger(size) ||
+    size < 2 ||
+    width !== size * size ||
+    lut.length !== width * height * 4
+  )
+    throw new Error("Invalid horizontal 3D LUT");
+  const last = size - 1;
+  const sample = (red: number, green: number, blue: number, channel: number) => {
+    const index =
+      (((last - green) * width + blue * size + red) * 4) + channel;
+    return lut[index];
+  };
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    if (pixels[offset + 3] === 0) continue;
+    const red = (pixels[offset] / 255) * last;
+    const green = (pixels[offset + 1] / 255) * last;
+    const blue = (pixels[offset + 2] / 255) * last;
+    const r0 = Math.floor(red), r1 = Math.min(last, r0 + 1), rf = red - r0;
+    const g0 = Math.floor(green), g1 = Math.min(last, g0 + 1), gf = green - g0;
+    const b0 = Math.floor(blue), b1 = Math.min(last, b0 + 1), bf = blue - b0;
+    for (let channel = 0; channel < 3; channel++) {
+      const c000 = sample(r0, g0, b0, channel);
+      const c100 = sample(r1, g0, b0, channel);
+      const c010 = sample(r0, g1, b0, channel);
+      const c110 = sample(r1, g1, b0, channel);
+      const c001 = sample(r0, g0, b1, channel);
+      const c101 = sample(r1, g0, b1, channel);
+      const c011 = sample(r0, g1, b1, channel);
+      const c111 = sample(r1, g1, b1, channel);
+      const c00 = c000 + (c100 - c000) * rf;
+      const c10 = c010 + (c110 - c010) * rf;
+      const c01 = c001 + (c101 - c001) * rf;
+      const c11 = c011 + (c111 - c011) * rf;
+      const c0 = c00 + (c10 - c00) * gf;
+      const c1 = c01 + (c11 - c01) * gf;
+      pixels[offset + channel] = Math.round(c0 + (c1 - c0) * bf);
+    }
+  }
+}

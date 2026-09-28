@@ -73,3 +73,12 @@ small. No filesystem images are generated at runtime.
 
 The replacement rule currently targets exactly RGB `(0, 0, 255)` and preserves
 alpha.
+
+Zombie portraits use a separate render path. Their 1024x32 textures are flattened
+32x32x32 RGB lookup tables: blue selects a horizontal slice, red selects a column,
+and green selects a row from bottom to top. The browser performs trilinear sampling
+and preserves source alpha, then composes the static body, optional body overlay,
+stone and head sprites at their exported Unity pivots. `loadZombiePortrait()` in
+`src/lib/assets/zombie-portraits.ts` resolves the catalog entries and returns a
+cached object URL. Armor and tool item icons are intentionally not composited into
+the ordinary portrait because the game's `UIWorkerIcon` does not draw them.

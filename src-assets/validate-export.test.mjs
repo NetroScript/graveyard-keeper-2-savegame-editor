@@ -18,7 +18,7 @@ test("checks catalog coverage, bag references, PNG integrity and partial exports
   const manifest = {
     schemaVersion: 1,
     status: "complete",
-    completedModules: ["items", "resources", "progression", "inventory-rules", "font-icons"],
+    completedModules: ["items", "resources", "progression", "zombies", "inventory-rules", "font-icons"],
   };
   const item = {
     id: "test",
@@ -46,7 +46,16 @@ test("checks catalog coverage, bag references, PNG integrity and partial exports
       write("progression.json", {
         schemaVersion: 1,
         technology: { tabs: [{ id: "Building", sprite: "test-icon" }], nodes: [] },
-        talents: { branches: [{ id: "talent", fontIcon: "energy" }], expLevels: [], inspirations: [], levelUps: [] },
+        perks: { perk: { id: "perk", sprite: "test-icon" } },
+        talents: { branches: [{ id: "talent", fontIcon: "energy" }], expLevels: [], inspirations: [], levelUps: [], zombieLevelUps: [] },
+      }),
+      write("zombies.json", {
+        schemaVersion: 1,
+        bodies: [{ id: "body", linkedBodyItemId: "test", parts: [], pockets: [], burialRewards: [], armorId: "", handsId: "" }],
+        crafts: [{ id: "craft", linkedPerks: [], needs: [], needsFromWgo: [], removeItemsFromWgo: [], zombieSpeedItems: [] }],
+        workstations: [],
+        fighters: [],
+        customization: { available: true, sets: [{ id: "zombie_worker", bodyIds: [1], headIds: [1], bodyVariants: [{ id: 1, sprite: "test-icon", overlaySprite: null }], headVariants: [{ id: 1, sprite: "test-icon" }], bodyLuts: [], headLuts: [] }], portrait: { stoneSprite: "test-icon" }, fighterBodyPalettes: [], fighterArmorPalettes: [] },
       }),
       write("icons.json", {
         images: { [hash]: { path: `images/${hash}.png`, width: 1, height: 1 } },

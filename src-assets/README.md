@@ -1,8 +1,9 @@
 # Graveyard Keeper 2 asset exporter
 
 BepInEx plugin for exporting the installed Graveyard Keeper 2 game's item catalog,
-English localization, technology trees, inspirations, perks, inventory compatibility
-data, sprites, quality overlays, and TextMesh Pro sprite icons. Exports are JSON and shared PNG images,
+English localization, technology trees, inspirations, complete player and zombie
+perk definitions, zombie body/medical/work/combat/customization catalogs, inventory
+compatibility data, sprites, quality overlays, LUT textures, and TextMesh Pro sprite icons. Exports are JSON and shared PNG images,
 usable by either the native or browser editor without Unity or game DLLs.
 
 ## Build and installation
@@ -67,6 +68,7 @@ use the BepInEx 5 API for this project.
 | `inventory-rules.json`        | Per-bag allowed item IDs and per-item equipment eligibility                                                                                           |
 | `resources.json`              | All resource-to-icon mappings for every configured icon type                                                                                          |
 | `progression.json`            | Technology tabs/nodes/dependencies/rewards and talent branches, inspiration levels, perk-tree nodes, costs, text and icon links                       |
+| `zombies.json`                | Body definitions, all craft/medical recipes, zombie-capable workstations, fighter formulas, valid appearance IDs, LUTs and fighter palettes          |
 | `icons.json`                  | Named sprites, TMP sprite characters/metrics/assets, and shared image index                                                                           |
 | `localization.en.json`        | English resource text with nested/replacement markup preserved                                                                                        |
 | `images/<sha256>.png`         | Deduplicated RGBA images; identical images are written once                                                                                           |
@@ -160,6 +162,34 @@ The inventory UI module also exports loaded `UIItemCell` background sprites to
 `inventory-ui.json`. Open the character inventory before exporting so the cell
 prefab is loaded, then rebuild the asset pack. Older packs use the editor's CSS
 cell background until this catalog is available.
+
+## Zombie worker data
+
+`progression.json` exports every `PerkDef` with its sprite, mastery/progress
+modifiers, resource effects and raw lifecycle expressions. Player nodes remain in
+`talents.levelUps`; `talents.zombieLevelUps` contains every node marked
+`isZombiePerk`, including RGB technology costs and purchase expressions.
+
+`zombies.json` retains every craft because a zombie's effective work depends on
+its current station and craft, not a global efficiency value. Autopsy and embalming
+crafts carry their explicit type and item IDs. Body definitions include generated
+organs, pockets, burial rewards and starting equipment. Workstations are included
+when they accept zombies, auto-craft, declare a talent, or use zombie rolled skin
+data. Fighter definitions retain raw combat expressions.
+
+Zombie appearance is not the player's wardrobe system. The game rolls valid body
+and head numeric IDs plus body/head LUT names from `ZombieCustomizationConfig`;
+those IDs and lossless LUT textures are exported. Fighter body-color and armor-tier
+palette textures are included as mappings. Equipped armor, weapons and collars are
+normal items and already use the complete item sprite catalog. The exporter does
+not mislabel animated character skin layers as independently selectable clothing.
+
+Each appearance set also exports the exact static-down body, body-overlay and head
+sprites used by `UIWorkerIcon`, plus the shared stone layer. The browser applies
+the flattened 32x32x32 LUT with trilinear sampling and composes these layers at
+their Unity pixel pivots. This supports dynamic portraits without pre-rendering
+every head/color combination. The ordinary worker portrait intentionally omits
+armor and tools, matching the game UI; their inventory icons remain available.
 
 ## Validation and extending the exporter
 
