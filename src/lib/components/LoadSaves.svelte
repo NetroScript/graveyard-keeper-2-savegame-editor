@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import {
     desktop,
     native,
@@ -64,11 +65,13 @@
     Proton:
       "~/.local/share/Steam/steamapps/compatdata/4358690/pfx/drive_c/users/steamuser/AppData/LocalLow/Lazy Bear Games/Graveyard Keeper 2",
   };
-  async function refresh() {
+  async function refresh(backups = includeBackups) {
     if (!saves.length) discovering = true;
     try {
       saves = (
-        await native<{ saves: Preview[] }>("save_discover", { includeBackups })
+        await native<{ saves: Preview[] }>("save_discover", {
+          includeBackups: backups,
+        })
       ).saves;
     } catch (e) {
       error = String(e);
@@ -79,7 +82,7 @@
   $effect(() => {
     if (desktop) {
       const backups = includeBackups;
-      void refresh();
+      untrack(() => void refresh(backups));
     }
   });
   async function dialog(folder: boolean) {
@@ -204,7 +207,7 @@
 </header>
 {#if desktop}
   <div class="toolbar load-toolbar">
-    <button onclick={refresh}><ArrowClockwise />Refresh</button><button
+    <button onclick={() => void refresh()}><ArrowClockwise />Refresh</button><button
       onclick={() => dialog(true)}><FolderOpen />Choose Folder</button
     ><button class="primary" onclick={() => dialog(false)}
       ><Upload />Open File</button
