@@ -137,6 +137,115 @@ async function exported(page: Page) {
   for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks);
 }
+test("zombie editor loads its catalogs and handles saves without zombies", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await open(page);
+  await page.getByRole("button", { name: "Zombies", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Zombies", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("No zombies were found in this save."),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});
+const zombieFixture = process.env.GK2_ZOMBIE_FIXTURE;
+test("real zombie save supports perfect-body edits and byte-identical undo", async ({
+  page,
+}) => {
+  test.skip(!zombieFixture, "GK2_ZOMBIE_FIXTURE is not configured");
+  const original = await readFile(zombieFixture!);
+  await page.goto("/");
+  await page.getByLabel("Select save files").setInputFiles({
+    name: "zombies.dat",
+    mimeType: "application/octet-stream",
+    buffer: original,
+  });
+  await expect(
+    page.getByRole("heading", { name: /zombies\.dat/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Zombies", exact: true }).click();
+  await expect(page.locator(".zombie-list button")).toHaveCount(8);
+  const identityCopy = page.locator(".identity > div").last();
+  const originalSummary = await identityCopy.textContent();
+  const redPoints = page.getByRole("spinbutton", { name: "red", exact: true });
+  await redPoints.fill("1234");
+  await page.getByRole("button", { name: "Apply points", exact: true }).click();
+  await expect(redPoints).toHaveValue("1234");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Body & equipment", exact: true })
+    .click();
+  await page
+    .locator(".slot-grid")
+    .first()
+    .locator(".slot-content")
+    .first()
+    .click();
+  let picker = page.locator("dialog");
+  await expect(
+    picker.getByRole("heading", { name: "Choose brain" }),
+  ).toBeVisible();
+  await expect(picker.locator(".variants button")).toHaveCount(6);
+  await expect(picker.locator(".results")).toHaveCount(0);
+  await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .locator(".slot-grid")
+    .nth(1)
+    .locator(".slot-content")
+    .first()
+    .click();
+  picker = page.locator("dialog");
+  await expect(picker.locator(".group-heading strong").first()).toHaveText(
+    "Body treatments",
+  );
+  await expect(
+    picker.locator(".group-heading strong").filter({
+      hasText: "Skull-adding items",
+    }),
+  ).toBeVisible();
+  await expect(
+    picker.getByRole("button", { name: "Show more", exact: true }),
+  ).toHaveCount(0);
+  await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.locator(".equipment .slot-content").nth(1).click();
+  picker = page.locator("dialog");
+  await expect(picker.locator(".group-heading strong")).toContainText([
+    "Normal armor",
+    "Debug and NPC armor",
+  ]);
+  await expect(picker.locator(".choice-copy small").first()).toContainText(
+    "Armor level",
+  );
+  await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.locator(".equipment .slot-content").nth(2).click();
+  picker = page.locator("dialog");
+  await expect(picker.locator(".group-heading strong").first()).toContainText(
+    /Best for|Fishing rods|Alchemy kits|Axes/,
+  );
+  await expect(picker.locator(".choice-copy small").first()).toContainText(
+    "Ability +",
+  );
+  await picker.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Optimize body", exact: true })
+    .first()
+    .click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator(".identity")).toContainText("36");
+  await page.getByRole("button", { name: "Talents", exact: true }).click();
+  await page.getByRole("button", { name: /^Optimize for / }).click();
+  await expect(page.getByRole("status")).toContainText("optimized for");
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(identityCopy).toHaveText(originalSummary!);
+  expect(await exported(page)).toEqual(original);
+});
 test("multiple saves preserve drafts, navigation, edits, undo and downloads", async ({
   page,
 }) => {
@@ -397,13 +506,17 @@ test("local real save round trip through browser", async ({ page }) => {
   });
   await expect(toolBelt).toBeVisible();
   await expect(player.locator(".sprite").first()).toBeVisible();
-  const categoryNames = await page.locator(".category-heading h3").allTextContents();
+  const categoryNames = await page
+    .locator(".category-heading h3")
+    .allTextContents();
   expect(categoryNames[0]).toBe("Player");
   expect(categoryNames.slice(1)).toEqual(
     [...categoryNames.slice(1)].sort((a, b) => a.localeCompare(b)),
   );
   await expect(
-    page.getByRole("navigation", { name: "Inventory categories" }).getByRole("button"),
+    page
+      .getByRole("navigation", { name: "Inventory categories" })
+      .getByRole("button"),
   ).toHaveCount(categoryNames.length);
   const inventoryOrder = await page
     .locator(".inventory-heading h3")
@@ -456,14 +569,14 @@ test("local real save round trip through browser", async ({ page }) => {
   await toolBelt
     .getByRole("button", { name: "Add item to Player tool belt", exact: true })
     .click();
-  await page.getByRole("combobox", { name: "Item", exact: true }).fill("Cheese");
+  await page
+    .getByRole("combobox", { name: "Item", exact: true })
+    .fill("Cheese");
   const toolBeltOptions = page
     .getByRole("listbox", { name: "Valid items" })
     .getByRole("option");
   await expect(toolBeltOptions).not.toHaveCount(0);
-  await expect(
-    page.getByRole("option", { name: /^Cheese\b/i }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("option", { name: /^Cheese\b/i })).toHaveCount(0);
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 });
 
@@ -496,7 +609,9 @@ test("Inspector simple and advanced search select and reveal records", async ({
   await page.getByRole("button", { name: "Syntax help", exact: true }).click();
   const help = page.getByRole("dialog", { name: "Inspector search syntax" });
   await expect(help).toBeVisible();
-  await expect(help.getByText(/nearest typed object containing the record/i)).toBeVisible();
+  await expect(
+    help.getByText(/nearest typed object containing the record/i),
+  ).toBeVisible();
   await expect(help.locator(".search-example")).toHaveCount(10);
   await expect(
     help.locator(".search-example").filter({
@@ -531,7 +646,9 @@ test("Inspector simple and advanced search select and reveal records", async ({
     "class:WgoData child:(name==worldId value==(Prison | RuinedTemple))",
   );
   await expect(page.getByText("1 matches", { exact: true })).toBeVisible();
-  await expect(page.getByRole("option", { name: /wgo.*class match/ })).toBeVisible();
+  await expect(
+    page.getByRole("option", { name: /wgo.*class match/ }),
+  ).toBeVisible();
 
   await search.fill(
     "type:(int | float) (name:count | name:value) value>=10 value<=20",
@@ -539,18 +656,22 @@ test("Inspector simple and advanced search select and reveal records", async ({
   await expect(page.getByText("2 matches", { exact: true })).toBeVisible();
   await expect(page.getByText("Complete", { exact: true })).toBeVisible();
 
-  await search.fill("path:*item* ancestor:Item type:string name:id value:*iron*");
+  await search.fill(
+    "path:*item* ancestor:Item type:string name:id value:*iron*",
+  );
   await expect(page.getByText("1 matches", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Reveal", exact: true }).click();
   await expect(page.locator(".tree-row.selected")).toContainText("id");
-  await page
-    .getByRole("button", { name: "Results (1)", exact: true })
-    .click();
-  await expect(page.getByRole("option", { name: /id.*value match/ })).toBeVisible();
+  await page.getByRole("button", { name: "Results (1)", exact: true }).click();
+  await expect(
+    page.getByRole("option", { name: /id.*value match/ }),
+  ).toBeVisible();
   await expect(page.locator(".search-warning[role=alert]")).toHaveCount(0);
 });
 
-test("Inspector virtualizes a hundred thousand search matches", async ({ page }) => {
+test("Inspector virtualizes a hundred thousand search matches", async ({
+  page,
+}) => {
   test.setTimeout(60_000);
   await page.goto("/");
   await page.getByLabel("Select save files").setInputFiles({
@@ -558,7 +679,9 @@ test("Inspector virtualizes a hundred thousand search matches", async ({ page })
     mimeType: "application/octet-stream",
     buffer: largeSearchFixture(100_001),
   });
-  await expect(page.getByRole("heading", { name: /large-search\.dat/ })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /large-search\.dat/ }),
+  ).toBeVisible({
     timeout: 30_000,
   });
   await page
@@ -583,7 +706,10 @@ test("Inspector virtualizes a hundred thousand search matches", async ({ page })
   const bottomName = (await bottomOption.locator("b").textContent())!;
   expect(await list.locator(".search-result-slot").count()).toBeLessThan(60);
   const bottomScroll = await list.evaluate((element) => element.scrollTop);
-  await page.getByRole("button", { name: "Reveal", exact: true }).last().click();
+  await page
+    .getByRole("button", { name: "Reveal", exact: true })
+    .last()
+    .click();
   await expect(page.locator(".tree-row.selected")).toContainText(bottomName);
   await page
     .getByRole("button", { name: "Results (100,001)", exact: true })
@@ -591,74 +717,125 @@ test("Inspector virtualizes a hundred thousand search matches", async ({ page })
   await expect(
     list.getByRole("option").filter({ hasText: bottomName }).last(),
   ).toBeVisible();
-  expect(await list.evaluate((element) => element.scrollTop)).toBe(bottomScroll);
+  expect(await list.evaluate((element) => element.scrollTop)).toBe(
+    bottomScroll,
+  );
   await expect(page.locator(".search-warning[role=alert]")).toHaveCount(0);
 });
 
-test("real save renders progression trees and undo restores unlocks", async ({ page }) => {
-  test.skip(!process.env.GK2_SAVE_FIXTURE, "Set GK2_SAVE_FIXTURE for private save validation");
+test("real save renders progression trees and undo restores unlocks", async ({
+  page,
+}) => {
+  test.skip(
+    !process.env.GK2_SAVE_FIXTURE,
+    "Set GK2_SAVE_FIXTURE for private save validation",
+  );
   const bytes = await readFile(process.env.GK2_SAVE_FIXTURE!);
   await page.goto("/");
-  await page.getByLabel("Select save files").setInputFiles(process.env.GK2_SAVE_FIXTURE!);
-  await expect(page.getByRole("spinbutton", { name: "Current health", exact: true })).toBeEnabled({ timeout: 30000 });
+  await page
+    .getByLabel("Select save files")
+    .setInputFiles(process.env.GK2_SAVE_FIXTURE!);
+  await expect(
+    page.getByRole("spinbutton", { name: "Current health", exact: true }),
+  ).toBeEnabled({ timeout: 30000 });
 
   await page.getByRole("button", { name: "Technologies", exact: true }).click();
-  await expect(page.getByRole("navigation", { name: "Technology trees" })).toBeVisible({ timeout: 30000 });
+  await expect(
+    page.getByRole("navigation", { name: "Technology trees" }),
+  ).toBeVisible({ timeout: 30000 });
   await expect(page.locator(".tech-node").first()).toBeVisible();
   await expect(page.locator(".branch-tabs img").first()).toBeVisible();
-  await expect(page.locator(".tech-node > .anchor > strong").filter({ hasText: /^Furniture Kit I$/ })).toHaveCount(1);
-  await expect(page.getByText("tech_furniture_kit_1", { exact: true })).toHaveCount(0);
-  await expect(page.getByText(/t_b_signboard_house|repair_sign_1102/)).toHaveCount(0);
-  await expect.poll(async () => (await page.locator(".reward-icons img").first().boundingBox())?.width ?? 0).toBeGreaterThan(45);
+  await expect(
+    page
+      .locator(".tech-node > .anchor > strong")
+      .filter({ hasText: /^Furniture Kit I$/ }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByText("tech_furniture_kit_1", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(/t_b_signboard_house|repair_sign_1102/),
+  ).toHaveCount(0);
+  await expect
+    .poll(
+      async () =>
+        (await page.locator(".reward-icons img").first().boundingBox())
+          ?.width ?? 0,
+    )
+    .toBeGreaterThan(45);
   await page.locator(".tech-node strong").first().hover();
-  const techPopover = page.locator('[popover]:popover-open');
+  const techPopover = page.locator("[popover]:popover-open");
   await expect(techPopover).toBeVisible();
   await page.locator(".reward-icons .progression-icon").first().hover();
   await expect(techPopover.locator("strong")).not.toBeEmpty();
-  await page.screenshot({ path: "test-results/technologies-real.png", fullPage: true });
+  await page.screenshot({
+    path: "test-results/technologies-real.png",
+    fullPage: true,
+  });
   const reputationGate = page.locator(".tech-node.gate").first();
   if (await reputationGate.count()) {
     await reputationGate.scrollIntoViewIfNeeded();
     await expect(reputationGate.locator("img")).toBeVisible();
     await expect(reputationGate.locator(".gate-value")).toBeVisible();
-    await page.screenshot({ path: "test-results/technology-gate-real.png", fullPage: true });
+    await page.screenshot({
+      path: "test-results/technology-gate-real.png",
+      fullPage: true,
+    });
   }
   const unlockedTechs = page.locator(".tech-node.unlocked");
   const unlockedTechCount = await unlockedTechs.count();
   const lockedTech = page.locator(".tech-node:not(.unlocked)").first();
   await lockedTech.click();
-  await expect.poll(() => unlockedTechs.count()).toBeGreaterThan(unlockedTechCount);
+  await expect
+    .poll(() => unlockedTechs.count())
+    .toBeGreaterThan(unlockedTechCount);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(unlockedTechs).toHaveCount(unlockedTechCount);
 
   await page.getByRole("button", { name: "Inspirations", exact: true }).click();
-  await expect(page.getByRole("navigation", { name: "Inspiration categories" })).toBeVisible({ timeout: 30000 });
+  await expect(
+    page.getByRole("navigation", { name: "Inspiration categories" }),
+  ).toBeVisible({ timeout: 30000 });
   await expect(page.locator(".inspiration-card").first()).toBeVisible();
   await expect(page.locator(".perk-node").first()).toBeVisible();
   await expect(page.locator(".perk-node img").first()).toBeVisible();
   await page.getByRole("button", { name: /Anatomy/ }).click();
   const graveBuilder = page.getByRole("button", { name: /Grave Builder/ });
   await graveBuilder.hover();
-  const perkPopover = page.locator('[popover]:popover-open');
-  await expect(perkPopover.locator(".description .inline-icon img")).toHaveCount(2);
-  await expect(perkPopover.locator(".description")).not.toContainText("<sprite");
+  const perkPopover = page.locator("[popover]:popover-open");
+  await expect(
+    perkPopover.locator(".description .inline-icon img"),
+  ).toHaveCount(2);
+  await expect(perkPopover.locator(".description")).not.toContainText(
+    "<sprite",
+  );
   const inspirationCard = page.locator(".inspiration-card").first();
   const selectedLevel = inspirationCard.locator('[aria-pressed="true"]');
   const previousLevel = Number(await selectedLevel.textContent());
-  const maximumLevel = await inspirationCard.locator(".level-buttons button").count() - 1;
+  const maximumLevel =
+    (await inspirationCard.locator(".level-buttons button").count()) - 1;
   if (previousLevel < maximumLevel) {
     const progress = inspirationCard.getByRole("slider");
-    await progress.fill(await progress.getAttribute("max") ?? "0");
-    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(String(previousLevel + 1));
+    await progress.fill((await progress.getAttribute("max")) ?? "0");
+    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(
+      String(previousLevel + 1),
+    );
     await page.getByRole("button", { name: "Undo", exact: true }).click();
-    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(String(previousLevel));
+    await expect(inspirationCard.locator('[aria-pressed="true"]')).toHaveText(
+      String(previousLevel),
+    );
   }
-  await page.screenshot({ path: "test-results/inspirations-real.png", fullPage: true });
+  await page.screenshot({
+    path: "test-results/inspirations-real.png",
+    fullPage: true,
+  });
   const unlockedPerks = page.locator(".perk-node.unlocked");
   const unlockedPerkCount = await unlockedPerks.count();
   const lockedPerk = page.locator(".perk-node:not(.unlocked)").first();
   await lockedPerk.click();
-  await expect.poll(() => unlockedPerks.count()).toBeGreaterThan(unlockedPerkCount);
+  await expect
+    .poll(() => unlockedPerks.count())
+    .toBeGreaterThan(unlockedPerkCount);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(unlockedPerks).toHaveCount(unlockedPerkCount);
   expect(await exported(page)).toEqual(bytes);
@@ -807,7 +984,9 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
   const hideEmpty = page.getByLabel("Hide empty containers");
   await hideEmpty.check();
   await expect(player).toHaveCount(0);
-  await expect(page.getByText("No containers match the current filters.")).toBeVisible();
+  await expect(
+    page.getByText("No containers match the current filters."),
+  ).toBeVisible();
   await hideEmpty.uncheck();
   await expect(player).toBeVisible();
   await player
@@ -864,9 +1043,9 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
   await expect(
     player.getByRole("button", { name: "Remove Apple", exact: true }),
   ).toHaveCount(0);
-  expect(await page.evaluate(() => (window as any).disabledTransitions)).not.toContain(
-    true,
-  );
+  expect(
+    await page.evaluate(() => (window as any).disabledTransitions),
+  ).not.toContain(true);
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(
     player.getByRole("button", { name: "Edit Apple, amount 7", exact: true }),
@@ -898,14 +1077,20 @@ test("inventory dialog searches variants, enforces bounds, edits, deletes and un
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator(".inventory-tools")).toBeVisible();
   expect(
-    await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
   ).toBe(true);
-  await page.locator(".rail").evaluate((rail) =>
-    Promise.all(rail.getAnimations().map((animation) => animation.finished)),
-  );
+  await page
+    .locator(".rail")
+    .evaluate((rail) =>
+      Promise.all(rail.getAnimations().map((animation) => animation.finished)),
+    );
   await page.screenshot({
     path: "test-results/inventory-narrow.png",
   });
   await page.getByRole("button", { name: "Toggle navigation" }).click();
-  await expect(page.getByRole("navigation", { name: "Workspace" })).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Workspace" }),
+  ).toBeVisible();
 });

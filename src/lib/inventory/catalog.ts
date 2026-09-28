@@ -22,8 +22,15 @@ export interface ItemDefinition {
     itemGroupIds: string[];
     type: string;
     isMainOrgan?: boolean;
+    isOrganMistake?: boolean;
     redSkulls: number;
     whiteSkulls: number;
+    redSkullsMinCollar?: number;
+    redSkullsMaxCollar?: number;
+    talentBonus?: number;
+    talentIds?: string[];
+    isProduct?: boolean;
+    sortOrder?: number;
   };
 }
 export interface InventoryItem {
@@ -82,6 +89,7 @@ export class ItemCatalog {
   readonly sprites: SpriteCatalog;
   readonly rules: { items: Record<string, unknown> };
   readonly families: Family[];
+  private readonly familyByItem = new Map<string, Family>();
   constructor(readonly pack: AssetPack) {
     this.items = pack.catalog("items");
     this.sprites = pack.catalog("icons");
@@ -120,8 +128,18 @@ export class ItemCatalog {
               allowed: inventoryRules.bags[i.id]?.complete
                 ? inventoryRules.bags[i.id].allowedItemIds
                 : null,
-              toolBelt: i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
+              toolBelt:
+                i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
               equipmentType: equipment.get(i.id)?.type ?? i.fields.type,
+              itemType: i.fields.type,
+              isMainOrgan: i.fields.isMainOrgan ?? false,
+              isOrganMistake: i.fields.isOrganMistake ?? false,
+              redSkulls: i.fields.redSkulls,
+              whiteSkulls: i.fields.whiteSkulls,
+              redSkullsMinCollar: i.fields.redSkullsMinCollar ?? 0,
+              redSkullsMaxCollar: i.fields.redSkullsMaxCollar ?? 0,
+              talentBonus: i.fields.talentBonus ?? 0,
+              talentIds: i.fields.talentIds ?? [],
             },
           ]),
       ),
@@ -160,6 +178,14 @@ export class ItemCatalog {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+    for (const family of this.families)
+      for (const item of family.variants)
+        this.familyByItem.set(item.id, family);
+  }
+  displayName(id: string) {
+    return plainText(
+      this.familyByItem.get(id)?.name || this.items[id]?.name || id,
+    );
   }
   async sprite(name: string | null, outline?: string) {
     const hash = name && this.sprites.sprites[name]?.image;

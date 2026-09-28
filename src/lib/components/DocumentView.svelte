@@ -5,6 +5,7 @@
   import Inspector from "../inspector/Inspector.svelte";
   import Technologies from "../progression/Technologies.svelte";
   import Inspirations from "../progression/Inspirations.svelte";
+  import Zombies from "../zombies/Zombies.svelte";
   import FloppyDisk from "~icons/ph/floppy-disk";
   import ArrowCounterClockwise from "~icons/ph/arrow-counter-clockwise";
   import ArrowClockwise from "~icons/ph/arrow-clockwise";
@@ -30,6 +31,14 @@
   let inventoryVisited = $state(false);
   let technologiesVisited = $state(false);
   let inspirationsVisited = $state(false);
+  let zombiesVisited = $state(false);
+  let inspectorRequest = $state<{ node: number; request: number }>();
+  let inspectorRequestId = 0;
+  function inspectNode(node: number) {
+    inspectorRequest = { node, request: ++inspectorRequestId };
+    inspectorVisited = true;
+    view = "inspector";
+  }
   function versionParts(value: unknown) {
     const match = String(value ?? "").match(/^\d+(?:\.\d+)+$/);
     return match ? match[0].split(".").map(Number) : null;
@@ -151,13 +160,14 @@
 <div hidden={view !== "editor"} class="editor-view">
   <nav class="category-tabs" aria-label="Editor categories">
     <div class="tab-group">
-      {#each ["General", "Inventory", "Technologies", "Inspirations"] as tab}<button
+      {#each ["General", "Inventory", "Zombies", "Technologies", "Inspirations"] as tab}<button
           class:active={category === tab}
           onclick={() => {
             category = tab;
             if (tab === "Inventory") inventoryVisited = true;
             if (tab === "Technologies") technologiesVisited = true;
             if (tab === "Inspirations") inspirationsVisited = true;
+            if (tab === "Zombies") zombiesVisited = true;
           }}>{tab}</button
         >{/each}
     </div>
@@ -177,6 +187,14 @@
           active={view === "editor" && category === "Technologies"}
         />{/if}
     </div>
+    <div hidden={category !== "Zombies"}>
+      {#if zombiesVisited}<Zombies
+          {doc}
+          {settings}
+          active={view === "editor" && category === "Zombies"}
+          oninspect={inspectNode}
+        />{/if}
+    </div>
     <div hidden={category !== "Inspirations"}>
       {#if inspirationsVisited}<Inspirations
           {doc}
@@ -187,7 +205,11 @@
 </div>
 
 <div hidden={view !== "inspector"} class="inspector-view">
-  {#if inspectorVisited}<Inspector {doc} active={view === "inspector"} />{/if}
+  {#if inspectorVisited}<Inspector
+      {doc}
+      active={view === "inspector"}
+      revealTarget={inspectorRequest}
+    />{/if}
 </div>
 
 <style>

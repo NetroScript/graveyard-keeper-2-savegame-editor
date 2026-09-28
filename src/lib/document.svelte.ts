@@ -27,6 +27,7 @@ export class SaveDocument {
   inventoryEpoch = $state(0);
   dropEpoch = $state(0);
   progressionEpoch = $state(0);
+  zombieEpoch = $state(0);
   unknownItemIds = $state<string[]>([]);
   error = $state("");
   private queue = Promise.resolve();
@@ -94,6 +95,12 @@ export class SaveDocument {
           operations?.some((operation) => operation.op === "progression")
         )
           this.progressionEpoch++;
+        if (
+          op === "undo" ||
+          op === "redo" ||
+          operations?.some((operation) => operation.op === "zombie")
+        )
+          this.zombieEpoch++;
       } catch (e) {
         this.error = String(e);
         throw e;

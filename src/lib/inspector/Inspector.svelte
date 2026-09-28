@@ -10,7 +10,15 @@
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
   import Warning from "~icons/ph/warning";
   import X from "~icons/ph/x";
-  let { doc, active = true }: { doc: SaveDocument; active?: boolean } = $props();
+  let {
+    doc,
+    active = true,
+    revealTarget,
+  }: {
+    doc: SaveDocument;
+    active?: boolean;
+    revealTarget?: { node: number; request: number };
+  } = $props();
   let roots = $state<NodeView[]>([]);
   let treeRevision = $state(-1);
   let selected = $state<number | null>(null);
@@ -33,6 +41,7 @@
   let revealOffsets = $state<Record<number, number>>({});
   let rootOffset = $state(0);
   let safetyWarningDismissed = $state(false);
+  let handledRevealRequest = $state(0);
   const expanded = new SvelteSet<number>();
   let widget = $derived(node ? matchWidget(node, children) : undefined);
   onMount(() => {
@@ -129,6 +138,28 @@
     searchActive = false;
     await select(target, false);
   }
+  $effect(() => {
+    if (
+      !active ||
+      !revealTarget ||
+      revealTarget.request === handledRevealRequest
+    )
+      return;
+    handledRevealRequest = revealTarget.request;
+    const request = revealTarget;
+    Promise.all([
+      doc.nodes([request.node]),
+      doc.query<NodeLocation>({
+        op: "node_location",
+        revision: doc.summary!.revision,
+        node: request.node,
+      }),
+    ])
+      .then(([nodes, location]) => {
+        if (nodes[0]) return reveal(location, nodes[0]);
+      })
+      .catch((reason) => (error = String(reason)));
+  });
   function boundedTreeWidth(width: number, total: number) {
     return Math.max(220, Math.min(width, total - 320));
   }
@@ -215,204 +246,206 @@
     class="inspector-layout"
     style:--tree-width={treeWidth === null ? "38%" : `${treeWidth}px`}
   >
-  <div class="panel tree-pane">
-    <h3 class="strip">Save structure</h3>
-    <SearchPane
-      {doc}
-      {active}
-      showResults={searchActive}
-      {selected}
-      onselect={(record) => select(record, false)}
-      onreveal={reveal}
-      onactive={(value) => (searchActive = value)}
-    />
-    <ul class="tree" hidden={searchActive}>
-      {#each roots as root (`${treeRevision}:${root.id}`)}<TreeNode
-          {doc}
-          node={root}
-          {selected}
-          onselect={select}
-          {expanded}
-          {revealOffsets}
-          {active}
-        />{/each}
-    </ul>
-  </div>
-  <button
-    class="pane-grabber"
-    aria-label="Resize inspector panes"
-    title="Drag to resize panes; press Home to reset"
-    onpointerdown={resizeStart}
-    onkeydown={resizeKey}
-    ondblclick={() => (treeWidth = null)}><DotsSixVertical /></button
-  >
-  <section class="panel details-pane">
-    <h3 class="strip">{node?.name ?? "Record details"}</h3>
-    <div class="panel-body">
-      {#if node}
-        <nav class="breadcrumbs" aria-label="Record path">
-          {#each breadcrumbs as crumb}<button onclick={() => void select(crumb)}
-              >{crumb.name ?? crumb.kind}</button
-            ><span>/</span>{/each}
-        </nav>
-        <p class="type-name">{node.typeName ?? node.kind}</p>
-        {#if widget}<widget.component
-            {node}
-            {children}
-            transact={transaction}
-          /><label class="check"
-            ><input type="checkbox" bind:checked={raw} />Show raw structure</label
-          >{/if}
-        {#if !widget || raw}
-          <dl class="record-meta">
-            <dt>Handle</dt>
-            <dd>{node.id}</dd>
-            <dt>Wire type</dt>
-            <dd>{node.kind} · {node.tag}</dd>
-          </dl>
-          {#if node.editable}<form
-              onsubmit={async (e) => {
-                e.preventDefault();
-                if (node) {
-                  await action([
-                    {
-                      op: "set",
-                      node: node.id,
-                      tag: node.tag,
-                      value: drafts[node.id] ?? node.value ?? "",
-                    },
-                  ]);
-                  if (!error) delete drafts[node.id];
-                }
-              }}
-            >
-              <label class="field stacked"
-                >Value<input
-                  aria-label="Record value"
-                  value={drafts[node.id] ?? node.value ?? ""}
-                  oninput={(e) => {
-                    if (node) drafts[node.id] = e.currentTarget.value;
-                  }}
-                /></label
-              ><button class="primary" disabled={doc.busy}>Apply value</button>
-            </form>{:else if node.value !== null}<pre>{node.value}</pre>{/if}
-          {#if node.referenceTarget !== null}<button
-              onclick={async () => {
-                if (
-                  node?.referenceTarget !== null &&
-                  node?.referenceTarget !== undefined
-                )
-                  await select((await doc.nodes([node.referenceTarget]))[0]);
-              }}>Go to referenced object</button
-            >
-            <form
-              onsubmit={(e) => {
-                e.preventDefault();
-                if (node)
-                  void action([
-                    { op: "retarget", node: node.id, target: Number(target) },
-                  ]);
-              }}
-            >
-              <label class="field"
-                >Target handle<input
-                  type="number"
-                  min="0"
-                  bind:value={target}
-                /></label
-              ><button>Retarget reference</button>
-            </form>{/if}
-          {#if node.childCount}<div class="child-links">
-              {#each children as child}<button
-                  onclick={() => void select(child)}
-                  >{child.name ?? child.kind}<small>{child.value}</small
-                  ></button
-                >{/each}
-            </div>{/if}
-          {#if [1, 2, 3, 4, 6].includes(node.tag)}
-            <details>
-              <summary>Add a field or entry</summary>
-              <form
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  if (node)
-                    void action([
-                      {
-                        op: "insert",
-                        parent: node.id,
-                        index: node.childCount,
-                        name: node.tag === 6 ? null : name || null,
-                        kind,
-                        value,
-                      },
-                    ]);
-                }}
-              >
-                {#if node.tag !== 6}<label class="field"
-                    >Name<input bind:value={name} /></label
-                  >{/if}
-                <label class="field"
-                  >Type<select bind:value={kind}
-                    >{#each ["i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "string", "bool", "null", "array"] as k}<option
-                        >{k}</option
-                      >{/each}</select
-                  ></label
-                ><label class="field">Value<input bind:value /></label><button
-                  >Add scalar / array</button
-                >
-              </form>
-              <form
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  if (node)
-                    void action([
-                      {
-                        op: "template",
-                        parent: node.id,
-                        index: node.childCount,
-                        name: node.tag === 6 ? null : name || null,
-                        template,
-                        values: {},
-                      },
-                    ]);
-                }}
-              >
-                <label class="field"
-                  >Template<select bind:value={template}
-                    ><option value="">Choose a supported type</option
-                    >{#each templates as t}<option value={t.id}>{t.id}</option
-                      >{/each}</select
-                  ></label
-                ><button disabled={!template}>Create from template</button>
-              </form>
-            </details>{/if}
-          {#if node.parent !== null}<div class="form-actions">
-              <button
-                onclick={() =>
-                  node && action([{ op: "duplicate", node: node.id }])}
-                >Duplicate subtree</button
-              ><label class="field"
-                >Sibling index<input
-                  aria-label="Sibling index"
-                  type="number"
-                  min="0"
-                  bind:value={position}
-                /></label
-              ><button
-                onclick={() =>
-                  node &&
-                  action([
-                    { op: "move", node: node.id, index: Number(position) },
-                  ])}>Move</button
-              ><button class="danger" onclick={remove}>Remove</button>
-            </div>
-            <p class="hint">
-              Duplication preserves game identifiers, including SGuid.
-            </p>{/if}
-        {/if}
-      {:else}<p>Select a record in the tree to inspect or edit it.</p>{/if}
-      {#if error}<p class="warning" role="alert">{error}</p>{/if}
+    <div class="panel tree-pane">
+      <h3 class="strip">Save structure</h3>
+      <SearchPane
+        {doc}
+        {active}
+        showResults={searchActive}
+        {selected}
+        onselect={(record) => select(record, false)}
+        onreveal={reveal}
+        onactive={(value) => (searchActive = value)}
+      />
+      <ul class="tree" hidden={searchActive}>
+        {#each roots as root (`${treeRevision}:${root.id}`)}<TreeNode
+            {doc}
+            node={root}
+            {selected}
+            onselect={select}
+            {expanded}
+            {revealOffsets}
+            {active}
+          />{/each}
+      </ul>
     </div>
-  </section>
+    <button
+      class="pane-grabber"
+      aria-label="Resize inspector panes"
+      title="Drag to resize panes; press Home to reset"
+      onpointerdown={resizeStart}
+      onkeydown={resizeKey}
+      ondblclick={() => (treeWidth = null)}><DotsSixVertical /></button
+    >
+    <section class="panel details-pane">
+      <h3 class="strip">{node?.name ?? "Record details"}</h3>
+      <div class="panel-body">
+        {#if node}
+          <nav class="breadcrumbs" aria-label="Record path">
+            {#each breadcrumbs as crumb}<button
+                onclick={() => void select(crumb)}
+                >{crumb.name ?? crumb.kind}</button
+              ><span>/</span>{/each}
+          </nav>
+          <p class="type-name">{node.typeName ?? node.kind}</p>
+          {#if widget}<widget.component
+              {node}
+              {children}
+              transact={transaction}
+            /><label class="check"
+              ><input type="checkbox" bind:checked={raw} />Show raw structure</label
+            >{/if}
+          {#if !widget || raw}
+            <dl class="record-meta">
+              <dt>Handle</dt>
+              <dd>{node.id}</dd>
+              <dt>Wire type</dt>
+              <dd>{node.kind} · {node.tag}</dd>
+            </dl>
+            {#if node.editable}<form
+                onsubmit={async (e) => {
+                  e.preventDefault();
+                  if (node) {
+                    await action([
+                      {
+                        op: "set",
+                        node: node.id,
+                        tag: node.tag,
+                        value: drafts[node.id] ?? node.value ?? "",
+                      },
+                    ]);
+                    if (!error) delete drafts[node.id];
+                  }
+                }}
+              >
+                <label class="field stacked"
+                  >Value<input
+                    aria-label="Record value"
+                    value={drafts[node.id] ?? node.value ?? ""}
+                    oninput={(e) => {
+                      if (node) drafts[node.id] = e.currentTarget.value;
+                    }}
+                  /></label
+                ><button class="primary" disabled={doc.busy}>Apply value</button
+                >
+              </form>{:else if node.value !== null}<pre>{node.value}</pre>{/if}
+            {#if node.referenceTarget !== null}<button
+                onclick={async () => {
+                  if (
+                    node?.referenceTarget !== null &&
+                    node?.referenceTarget !== undefined
+                  )
+                    await select((await doc.nodes([node.referenceTarget]))[0]);
+                }}>Go to referenced object</button
+              >
+              <form
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  if (node)
+                    void action([
+                      { op: "retarget", node: node.id, target: Number(target) },
+                    ]);
+                }}
+              >
+                <label class="field"
+                  >Target handle<input
+                    type="number"
+                    min="0"
+                    bind:value={target}
+                  /></label
+                ><button>Retarget reference</button>
+              </form>{/if}
+            {#if node.childCount}<div class="child-links">
+                {#each children as child}<button
+                    onclick={() => void select(child)}
+                    >{child.name ?? child.kind}<small>{child.value}</small
+                    ></button
+                  >{/each}
+              </div>{/if}
+            {#if [1, 2, 3, 4, 6].includes(node.tag)}
+              <details>
+                <summary>Add a field or entry</summary>
+                <form
+                  onsubmit={(e) => {
+                    e.preventDefault();
+                    if (node)
+                      void action([
+                        {
+                          op: "insert",
+                          parent: node.id,
+                          index: node.childCount,
+                          name: node.tag === 6 ? null : name || null,
+                          kind,
+                          value,
+                        },
+                      ]);
+                  }}
+                >
+                  {#if node.tag !== 6}<label class="field"
+                      >Name<input bind:value={name} /></label
+                    >{/if}
+                  <label class="field"
+                    >Type<select bind:value={kind}
+                      >{#each ["i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "string", "bool", "null", "array"] as k}<option
+                          >{k}</option
+                        >{/each}</select
+                    ></label
+                  ><label class="field">Value<input bind:value /></label><button
+                    >Add scalar / array</button
+                  >
+                </form>
+                <form
+                  onsubmit={(e) => {
+                    e.preventDefault();
+                    if (node)
+                      void action([
+                        {
+                          op: "template",
+                          parent: node.id,
+                          index: node.childCount,
+                          name: node.tag === 6 ? null : name || null,
+                          template,
+                          values: {},
+                        },
+                      ]);
+                  }}
+                >
+                  <label class="field"
+                    >Template<select bind:value={template}
+                      ><option value="">Choose a supported type</option
+                      >{#each templates as t}<option value={t.id}>{t.id}</option
+                        >{/each}</select
+                    ></label
+                  ><button disabled={!template}>Create from template</button>
+                </form>
+              </details>{/if}
+            {#if node.parent !== null}<div class="form-actions">
+                <button
+                  onclick={() =>
+                    node && action([{ op: "duplicate", node: node.id }])}
+                  >Duplicate subtree</button
+                ><label class="field"
+                  >Sibling index<input
+                    aria-label="Sibling index"
+                    type="number"
+                    min="0"
+                    bind:value={position}
+                  /></label
+                ><button
+                  onclick={() =>
+                    node &&
+                    action([
+                      { op: "move", node: node.id, index: Number(position) },
+                    ])}>Move</button
+                ><button class="danger" onclick={remove}>Remove</button>
+              </div>
+              <p class="hint">
+                Duplication preserves game identifiers, including SGuid.
+              </p>{/if}
+          {/if}
+        {:else}<p>Select a record in the tree to inspect or edit it.</p>{/if}
+        {#if error}<p class="warning" role="alert">{error}</p>{/if}
+      </div>
+    </section>
   </div>
 </div>
