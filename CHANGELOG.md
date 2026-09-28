@@ -15,6 +15,8 @@ release. GitHub Releases use the matching version section automatically.
 - Added automatic incremental loading to zombie item pickers and clearer groups for treatments, skull-adding items, tools, armor and cargo.
 - Added configurable desktop update checks with Never, Daily, and Weekly schedules. New and existing installations that have not chosen a schedule are prompted on startup, with Weekly preselected.
 - Added a side-rail notification when a new application version is available.
+- Added toast notifications for saves, settings changes and edit results, including a confirmation after each successful save. Notifications stack, pause while hovered or focused, and show their remaining time.
+- Failed edits now appear as temporary notifications instead of banners that remained until the next edit, and no longer also show a second error banner above the editor.
 
 ## [0.2.0] - Save Inspector search
 
