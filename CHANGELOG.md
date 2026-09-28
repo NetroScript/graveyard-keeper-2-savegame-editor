@@ -11,6 +11,7 @@ release. GitHub Releases use the matching version section automatically.
 - Added zombie talent-tree editing, including individual unlocks and automatic body and specialty optimization.
 - Added an in-game-style appearance editor for supported bodies, heads and color palettes, with composited worker previews throughout the zombie editor.
 - Added extracted zombie customization, talent, perk and equipment data and sprites to the packaged game assets.
+- Compressed the packaged game assets, reducing the web editor's asset download from about 5.4 MB to 1.9 MB.
 - Cached zombie snapshots and applied incremental transaction updates so opening the editor, selecting workers and changing appearance no longer repeatedly reconstruct the entire zombie list.
 - Added automatic incremental loading to zombie item pickers and clearer groups for treatments, skull-adding items, tools, armor and cargo.
 - Added configurable desktop update checks with Never, Daily, and Weekly schedules. New and existing installations that have not chosen a schedule are prompted on startup, with Weekly preselected.
