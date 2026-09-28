@@ -19,6 +19,8 @@
   } from "$lib/components/DesktopUpdates.svelte";
   import DocumentView from "$lib/components/DocumentView.svelte";
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
+  import Toasts from "$lib/components/Toasts.svelte";
+  import { notify, notifyError } from "$lib/toasts.svelte";
   import { loadAssetManifest } from "$lib/assets/game-icons";
   import { preloadProgressionAssets } from "$lib/progression/catalog";
   import FolderOpen from "~icons/ph/folder-open";
@@ -143,7 +145,7 @@
         );
       activate(result.summary.documentId);
     } catch (e) {
-      error = String(e);
+      notifyError(e);
     }
   }
   async function save(doc: SaveDocument, as: boolean) {
@@ -164,18 +166,19 @@
         );
         doc.summary = result.summary;
         doc.updatePreview(result.preview);
+        notify(`Saved ${doc.name}`);
       } else {
         const revision = doc.summary!.revision;
         download(await backend.export(doc.id), doc.name);
         if (doc.infoBytes)
           download(doc.infoBytes, doc.name.replace(/\.dat$/i, ".info"));
         doc.summary = await doc.query<Summary>({ op: "mark_saved", revision });
+        notify(`Downloaded ${doc.name}`);
       }
       conflict = undefined;
-      doc.error = "";
     } catch (e) {
       if (String(e).includes("EXTERNAL_CHANGE")) conflict = doc;
-      else doc.error = String(e);
+      else notifyError(e);
     }
   }
   async function close(doc: SaveDocument) {
@@ -288,6 +291,7 @@
   {onsettings}
   onstate={(state) => (updates = state)}
 />
+<Toasts />
 {#if conflict}<div class="modal-backdrop">
     <dialog
       use:showModal

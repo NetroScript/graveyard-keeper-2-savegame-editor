@@ -29,7 +29,6 @@ export class SaveDocument {
   progressionEpoch = $state(0);
   zombieEpoch = $state(0);
   unknownItemIds = $state<string[]>([]);
-  error = $state("");
   private queue = Promise.resolve();
   constructor(
     public backend: SaveBackend,
@@ -62,7 +61,6 @@ export class SaveDocument {
       // Fast edits should not flash every control through its disabled style.
       // The queue still serializes them; only show busy state when work is perceptible.
       const busyTimer = setTimeout(() => (this.busy = true), 120);
-      this.error = "";
       try {
         const revision = untrack(() => this.summary!.revision);
         const result = await this.query<{
@@ -101,9 +99,6 @@ export class SaveDocument {
           operations?.some((operation) => operation.op === "zombie")
         )
           this.zombieEpoch++;
-      } catch (e) {
-        this.error = String(e);
-        throw e;
       } finally {
         clearTimeout(busyTimer);
         this.busy = false;

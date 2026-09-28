@@ -14,6 +14,7 @@
   import Warning from "~icons/ph/warning";
   import GameIcon from "./GameIcon.svelte";
   import { gameDayIcon } from "../assets/game-icons";
+  import { notifyError } from "../toasts.svelte";
   let {
     doc,
     onsave,
@@ -125,13 +126,13 @@
       title="Undo"
       aria-label="Undo"
       disabled={!doc.summary?.canUndo || doc.busy}
-      onclick={() => doc.mutate("undo").catch(() => {})}
+      onclick={() => doc.mutate("undo").catch(notifyError)}
       ><ArrowCounterClockwise /></button
     ><button
       title="Redo"
       aria-label="Redo"
       disabled={!doc.summary?.canRedo || doc.busy}
-      onclick={() => doc.mutate("redo").catch(() => {})}
+      onclick={() => doc.mutate("redo").catch(notifyError)}
       ><ArrowClockwise /></button
     ><button
       disabled={doc.busy || doc.invalidGeneralDraft}
@@ -156,7 +157,6 @@
     >
   </div>
 </nav>
-{#if doc.error}<p class="error-banner" role="alert">{doc.error}</p>{/if}
 <div hidden={view !== "editor"} class="editor-view">
   <nav class="category-tabs" aria-label="Editor categories">
     <div class="tab-group">
