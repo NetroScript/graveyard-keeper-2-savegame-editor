@@ -3,22 +3,23 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
-## [Unreleased]
+## [0.3.0] - Unreleased
 
-- Added configurable desktop update checks with Never, Daily, and Weekly
-  schedules. New and existing installations that have not chosen a schedule
-  are prompted on startup, with Weekly preselected.
+- Added a complete zombie worker editor with localized names, worker portraits, skull totals and available talent slots.
+- Added editing for zombie names, technology points, organs, body treatments, body pockets, collars, armor and tools, with item artwork, skull values and game-aware slot choices.
+- Added role-aware work storage. Porter cargo can be edited while preserving the game's reserved large-item slots; carried task items and workstation storage are identified for other worker roles.
+- Added zombie talent-tree editing, including individual unlocks and automatic body and specialty optimization.
+- Added an in-game-style appearance editor for supported bodies, heads and color palettes, with composited worker previews throughout the zombie editor.
+- Added extracted zombie customization, talent, perk and equipment data and sprites to the packaged game assets.
+- Cached zombie snapshots and applied incremental transaction updates so opening the editor, selecting workers and changing appearance no longer repeatedly reconstruct the entire zombie list.
+- Added automatic incremental loading to zombie item pickers and clearer groups for treatments, skull-adding items, tools, armor and cargo.
+- Added configurable desktop update checks with Never, Daily, and Weekly schedules. New and existing installations that have not chosen a schedule are prompted on startup, with Weekly preselected.
 - Added a side-rail notification when a new application version is available.
 
 ## [0.2.0] - Save Inspector search
 
-- Added simple and advanced Save Inspector search with field, class, type,
-  substring, exact, wildcard, Boolean, path, reference and numeric-range
-  matching. Structural child, descendant and parent predicates can return
-  containers or elements based on related fields. Results include match
-  explanations and a detailed syntax and examples dialog.
-- Added a dismissible Save Inspector warning about backups and the risks of raw
-  structural edits.
+- Added simple and advanced Save Inspector search with field, class, type, substring, exact, wildcard, Boolean, path, reference and numeric-range matching. Structural child, descendant and parent predicates can return containers or elements based on related fields. Results include match explanations and a detailed syntax and examples dialog.
+- Added a dismissible Save Inspector warning about backups and the risks of raw structural edits.
 - Updated the bundled game data for Graveyard Keeper 2 version 1.006.
 
 ## [0.1.2] - Improvements and fixes
