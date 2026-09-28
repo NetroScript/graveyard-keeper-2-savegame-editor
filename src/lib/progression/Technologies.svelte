@@ -6,6 +6,7 @@
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
+  import { notifyError } from "../toasts.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -61,7 +62,7 @@
     const rewards = additions.flatMap((item) => item.rewards);
     const scrollLeft = treePanel?.scrollLeft ?? 0;
     const scrollTop = treePanel?.scrollTop ?? 0;
-    saving = true; error = "";
+    saving = true;
     try {
       await doc.transact([{ op: "progression", action: { kind: "unlock_technologies", ids: additions.map((item) => item.id), rewards: {
         crafts: rewards.filter((r) => r.type === "craft").map((r) => r.id),
@@ -72,7 +73,7 @@
       }}}]);
       await tick();
       if (treePanel) { treePanel.scrollLeft = scrollLeft; treePanel.scrollTop = scrollTop; }
-    } catch (e) { error = String(e); } finally { saving = false; }
+    } catch (e) { notifyError(e); } finally { saving = false; }
   }
 </script>
 

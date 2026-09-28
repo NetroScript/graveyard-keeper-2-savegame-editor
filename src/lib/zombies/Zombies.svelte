@@ -12,6 +12,7 @@
     type ItemDefinition,
   } from "../inventory/catalog";
   import ProgressionIcon from "../progression/ProgressionIcon.svelte";
+  import { notify, notifyError } from "../toasts.svelte";
   import ZombieItemDialog from "./ZombieItemDialog.svelte";
   import ZombiePortrait from "./ZombiePortrait.svelte";
   import ZombieSlot from "./ZombieSlot.svelte";
@@ -60,8 +61,7 @@
   let detailTab = $state("Overview");
   let branchId = $state("");
   let spendPoints = $state(false);
-  let error = $state("");
-  let notice = $state("");
+  let loadError = $state("");
   let loading = $state(true);
   let initialized = $state(false);
   let loadedZombieEpoch = $state(-1);
@@ -226,7 +226,7 @@
         loadedZombieEpoch = doc.zombieEpoch;
         initialized = true;
       })
-      .catch((reason) => (error = String(reason)))
+      .catch((reason) => (loadError = String(reason).replace(/^Error:\s*/, "")))
       .finally(() => (loading = false));
     return () => {
       alive = false;
@@ -236,35 +236,27 @@
     const epoch = doc.zombieEpoch;
     if (!initialized || !active || epoch === loadedZombieEpoch) return;
     loadedZombieEpoch = epoch;
-    void refresh(untrack(() => selectedNode)).catch(
-      (reason) => (error = String(reason)),
-    );
+    void refresh(untrack(() => selectedNode)).catch(notifyError);
   });
   $effect(() => {
     if (selected) syncDrafts(selected);
   });
 
+  /** Rejections propagate: the item dialog shows them inline, other callers use `notifyError`. */
   async function mutate(
     action: Record<string, unknown> | Record<string, unknown>[],
   ) {
     if (!selected) return;
-    error = "";
-    notice = "";
-    try {
-      const actions = Array.isArray(action) ? action : [action];
-      await doc.transact(
-        actions.map((entry) => ({
-          op: "zombie",
-          zombie: selected.node,
-          action: entry,
-        })),
-      );
-      loadedZombieEpoch = doc.zombieEpoch;
-      await refresh(selected.node);
-    } catch (reason) {
-      error = String(reason).replace(/^Error:\s*/, "");
-      throw reason;
-    }
+    const actions = Array.isArray(action) ? action : [action];
+    await doc.transact(
+      actions.map((entry) => ({
+        op: "zombie",
+        zombie: selected.node,
+        action: entry,
+      })),
+    );
+    loadedZombieEpoch = doc.zombieEpoch;
+    await refresh(selected.node);
   }
   function applyPoints() {
     return mutate({
@@ -448,7 +440,7 @@
   async function perfectBody() {
     if (!selected || !items) return;
     await mutate(perfectBodyOperations(selected, items));
-    notice = "The strongest available body parts and collar have been applied.";
+    notify("The strongest available body parts and collar have been applied.");
   }
   function closure(ids: string[], current = new Set(studied)) {
     const byId = new Map((catalog?.nodes ?? []).map((node) => [node.id, node]));
@@ -491,7 +483,10 @@
       best.organs.reduce((sum, item) => sum + item.fields.redSkulls, 0) +
       (best.embalming?.fields.redSkulls ?? 0) * 6;
     if (next.size > maximumRed) {
-      error = `${selectedBranch.name} needs ${next.size} talent slots, but the strongest available body provides ${maximumRed}.`;
+      notify(
+        `${selectedBranch.name} needs ${next.size} talent slots, but the strongest available body provides ${maximumRed}.`,
+        "error",
+      );
       return;
     }
     const operations = perfectBodyOperations(selected, items);
@@ -517,7 +512,9 @@
       grant_points: true,
     });
     await mutate(operations);
-    notice = `${zombieName(selected)} is now optimized for ${selectedBranch.name}.`;
+    notify(
+      `${zombieName(selected)} is now optimized for ${selectedBranch.name}.`,
+    );
   }
   function cycle<T>(values: T[], current: T, direction: number) {
     const at = Math.max(0, values.indexOf(current));
@@ -536,14 +533,14 @@
     </div>
     {#if selected}<button
         class="primary"
-        onclick={() => void perfectBody().catch(() => {})}
+        onclick={() => void perfectBody().catch(notifyError)}
         ><MagicWand />Optimize body</button
       >{/if}
   </header>
-  {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
-  {#if notice}<p class="notice" role="status">{notice}</p>{/if}
   {#if loading}<p class="empty">
       Loading zombies…
+    </p>{:else if loadError}<p class="error-banner" role="alert">
+      {loadError}
     </p>{:else if !snapshot?.zombies.length}<p class="empty">
       No zombies were found in this save.
     </p>
@@ -617,7 +614,7 @@
                   nameDraft === zombieName(selected)}
                 onclick={() =>
                   void mutate({ kind: "rename", name: nameDraft }).catch(
-                    () => {},
+                    notifyError,
                   )}>Apply name</button
               >
             </section>
@@ -646,7 +643,7 @@
                   >Set all to 9,999</button
                 ><button
                   class="primary"
-                  onclick={() => void applyPoints().catch(() => {})}
+                  onclick={() => void applyPoints().catch(notifyError)}
                   >Apply points</button
                 >
               </div>
@@ -670,7 +667,7 @@
               <h4>Quick improvement</h4>
               <button
                 class="primary wide"
-                onclick={() => void perfectBody().catch(() => {})}
+                onclick={() => void perfectBody().catch(notifyError)}
                 ><MagicWand />Optimize body</button
               >
               <p class="hint">
@@ -723,7 +720,7 @@
                       onremove={organ(type)
                         ? () =>
                             void mutate(remove(organ(type)!.node)).catch(
-                              () => {},
+                              notifyError,
                             )
                         : undefined}
                     />{/each}
@@ -739,7 +736,7 @@
                       onremove={pocketItems[index]
                         ? () =>
                             void mutate(remove(pocketItems[index].node)).catch(
-                              () => {},
+                              notifyError,
                             )
                         : undefined}
                     />{/each}
@@ -760,7 +757,7 @@
                             slot,
                             node: null,
                             item: null,
-                          }).catch(() => {})
+                          }).catch(notifyError)
                       : undefined}
                   />{/each}
               </section>
@@ -802,7 +799,7 @@
                               kind: "cargo_inventory",
                               out_of_bounds: settings.outOfBoundsEdits,
                               action: { kind: "remove", node: item.node },
-                            }).catch(() => {})}
+                            }).catch(notifyError)}
                     />{/each}
                   {#each Array(freeCargoSlots) as _, index}<ZombieSlot
                       catalog={loadedItems}
@@ -867,7 +864,7 @@
                   ></label
                 ><button
                   class="primary"
-                  onclick={() => void perfectBranch().catch(() => {})}
+                  onclick={() => void perfectBranch().catch(notifyError)}
                   ><MagicWand />Optimize for {selectedBranch.name}</button
                 >
               </div>{/if}
@@ -897,7 +894,8 @@
                     style={nodeStyle(node.x, node.y)}
                     title={friendlyText(node.description, node.name)}
                     disabled={node.availableAtStart}
-                    onclick={() => void toggleTalent(node.id).catch(() => {})}
+                    onclick={() =>
+                      void toggleTalent(node.id).catch(notifyError)}
                     ><ProgressionIcon
                       name={node.sprite}
                       label={node.name}
@@ -1036,7 +1034,7 @@
                     head: Number(appearanceDraft.head),
                     body_lut: appearanceDraft.bodyLut,
                     head_lut: appearanceDraft.headLut,
-                  }).catch(() => {})}>Apply appearance</button
+                  }).catch(notifyError)}>Apply appearance</button
               >
             </div>
           </div>
@@ -1089,13 +1087,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-  .notice {
-    margin: 0;
-    padding: 9px 12px;
-    color: #cad7b5;
-    background: #293329;
-    border: 1px solid #586c4e;
   }
   .workspace {
     display: grid;

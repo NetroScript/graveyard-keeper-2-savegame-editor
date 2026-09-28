@@ -16,6 +16,7 @@
   import ItemImage from "./ItemImage.svelte";
   import ItemDialog from "./ItemDialog.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
+  import { notifyError } from "../toasts.svelte";
   let {
     doc,
     settings,
@@ -25,6 +26,7 @@
   let inventories = $state<InventoryData[]>([]);
   let rules = $state<Record<string, InventoryRule>>({});
   let loadedEpoch = -1;
+  /** Loading failures only; edit failures are reported as toasts. */
   let error = $state("");
   let loading = $state(true);
   let editing = $state<{
@@ -289,7 +291,6 @@
     inventory: InventoryData,
     action: Record<string, unknown>,
   ) {
-    error = "";
     try {
       await doc.transact([
         {
@@ -300,7 +301,7 @@
         },
       ]);
     } catch (e) {
-      error = String(e);
+      notifyError(e);
     }
   }
   const pageSize = 200;

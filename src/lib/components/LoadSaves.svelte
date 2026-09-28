@@ -16,6 +16,7 @@
   import GameIcon from "./GameIcon.svelte";
   import LoadingIndicator from "./LoadingIndicator.svelte";
   import { gameDayIcon } from "../assets/game-icons";
+  import { notify, notifyError } from "../toasts.svelte";
   let {
     onfiles,
     onpath,
@@ -31,7 +32,7 @@
   } = $props();
   let input = $state<HTMLInputElement>();
   let hovering = $state(false);
-  let error = $state("");
+  let discoveryError = $state("");
   let copied = $state(false);
   let saves = $state<Preview[]>([]);
   let discovering = $state(desktop);
@@ -73,8 +74,9 @@
           includeBackups: backups,
         })
       ).saves;
+      discoveryError = "";
     } catch (e) {
-      error = String(e);
+      discoveryError = String(e);
     } finally {
       discovering = false;
     }
@@ -103,16 +105,15 @@
         } else await openPath(path);
       }
     } catch (e) {
-      error = String(e);
+      notifyError(e);
     }
   }
   async function files(list: File[]) {
     opening = true;
     try {
       await onfiles(list);
-      error = "";
     } catch (e) {
-      error = String(e);
+      notifyError(e);
     } finally {
       opening = false;
     }
@@ -332,7 +333,10 @@
               copied = true;
               setTimeout(() => (copied = false), 2000);
             } catch {
-              error = "Clipboard unavailable. Select and copy the path above.";
+              notify(
+                "Clipboard unavailable. Select and copy the path above.",
+                "error",
+              );
             }
           }}><Copy />{copied ? "Copied" : "Copy"}</button
         >
@@ -344,7 +348,9 @@
     </div>
   </section>
 {/if}
-{#if error}<p class="error-banner" role="alert">{error}</p>{/if}
+{#if discoveryError}<p class="error-banner" role="alert">
+    {discoveryError}
+  </p>{/if}
 {#if backupSave}<div class="modal-backdrop">
     <dialog
       use:showModal

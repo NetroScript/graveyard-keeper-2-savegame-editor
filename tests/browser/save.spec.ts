@@ -240,7 +240,9 @@ test("real zombie save supports perfect-body edits and byte-identical undo", asy
   await expect(page.locator(".identity")).toContainText("36");
   await page.getByRole("button", { name: "Talents", exact: true }).click();
   await page.getByRole("button", { name: /^Optimize for / }).click();
-  await expect(page.getByRole("status")).toContainText("optimized for");
+  await expect(
+    page.getByRole("status").filter({ hasText: "optimized for" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(identityCopy).toHaveText(originalSummary!);
@@ -465,7 +467,9 @@ test("drop files, copy guidance, malformed sidecar, narrow navigation and settin
   await page.getByRole("button", { name: "Toggle navigation" }).click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("Interface scale").selectOption("1.15");
-  await expect(page.getByRole("status")).toHaveText("Settings saved");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Settings saved" }),
+  ).toBeVisible();
   await page.waitForTimeout(250);
   await page.screenshot({
     path: "test-results/workspace-narrow.png",

@@ -4,6 +4,7 @@
   import type { SaveDocument, GeneralField } from "../document.svelte";
   import type { DropSnapshot, WorldDrop } from "../drops";
   import DropCleanupDialog from "./DropCleanupDialog.svelte";
+  import { notifyError } from "../toasts.svelte";
   let { doc }: { doc: SaveDocument } = $props();
   let fields = $state<GeneralField[]>([]);
   let drafts = $state<Record<string, string>>({});
@@ -116,7 +117,7 @@
           for (const key of Object.keys(values))
             if (!(key in pending)) invalid.add(key);
           doc.invalidGeneralDraft = invalid.size > 0;
-          message = String(error);
+          notifyError(error);
         }
       }
     } finally {

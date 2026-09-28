@@ -1,17 +1,17 @@
 <script lang="ts">
   import { desktop, type Settings } from "../document.svelte";
+  import { notify, notifyError } from "../toasts.svelte";
   let {
     settings,
     onsettings,
   }: { settings: Settings; onsettings: (s: Settings) => Promise<void> } =
     $props();
-  let message = $state("");
   async function update(s: Settings) {
     try {
       await onsettings(s);
-      message = "Settings saved";
+      notify("Settings saved");
     } catch (e) {
-      message = String(e);
+      notifyError(e);
     }
   }
 </script>
@@ -118,4 +118,3 @@
     Saving downloads a copy. Automatic backups and folder discovery are
     unavailable.
   </p>{/if}
-<p role="status">{message}</p>

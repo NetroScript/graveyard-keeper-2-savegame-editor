@@ -5,6 +5,7 @@
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
+  import { notifyError } from "../toasts.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -49,9 +50,9 @@
   }
   async function setTalent(field: string, value: string) {
     if (!branch || saving || value.trim()==="") return;
-    saving=true; error="";
+    saving=true;
     try { await doc.transact([{ op:"progression", action:{kind:"set_talent",talent:branch.id,field,value} }]); }
-    catch(e){error=String(e);} finally{saving=false;}
+    catch(e){notifyError(e);} finally{saving=false;}
   }
   async function setInspiration(levels: InspirationDef[], levelOverride?: number, currentOverride?: number) {
     if (!branch || saving) return;
@@ -60,9 +61,9 @@
     const maximum=levels[Math.min(count,levels.length-1)]?.completionGoal ?? 0;
     const current=String(Math.max(0,Math.min(maximum,currentOverride ?? Number(drafts[`${base}:current`] ?? progress?.currentValue ?? "0"))));
     const goal=levels.slice(0,count).reduce((sum,item)=>sum+item.completionGoal,0);
-    saving=true; error="";
+    saving=true;
     try { await doc.transact([{op:"progression",action:{kind:"set_inspiration",talent:branch.id,id:base,current_value:current,completion_goal_value:String(goal)}}]); }
-    catch(e){error=String(e);} finally{saving=false;}
+    catch(e){notifyError(e);} finally{saving=false;}
   }
   function changeProgress(levels: InspirationDef[], chosenLevel: number, value: number) {
     const base=levels[0].baseId;
@@ -78,9 +79,9 @@
     selectedPerk=node;
     if(studied.has(node.id)||saving) return;
     const additions=dependencyClosure(node,perkNodes,studied);
-    saving=true; error="";
+    saving=true;
     try { await doc.transact([{op:"progression",action:{kind:"unlock_talent_levels",talent:branchId,levels:additions.map(item=>({id:item.id,talentValue:item.talentValue}))}}]); }
-    catch(e){error=String(e);} finally{saving=false;}
+    catch(e){notifyError(e);} finally{saving=false;}
   }
 </script>
 
