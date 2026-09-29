@@ -80,8 +80,10 @@
     <div class="selection-actions">
       <button
         type="button"
-        onclick={() => (selected = allSelected ? [] : drops.map((drop) => drop.node))}
-      >{allSelected ? "Select none" : "Select all"}</button>
+        onclick={() =>
+          (selected = allSelected ? [] : drops.map((drop) => drop.node))}
+        >{allSelected ? "Select none" : "Select all"}</button
+      >
       <span>{selected.length} of {drops.length} selected</span>
     </div>
     <div class="drop-list">
@@ -112,7 +114,8 @@
         class="danger"
         type="submit"
         disabled={!selected.length || saving || doc.busy}
-      >Delete selected</button>
+        >Delete selected</button
+      >
     </div>
   </form>
 </dialog>

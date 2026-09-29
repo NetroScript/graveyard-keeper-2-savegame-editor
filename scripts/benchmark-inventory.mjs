@@ -35,7 +35,8 @@ const catalog = {
           allowed: catalogs["inventory-rules"].bags[i.id]?.complete
             ? catalogs["inventory-rules"].bags[i.id].allowedItemIds
             : null,
-          toolBelt: i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
+          toolBelt:
+            i.id === "hand_tool" || !!equipment.get(i.id)?.canBeEquipped,
           equipmentType: equipment.get(i.id)?.type ?? i.fields.type,
         },
       ]),
@@ -99,7 +100,13 @@ edit(
   "Item count",
 );
 const replaced = edit(
-  { kind: "put", node: item.node, item: "mushroom_brown", count: "1", guid: crypto.randomUUID() },
+  {
+    kind: "put",
+    node: item.node,
+    item: "mushroom_brown",
+    count: "1",
+    guid: crypto.randomUUID(),
+  },
   "Replace item",
 );
 const replacement = replaced.inventory.upsert[0].items.at(-1);

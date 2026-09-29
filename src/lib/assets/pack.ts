@@ -141,9 +141,13 @@ export function applyStripLut(
   )
     throw new Error("Invalid horizontal 3D LUT");
   const last = size - 1;
-  const sample = (red: number, green: number, blue: number, channel: number) => {
-    const index =
-      (((last - green) * width + blue * size + red) * 4) + channel;
+  const sample = (
+    red: number,
+    green: number,
+    blue: number,
+    channel: number,
+  ) => {
+    const index = ((last - green) * width + blue * size + red) * 4 + channel;
     return lut[index];
   };
   for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -151,9 +155,15 @@ export function applyStripLut(
     const red = (pixels[offset] / 255) * last;
     const green = (pixels[offset + 1] / 255) * last;
     const blue = (pixels[offset + 2] / 255) * last;
-    const r0 = Math.floor(red), r1 = Math.min(last, r0 + 1), rf = red - r0;
-    const g0 = Math.floor(green), g1 = Math.min(last, g0 + 1), gf = green - g0;
-    const b0 = Math.floor(blue), b1 = Math.min(last, b0 + 1), bf = blue - b0;
+    const r0 = Math.floor(red),
+      r1 = Math.min(last, r0 + 1),
+      rf = red - r0;
+    const g0 = Math.floor(green),
+      g1 = Math.min(last, g0 + 1),
+      gf = green - g0;
+    const b0 = Math.floor(blue),
+      b1 = Math.min(last, b0 + 1),
+      bf = blue - b0;
     for (let channel = 0; channel < 3; channel++) {
       const c000 = sample(r0, g0, b0, channel);
       const c100 = sample(r1, g0, b0, channel);

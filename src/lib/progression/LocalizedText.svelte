@@ -26,13 +26,27 @@
   {#each parts as part}
     {#if "icon" in part}
       <span class="inline-icon">
-        <ProgressionIcon name={part.icon} kind="font" label={part.icon} recolor={false} size="1em" />
+        <ProgressionIcon
+          name={part.icon}
+          kind="font"
+          label={part.icon}
+          recolor={false}
+          size="1em"
+        />
       </span>
     {:else}{part.text}{/if}
   {/each}
 </span>
 
 <style>
-  .localized-text { white-space:pre-line; }
-  .inline-icon { display:inline-flex; width:1em; height:1em; margin:0 .08em; vertical-align:-.12em; }
+  .localized-text {
+    white-space: pre-line;
+  }
+  .inline-icon {
+    display: inline-flex;
+    width: 1em;
+    height: 1em;
+    margin: 0 0.08em;
+    vertical-align: -0.12em;
+  }
 </style>

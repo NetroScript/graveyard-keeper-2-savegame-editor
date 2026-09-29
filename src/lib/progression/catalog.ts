@@ -9,7 +9,12 @@ export interface Reward {
   sprite: string | null;
   duration?: number;
   craftedAt?: string[];
-  ingredients?: { id: string; name: string; count: number; sprite: string | null }[];
+  ingredients?: {
+    id: string;
+    name: string;
+    count: number;
+    sprite: string | null;
+  }[];
 }
 export interface TechnologyNode {
   id: string;
@@ -24,36 +29,97 @@ export interface TechnologyNode {
   hiddenAtStart: boolean;
   type?: "Common" | "CharRep" | "DisRep";
   requirements?: Record<string, number>;
-  additionalEffects?: { addResources: Record<string, number>; setResources: Record<string, number>; expressions: string[] };
-  gate?: { name: string; resource: string; value: number; sprite: string | null } | null;
+  additionalEffects?: {
+    addResources: Record<string, number>;
+    setResources: Record<string, number>;
+    expressions: string[];
+  };
+  gate?: {
+    name: string;
+    resource: string;
+    value: number;
+    sprite: string | null;
+  } | null;
   icon: string | null;
   price: Record<string, number>;
   rewards: Reward[];
 }
-export interface TechnologyTab { id: string; name: string; sprite: string }
-export interface TalentBranch { id: string; name: string; description: string; fontIcon: string; color: string }
+export interface TechnologyTab {
+  id: string;
+  name: string;
+  sprite: string;
+}
+export interface TalentBranch {
+  id: string;
+  name: string;
+  description: string;
+  fontIcon: string;
+  color: string;
+}
 export interface InspirationDef {
-  id: string; baseId: string; name: string; description: string; talent: string;
-  level: number; levelFrame: number; completionPrice: number; completionGoal: number;
-  completionExp: number; inspirationLocks: string[]; techLocks: string[]; questLocks: string[]; sprite: string;
+  id: string;
+  baseId: string;
+  name: string;
+  description: string;
+  talent: string;
+  level: number;
+  levelFrame: number;
+  completionPrice: number;
+  completionGoal: number;
+  completionExp: number;
+  inspirationLocks: string[];
+  techLocks: string[];
+  questLocks: string[];
+  sprite: string;
 }
 export interface TalentLevelNode {
-  id: string; name: string; description: string; talent: string; x: number; y: number;
-  parents: string[]; lockType: string; availableAtStart: boolean; hidden: boolean;
-  unknown: boolean; freeCoordinates: boolean; talentValue: number; pointPrice: number;
-  sprite: string; perkId?: string | null; perk: Reward | null;
+  id: string;
+  name: string;
+  description: string;
+  talent: string;
+  x: number;
+  y: number;
+  parents: string[];
+  lockType: string;
+  availableAtStart: boolean;
+  hidden: boolean;
+  unknown: boolean;
+  freeCoordinates: boolean;
+  talentValue: number;
+  pointPrice: number;
+  sprite: string;
+  perkId?: string | null;
+  perk: Reward | null;
 }
 export interface ProgressionCatalog {
   schemaVersion: number;
   technology: { tabs: TechnologyTab[]; nodes: TechnologyNode[] };
-  talents: { branches: TalentBranch[]; expLevels: Record<string, number>[]; inspirations: InspirationDef[]; levelUps: TalentLevelNode[] };
+  talents: {
+    branches: TalentBranch[];
+    expLevels: Record<string, number>[];
+    inspirations: InspirationDef[];
+    levelUps: TalentLevelNode[];
+  };
 }
-export interface InspirationState { id: string; currentValue: string; completionGoalValue: string }
+export interface InspirationState {
+  id: string;
+  currentValue: string;
+  completionGoalValue: string;
+}
 export interface TalentState {
-  id: string; curExp: string; curTalentLevel: string; talentExpPoints: string;
-  curTalentValue: string; studiedLevelUps: string[]; inspirations: InspirationState[];
+  id: string;
+  curExp: string;
+  curTalentLevel: string;
+  talentExpPoints: string;
+  curTalentValue: string;
+  studiedLevelUps: string[];
+  inspirations: InspirationState[];
 }
-export interface ProgressionState { unlockedTechnologies: string[]; talents: TalentState[]; activePerks: string[] }
+export interface ProgressionState {
+  unlockedTechnologies: string[];
+  talents: TalentState[];
+  activePerks: string[];
+}
 
 export async function loadProgressionCatalog() {
   return (await gameAssets()).catalog<ProgressionCatalog>("progression");
@@ -70,7 +136,9 @@ function idle() {
 }
 
 function inlineIcons(text: string | null | undefined) {
-  return text?.matchAll(/<sprite\b[^>]*\bname\s*=\s*["']([^"']+)["'][^>]*>/gi) ?? [];
+  return (
+    text?.matchAll(/<sprite\b[^>]*\bname\s*=\s*["']([^"']+)["'][^>]*>/gi) ?? []
+  );
 }
 
 /** Warm all progression graphics in small background batches after a save opens. */
@@ -86,31 +154,38 @@ export function preloadProgressionAssets() {
       kind: "font" | "sprite" = "sprite",
       recolor = kind === "sprite",
     ) => {
-      if (name) requests.set(`${kind}:${name}:${recolor}`, { name, kind, recolor });
+      if (name)
+        requests.set(`${kind}:${name}:${recolor}`, { name, kind, recolor });
     };
     for (const tab of catalog.technology.tabs) add(tab.sprite);
     for (const node of catalog.technology.nodes) {
       add(node.icon);
       add(node.gate?.sprite);
-      for (const match of inlineIcons(node.description)) add(match[1], "font", false);
+      for (const match of inlineIcons(node.description))
+        add(match[1], "font", false);
       for (const name of Object.keys(node.price)) add(name, "font", false);
       for (const reward of node.rewards) {
         add(reward.sprite);
-        for (const match of inlineIcons(reward.description)) add(match[1], "font", false);
-        for (const ingredient of reward.ingredients ?? []) add(ingredient.sprite);
+        for (const match of inlineIcons(reward.description))
+          add(match[1], "font", false);
+        for (const ingredient of reward.ingredients ?? [])
+          add(ingredient.sprite);
       }
     }
     for (const branch of catalog.talents.branches)
       add(branch.fontIcon, "font", false);
     for (const inspiration of catalog.talents.inspirations) {
       add(inspiration.sprite);
-      for (const match of inlineIcons(inspiration.description)) add(match[1], "font", false);
+      for (const match of inlineIcons(inspiration.description))
+        add(match[1], "font", false);
     }
     for (const level of catalog.talents.levelUps) {
       add(level.sprite, "sprite", false);
       add(level.perk?.sprite, "sprite", false);
-      for (const match of inlineIcons(level.description)) add(match[1], "font", false);
-      for (const match of inlineIcons(level.perk?.description)) add(match[1], "font", false);
+      for (const match of inlineIcons(level.description))
+        add(match[1], "font", false);
+      for (const match of inlineIcons(level.perk?.description))
+        add(match[1], "font", false);
     }
     const pending = [...requests.values()];
     await idle();
@@ -130,14 +205,21 @@ export function preloadProgressionAssets() {
   }));
 }
 
-export function dependencyClosure<T extends { id: string; parents: string[] }>(target: T, nodes: T[], unlocked: Set<string>) {
+export function dependencyClosure<T extends { id: string; parents: string[] }>(
+  target: T,
+  nodes: T[],
+  unlocked: Set<string>,
+) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const result: T[] = [];
   const visiting = new Set<string>();
   const visit = (node: T) => {
     if (unlocked.has(node.id) || visiting.has(node.id)) return;
     visiting.add(node.id);
-    for (const id of node.parents) { const parent = byId.get(id); if (parent) visit(parent); }
+    for (const id of node.parents) {
+      const parent = byId.get(id);
+      if (parent) visit(parent);
+    }
     result.push(node);
   };
   visit(target);
@@ -149,16 +231,31 @@ export function dependencyClosure<T extends { id: string; parents: string[] }>(t
  * prerequisites are no longer met. Nodes the game unlocks at start are kept, because
  * the game restores them when the save loads.
  */
-export function lockClosure<T extends { id: string; parents: string[]; lockType: string; availableAtStart: boolean }>(target: T, nodes: T[], unlocked: Set<string>) {
+export function lockClosure<
+  T extends {
+    id: string;
+    parents: string[];
+    lockType: string;
+    availableAtStart: boolean;
+  },
+>(target: T, nodes: T[], unlocked: Set<string>) {
   const remaining = new Set(unlocked);
   const removed = new Set([target.id]);
   remaining.delete(target.id);
   const result = [target];
-  for (let changed = true; changed; ) {
+  for (let changed = true; changed;) {
     changed = false;
     for (const node of nodes) {
-      if (!remaining.has(node.id) || node.availableAtStart || !node.parents.some((id) => removed.has(id))) continue;
-      const met = node.lockType === "Any" ? node.parents.some((id) => remaining.has(id)) : node.parents.every((id) => remaining.has(id));
+      if (
+        !remaining.has(node.id) ||
+        node.availableAtStart ||
+        !node.parents.some((id) => removed.has(id))
+      )
+        continue;
+      const met =
+        node.lockType === "Any"
+          ? node.parents.some((id) => remaining.has(id))
+          : node.parents.every((id) => remaining.has(id));
       if (met) continue;
       remaining.delete(node.id);
       removed.add(node.id);
@@ -170,11 +267,20 @@ export function lockClosure<T extends { id: string; parents: string[]; lockType:
 }
 
 /** Perk IDs still granted by unlocked technologies or studied talent levels. */
-export function grantedPerks(catalog: ProgressionCatalog, technologies: Set<string>, studied: Set<string>) {
+export function grantedPerks(
+  catalog: ProgressionCatalog,
+  technologies: Set<string>,
+  studied: Set<string>,
+) {
   const perks = new Set<string>();
   for (const node of catalog.technology.nodes)
-    if (technologies.has(node.id)) for (const reward of node.rewards) if (reward.type === "perk") perks.add(reward.id);
-  for (const level of catalog.talents.levelUps) { const perk = level.perkId ?? level.perk?.id; if (perk && studied.has(level.id)) perks.add(perk); }
+    if (technologies.has(node.id))
+      for (const reward of node.rewards)
+        if (reward.type === "perk") perks.add(reward.id);
+  for (const level of catalog.talents.levelUps) {
+    const perk = level.perkId ?? level.perk?.id;
+    if (perk && studied.has(level.id)) perks.add(perk);
+  }
   return perks;
 }
 
@@ -183,5 +289,7 @@ export function localized(value: string | null | undefined, key: string) {
 }
 
 export function readableId(id: string) {
-  return id.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return id
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }

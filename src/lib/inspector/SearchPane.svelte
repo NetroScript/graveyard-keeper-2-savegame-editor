@@ -117,8 +117,18 @@
           searchId: current.searchId,
         })
         .catch(() => {});
-    simple = advanced = path = name = type = ownClass = owner = ancestor = value =
-      minimum = maximum = "";
+    simple =
+      advanced =
+      path =
+      name =
+      type =
+      ownClass =
+      owner =
+      ancestor =
+      value =
+      minimum =
+      maximum =
+        "";
     status = undefined;
     pages = {};
     cursor = -1;
@@ -143,10 +153,7 @@
         offset: page * pageSize,
         limit: pageSize,
       });
-      if (
-        currentGeneration !== generation ||
-        currentPageEpoch !== pageEpoch
-      )
+      if (currentGeneration !== generation || currentPageEpoch !== pageEpoch)
         return;
       pages[page] = response.results;
       pageOrder = [...pageOrder.filter((entry) => entry !== page), page];
@@ -155,10 +162,7 @@
         delete pages[remove];
       }
     } catch (reason) {
-      if (
-        currentGeneration === generation &&
-        currentPageEpoch === pageEpoch
-      )
+      if (currentGeneration === generation && currentPageEpoch === pageEpoch)
         error = String(reason);
     } finally {
       loading.delete(page);
@@ -289,7 +293,8 @@
       return;
     }
     if (list) {
-      if (cursor * rowHeight < list.scrollTop) list.scrollTop = cursor * rowHeight;
+      if (cursor * rowHeight < list.scrollTop)
+        list.scrollTop = cursor * rowHeight;
       else if ((cursor + 1) * rowHeight > list.scrollTop + list.clientHeight)
         list.scrollTop = (cursor + 1) * rowHeight - list.clientHeight;
       scrollTop = list.scrollTop;
@@ -378,13 +383,29 @@
     <details class="search-filters">
       <summary>Filters</summary>
       <div>
-        <label>Path<input bind:value={path} placeholder="*playerInventory*" /></label>
+        <label
+          >Path<input
+            bind:value={path}
+            placeholder="*playerInventory*"
+          /></label
+        >
         <label>Name<input bind:value={name} placeholder="id" /></label>
-        <label>Data types<input bind:value={type} placeholder="string, int" /></label>
-        <label>Own class<input bind:value={ownClass} placeholder="Item" /></label>
-        <label>Nearest class<input bind:value={owner} placeholder="Item" /></label>
-        <label>Any ancestor<input bind:value={ancestor} placeholder="Item" /></label>
-        <label>Value<input bind:value={value} placeholder="*iron*" /></label>
+        <label
+          >Data types<input
+            bind:value={type}
+            placeholder="string, int"
+          /></label
+        >
+        <label
+          >Own class<input bind:value={ownClass} placeholder="Item" /></label
+        >
+        <label
+          >Nearest class<input bind:value={owner} placeholder="Item" /></label
+        >
+        <label
+          >Any ancestor<input bind:value={ancestor} placeholder="Item" /></label
+        >
+        <label>Value<input bind:value placeholder="*iron*" /></label>
         <label>Minimum<input bind:value={minimum} inputmode="decimal" /></label>
         <label>Maximum<input bind:value={maximum} inputmode="decimal" /></label>
       </div>
@@ -392,16 +413,36 @@
   {:else}
     <details class="search-help">
       <summary>Query syntax</summary>
-      <p>Spaces mean AND, <code>|</code> means OR, <code>!</code> means NOT, and parentheses group expressions.</p>
-      <p>Qualifiers: <code>name:</code>, <code>path:</code>, <code>type:</code>, <code>class:</code>, <code>owner:</code>, <code>ancestor:</code>, <code>value:</code>.</p>
-      <p>Use <code>*</code> and <code>?</code> as wildcards, or <code>==</code> for an exact text match. Numeric comparisons use <code>value&gt;=10</code> and similar operators.</p>
-      <p>Use <code>child:(…)</code>, <code>descendant:(…)</code> and <code>parent:(…)</code> to match related stored records.</p>
+      <p>
+        Spaces mean AND, <code>|</code> means OR, <code>!</code> means NOT, and parentheses
+        group expressions.
+      </p>
+      <p>
+        Qualifiers: <code>name:</code>, <code>path:</code>, <code>type:</code>,
+        <code>class:</code>, <code>owner:</code>, <code>ancestor:</code>,
+        <code>value:</code>.
+      </p>
+      <p>
+        Use <code>*</code> and <code>?</code> as wildcards, or <code>==</code>
+        for an exact text match. Numeric comparisons use
+        <code>value&gt;=10</code> and similar operators.
+      </p>
+      <p>
+        Use <code>child:(…)</code>, <code>descendant:(…)</code> and
+        <code>parent:(…)</code> to match related stored records.
+      </p>
     </details>
   {/if}
   <div class="search-options">
-    <label><input type="checkbox" bind:checked={caseSensitive} />Case sensitive</label>
+    <label
+      ><input type="checkbox" bind:checked={caseSensitive} />Case sensitive</label
+    >
     <span>
-      <button type="button" class="search-help-button" onclick={() => (helpOpen = true)}><Question />Syntax help</button>
+      <button
+        type="button"
+        class="search-help-button"
+        onclick={() => (helpOpen = true)}><Question />Syntax help</button
+      >
       <button type="submit">Search</button>
     </span>
   </div>
@@ -419,7 +460,11 @@
 {/if}
 
 {#if query() && status}
-  <div class="search-view-toggle" role="group" aria-label="Inspector search view">
+  <div
+    class="search-view-toggle"
+    role="group"
+    aria-label="Inspector search view"
+  >
     <button
       type="button"
       class:active={showResults}
@@ -438,12 +483,20 @@
 {#if query()}
   <div class="search-results-view" hidden={!showResults}>
     <div class="search-summary" aria-live="polite">
-    {#if status}
-      <span>{status.discovered.toLocaleString()} matches</span>
-      <span>{status.status === "searching" ? "Searching…" : status.status === "incomplete" ? "Incomplete" : "Complete"}</span>
-    {:else if !error}<span>Preparing search…</span>{/if}
+      {#if status}
+        <span>{status.discovered.toLocaleString()} matches</span>
+        <span
+          >{status.status === "searching"
+            ? "Searching…"
+            : status.status === "incomplete"
+              ? "Incomplete"
+              : "Complete"}</span
+        >
+      {:else if !error}<span>Preparing search…</span>{/if}
     </div>
-    {#if status?.completionReason}<p class="warning search-warning">{status.completionReason}</p>{/if}
+    {#if status?.completionReason}<p class="warning search-warning">
+        {status.completionReason}
+      </p>{/if}
     {#if error}<p class="warning search-warning" role="alert">{error}</p>{/if}
     <div
       class="search-result-list"
@@ -457,10 +510,16 @@
         loadVisible();
       }}
     >
-      <div class="search-result-space" style:height={`${(status?.discovered ?? 0) * rowHeight}px`}>
+      <div
+        class="search-result-space"
+        style:height={`${(status?.discovered ?? 0) * rowHeight}px`}
+      >
         {#each Array.from({ length: Math.max(0, visibleLast - visibleFirst) }, (_, offset) => visibleFirst + offset) as index (index)}
           {@const result = resultAt(index)}
-          <div class="search-result-slot" style:transform={`translateY(${index * rowHeight}px)`}>
+          <div
+            class="search-result-slot"
+            style:transform={`translateY(${index * rowHeight}px)`}
+          >
             {#if result}
               <button
                 type="button"
@@ -472,11 +531,19 @@
                   void choose(result);
                 }}
               >
-                <span><b>{result.name}</b><em>{result.typeName?.split(",")[0] ?? result.kind}</em><i>{result.matchField} match</i></span>
+                <span
+                  ><b>{result.name}</b><em
+                    >{result.typeName?.split(",")[0] ?? result.kind}</em
+                  ><i>{result.matchField} match</i></span
+                >
                 <small>{result.value ?? result.path}</small>
                 <small class="result-path">{result.path}</small>
               </button>
-              <button type="button" class="reveal-result" onclick={() => void reveal(result)}>Reveal</button>
+              <button
+                type="button"
+                class="reveal-result"
+                onclick={() => void reveal(result)}>Reveal</button
+              >
             {:else}<span class="result-loading">Loading…</span>{/if}
           </div>
         {/each}

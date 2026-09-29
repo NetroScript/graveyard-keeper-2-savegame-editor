@@ -270,7 +270,7 @@
           doc.busy ||
           doc.pendingGeneralEdits}
         onclick={() => (cleanupOpen = true)}
-      >{dropsLoading
+        >{dropsLoading
           ? "Finding drops…"
           : drops.length
             ? `Delete drops (${drops.length})`

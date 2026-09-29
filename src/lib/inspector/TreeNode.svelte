@@ -108,9 +108,12 @@
         {expanded}
         {revealOffsets}
         {active}
-      />{/each}{#if pageStart > 0}<li><button onclick={() => load(0)}>Load from beginning</button></li>{/if}{#if pageStart + children.length < total}<li>
+      />{/each}{#if pageStart > 0}<li>
+        <button onclick={() => load(0)}>Load from beginning</button>
+      </li>{/if}{#if pageStart + children.length < total}<li>
         <button onclick={() => load(pageStart + children.length)}
-          >Load more ({total - pageStart - children.length})</button>
+          >Load more ({total - pageStart - children.length})</button
+        >
       </li>{/if}
   </ul>
   {#if error}<small class="warning">{error}</small>{/if}

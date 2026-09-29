@@ -50,11 +50,8 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
       for (let green = 0; green < 2; green++)
         for (let blue = 0; blue < 2; blue++)
           for (let red = 0; red < 2; red++) {
-            const offset = (((1 - green) * 4 + blue * 2 + red) * 4);
-            pixels.data.set(
-              [red * 255, green * 255, blue * 255, 255],
-              offset,
-            );
+            const offset = ((1 - green) * 4 + blue * 2 + red) * 4;
+            pixels.data.set([red * 255, green * 255, blue * 255, 255], offset);
           }
       lut.putImageData(pixels, 0, 0);
       return { source, lut: canvas.toDataURL().split(",")[1] };
@@ -102,13 +99,15 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
           crop: true,
         });
         const samePromise =
-          first ===
-          assets.imageUrl(hash, { outline: "#101112", crop: true });
+          first === assets.imageUrl(hash, { outline: "#101112", crop: true });
         const [normal, hover] = await Promise.all([
           first,
           assets.imageUrl(hash, { outline: "#abcdef", crop: true }),
         ]);
-        const lutUrl = await assets.imageUrl(hash, { lut: lutHash, crop: true });
+        const lutUrl = await assets.imageUrl(hash, {
+          lut: lutHash,
+          crop: true,
+        });
         const composite = await assets.compositeImageUrl([
           { hash, pivot: { x: 0, y: 0 }, lut: lutHash },
         ]);
@@ -126,7 +125,9 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
           return {
             width: canvas.width,
             height: canvas.height,
-            values: [...ctx.getImageData(0, 0, canvas.width, canvas.height).data],
+            values: [
+              ...ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+            ],
           };
         }
         const normalPixels = await pixels(normal);
@@ -190,9 +191,9 @@ test("a bounded canvas pool renders cached cropped variants and releases URLs", 
         width: 4,
         height: 3,
         values: [
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 255, 255, 255, 0, 0, 255, 0, 0, 0, 0,
-          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255,
+          255, 255, 0, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0,
         ],
       },
       revoked: true,

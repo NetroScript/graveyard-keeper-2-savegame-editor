@@ -70,10 +70,46 @@ test("packs shared images once, drops controller icons, and rejects corruption",
       }),
       write("zombies", {
         schemaVersion: 1,
-        bodies: [{ id: "body", linkedBodyItemId: "test", parts: [], pockets: [], burialRewards: [], armorId: "", handsId: "" }],
-        crafts: [{ id: "craft", linkedPerks: [], needs: [], needsFromWgo: [], removeItemsFromWgo: [], zombieSpeedItems: [] }],
-        workstations: [], fighters: [],
-        customization: { available: true, sets: [{ id: "zombie_worker", bodyIds: [1], headIds: [1], bodyVariants: [{ id: 1, sprite: "item", overlaySprite: null }], headVariants: [{ id: 1, sprite: "item" }], bodyLuts: [], headLuts: [] }], portrait: { stoneSprite: "item" }, fighterBodyPalettes: [], fighterArmorPalettes: [] },
+        bodies: [
+          {
+            id: "body",
+            linkedBodyItemId: "test",
+            parts: [],
+            pockets: [],
+            burialRewards: [],
+            armorId: "",
+            handsId: "",
+          },
+        ],
+        crafts: [
+          {
+            id: "craft",
+            linkedPerks: [],
+            needs: [],
+            needsFromWgo: [],
+            removeItemsFromWgo: [],
+            zombieSpeedItems: [],
+          },
+        ],
+        workstations: [],
+        fighters: [],
+        customization: {
+          available: true,
+          sets: [
+            {
+              id: "zombie_worker",
+              bodyIds: [1],
+              headIds: [1],
+              bodyVariants: [{ id: 1, sprite: "item", overlaySprite: null }],
+              headVariants: [{ id: 1, sprite: "item" }],
+              bodyLuts: [],
+              headLuts: [],
+            },
+          ],
+          portrait: { stoneSprite: "item" },
+          fighterBodyPalettes: [],
+          fighterArmorPalettes: [],
+        },
       }),
       write("localization.en", { test: "Test item" }),
       write("icons", {
@@ -90,9 +126,17 @@ test("packs shared images once, drops controller icons, and rejects corruption",
     const output = join(root, "game.gk2pack");
     assert.equal((await packAssets(input, output)).images, 1);
     const stored = await readFile(output);
-    assert.deepEqual([...stored.subarray(0, 2)], [0x1f, 0x8b], "Packs are gzipped");
+    assert.deepEqual(
+      [...stored.subarray(0, 2)],
+      [0x1f, 0x8b],
+      "Packs are gzipped",
+    );
     const bytes = await inflatePack(stored);
-    assert.equal(await inflatePack(bytes), bytes, "Uncompressed packs pass through");
+    assert.equal(
+      await inflatePack(bytes),
+      bytes,
+      "Uncompressed packs pass through",
+    );
     const native = globalThis.DecompressionStream;
     try {
       delete globalThis.DecompressionStream;
@@ -108,7 +152,11 @@ test("packs shared images once, drops controller icons, and rejects corruption",
     assert.equal(pack.metadata.catalogs.items.test.fields.id, "test");
     assert.equal(pack.metadata.catalogs.icons.images[hash].path, undefined);
     await packAssets(input, output);
-    assert.deepEqual(await readFile(output), stored, "Packing is deterministic");
+    assert.deepEqual(
+      await readFile(output),
+      stored,
+      "Packing is deterministic",
+    );
     assert.throws(() => parsePack(bytes.subarray(0, bytes.length - 1)));
     const bad = Buffer.from(bytes);
     bad.writeUInt32LE(99, 8);
@@ -143,23 +191,17 @@ test("horizontal 3D LUT uses trilinear RGB sampling and preserves alpha", () => 
   for (let green = 0; green < size; green++)
     for (let blue = 0; blue < size; blue++)
       for (let red = 0; red < size; red++) {
-        const offset =
-          (((size - 1 - green) * width + blue * size + red) * 4);
+        const offset = ((size - 1 - green) * width + blue * size + red) * 4;
         lut.set([red * 255, green * 255, blue * 255, 255], offset);
       }
   const pixels = new Uint8ClampedArray([
-    0, 0, 0, 255,
-    255, 255, 255, 255,
-    128, 64, 192, 127,
-    23, 45, 67, 0,
+    0, 0, 0, 255, 255, 255, 255, 255, 128, 64, 192, 127, 23, 45, 67, 0,
   ]);
   applyStripLut(pixels, lut, width, size);
-  assert.deepEqual([...pixels], [
-    0, 0, 0, 255,
-    255, 255, 255, 255,
-    128, 64, 192, 127,
-    23, 45, 67, 0,
-  ]);
+  assert.deepEqual(
+    [...pixels],
+    [0, 0, 0, 255, 255, 255, 255, 255, 128, 64, 192, 127, 23, 45, 67, 0],
+  );
   assert.throws(
     () => applyStripLut(pixels, lut, width + 1, size),
     /Invalid horizontal 3D LUT/,

@@ -150,7 +150,10 @@
     restoring = true;
     backupMessage = "";
     try {
-      const result = await native<{ restored: boolean; backupCreated: boolean }>("save_restore_backup", {
+      const result = await native<{
+        restored: boolean;
+        backupCreated: boolean;
+      }>("save_restore_backup", {
         path: backupSave.path,
         backup: selectedBackup.name,
       });
@@ -208,8 +211,8 @@
 </header>
 {#if desktop}
   <div class="toolbar load-toolbar">
-    <button onclick={() => void refresh()}><ArrowClockwise />Refresh</button><button
-      onclick={() => dialog(true)}><FolderOpen />Choose Folder</button
+    <button onclick={() => void refresh()}><ArrowClockwise />Refresh</button
+    ><button onclick={() => dialog(true)}><FolderOpen />Choose Folder</button
     ><button class="primary" onclick={() => dialog(false)}
       ><Upload />Open File</button
     ><label class="check"
@@ -217,57 +220,59 @@
       backups</label
     >
   </div>
-  {#if discovering}<LoadingIndicator label="Finding save files…" />{:else}<div class="save-grid">
-    {#each saves as save}<article class="save-card panel">
-        <button
-          class="save-card-open"
-          onclick={() => save.path && void openPath(save.path)}
-        >
-          <h3 class="strip">{save.name}</h3>
-          <div class="panel-body">
-            {#if save.metadata}{@const m = save.metadata}
-              <div class="save-day">
-                <GameIcon name={gameDayIcon(m.day)} />Day {String(
-                  m.day ?? "—",
-                )}<span class="save-kind"
-                  >{m.isDemoSave ? "Demo" : "Release"}</span
-                >
-              </div>
-              <p>{String(m.saveDateTime ?? "Unknown save date")}</p>
-              {#if saveMayBeNewer(m.gameSaveVersion)}<p
-                  class="save-compat warning"
-                >
-                  Newer than the loaded {assetVersion} asset data. Some content may
-                  be unavailable in the editor.
-                </p>{/if}
-              <dl>
-                <dt><Tag />Version</dt>
-                <dd>{String(m.gameSaveVersion ?? "—")}</dd>
-                <dt><DesktopTower />Platform</dt>
-                <dd>{String(m.platform ?? "—")}</dd>
-                <dt><GameIcon name="wskull" />Graveyard</dt>
-                <dd>{String(m.graveyardQuality ?? "—")}</dd>
-                <dt><GameIcon name="cross" variant="church" />Church</dt>
-                <dd>{String(m.churchQuality ?? "—")}</dd>
-                <dt><GameIcon name="village_REP" />Village reputation</dt>
-                <dd>{String(m.villageRep ?? "—")}</dd>
-              </dl>{:else}<p>
-                {save.metadataError
-                  ? "Metadata could not be read."
-                  : "No companion metadata."}
-              </p>
-              <small>The save can still be opened.</small>{/if}
-          </div>
-        </button>
-        {#if save.editorBackups}<div class="save-card-actions">
-            <button onclick={() => manageBackups(save)}
-              ><Archive />Restore backup</button
-            >
-          </div>{/if}
-      </article>{:else}<div class="empty-state panel">
-        <h2>No saves found</h2>
-        <p>Choose a save folder or open an individual .dat file.</p>
-      </div>{/each}
+  {#if discovering}<LoadingIndicator label="Finding save files…" />{:else}<div
+      class="save-grid"
+    >
+      {#each saves as save}<article class="save-card panel">
+          <button
+            class="save-card-open"
+            onclick={() => save.path && void openPath(save.path)}
+          >
+            <h3 class="strip">{save.name}</h3>
+            <div class="panel-body">
+              {#if save.metadata}{@const m = save.metadata}
+                <div class="save-day">
+                  <GameIcon name={gameDayIcon(m.day)} />Day {String(
+                    m.day ?? "—",
+                  )}<span class="save-kind"
+                    >{m.isDemoSave ? "Demo" : "Release"}</span
+                  >
+                </div>
+                <p>{String(m.saveDateTime ?? "Unknown save date")}</p>
+                {#if saveMayBeNewer(m.gameSaveVersion)}<p
+                    class="save-compat warning"
+                  >
+                    Newer than the loaded {assetVersion} asset data. Some content
+                    may be unavailable in the editor.
+                  </p>{/if}
+                <dl>
+                  <dt><Tag />Version</dt>
+                  <dd>{String(m.gameSaveVersion ?? "—")}</dd>
+                  <dt><DesktopTower />Platform</dt>
+                  <dd>{String(m.platform ?? "—")}</dd>
+                  <dt><GameIcon name="wskull" />Graveyard</dt>
+                  <dd>{String(m.graveyardQuality ?? "—")}</dd>
+                  <dt><GameIcon name="cross" variant="church" />Church</dt>
+                  <dd>{String(m.churchQuality ?? "—")}</dd>
+                  <dt><GameIcon name="village_REP" />Village reputation</dt>
+                  <dd>{String(m.villageRep ?? "—")}</dd>
+                </dl>{:else}<p>
+                  {save.metadataError
+                    ? "Metadata could not be read."
+                    : "No companion metadata."}
+                </p>
+                <small>The save can still be opened.</small>{/if}
+            </div>
+          </button>
+          {#if save.editorBackups}<div class="save-card-actions">
+              <button onclick={() => manageBackups(save)}
+                ><Archive />Restore backup</button
+              >
+            </div>{/if}
+        </article>{:else}<div class="empty-state panel">
+          <h2>No saves found</h2>
+          <p>Choose a save folder or open an individual .dat file.</p>
+        </div>{/each}
     </div>{/if}
 {:else}
   <input
@@ -361,7 +366,10 @@
       <h2 id="backup-dialog-title" class="strip">Restore backup</h2>
       <div class="panel-body">
         <p>Select an earlier version of <strong>{backupSave.name}</strong>.</p>
-        {#if backupsLoading}<LoadingIndicator label="Loading backups…" compact />
+        {#if backupsLoading}<LoadingIndicator
+            label="Loading backups…"
+            compact
+          />
         {:else if backups.length}<div class="backup-list">
             {#each backups as backup (backup.name)}<button
                 class:selected={selectedBackup?.name === backup.name}
@@ -392,7 +400,10 @@
         {#if backupMessage}<p class="hint" role="status">
             {backupMessage}
           </p>{/if}
-        {#if restoring}<LoadingIndicator label="Restoring backup…" compact />{/if}
+        {#if restoring}<LoadingIndicator
+            label="Restoring backup…"
+            compact
+          />{/if}
         <div class="form-actions">
           <button disabled={restoring} onclick={() => (backupSave = undefined)}
             >Close</button

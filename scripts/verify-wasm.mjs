@@ -46,7 +46,11 @@ try {
       },
     ],
   }).summary;
-  assert.equal(edited.encodedBytes, null, "Edits must not serialize to calculate size");
+  assert.equal(
+    edited.encodedBytes,
+    null,
+    "Edits must not serialize to calculate size",
+  );
   assert.equal(
     Buffer.from(session.export(summary.documentId)).filter(
       (byte, index) => byte !== bytes[index],
