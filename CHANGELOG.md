@@ -15,6 +15,10 @@ release. GitHub Releases use the matching version section automatically.
 - Added automatic incremental loading to zombie item pickers and clearer groups for treatments, skull-adding items, tools, armor and cargo.
 - Cached zombie snapshots and applied incremental transaction updates so opening the editor, selecting workers and changing appearance no longer repeatedly reconstruct the entire zombie list.
 
+### Technologies and perks
+
+- Unlocked technologies and player perks can now be locked again by selecting them. Dependent technologies or perks are locked with them, and their crafts, buildings, formulas, active perks and mastery are removed unless something that stays unlocked still grants them.
+
 ### Notifications
 
 - Added toast notifications for saves, settings changes and edit results, including a confirmation after each successful save. Notifications stack, pause while hovered or focused, and show their remaining time.
