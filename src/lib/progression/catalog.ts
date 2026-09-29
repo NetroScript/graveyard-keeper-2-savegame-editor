@@ -41,7 +41,7 @@ export interface TalentLevelNode {
   id: string; name: string; description: string; talent: string; x: number; y: number;
   parents: string[]; lockType: string; availableAtStart: boolean; hidden: boolean;
   unknown: boolean; freeCoordinates: boolean; talentValue: number; pointPrice: number;
-  sprite: string; perk: Reward | null;
+  sprite: string; perkId?: string | null; perk: Reward | null;
 }
 export interface ProgressionCatalog {
   schemaVersion: number;
@@ -53,7 +53,7 @@ export interface TalentState {
   id: string; curExp: string; curTalentLevel: string; talentExpPoints: string;
   curTalentValue: string; studiedLevelUps: string[]; inspirations: InspirationState[];
 }
-export interface ProgressionState { unlockedTechnologies: string[]; talents: TalentState[] }
+export interface ProgressionState { unlockedTechnologies: string[]; talents: TalentState[]; activePerks: string[] }
 
 export async function loadProgressionCatalog() {
   return (await gameAssets()).catalog<ProgressionCatalog>("progression");
@@ -142,6 +142,40 @@ export function dependencyClosure<T extends { id: string; parents: string[] }>(t
   };
   visit(target);
   return result;
+}
+
+/**
+ * Nodes to lock together with `target`: the target plus every unlocked descendant whose
+ * prerequisites are no longer met. Nodes the game unlocks at start are kept, because
+ * the game restores them when the save loads.
+ */
+export function lockClosure<T extends { id: string; parents: string[]; lockType: string; availableAtStart: boolean }>(target: T, nodes: T[], unlocked: Set<string>) {
+  const remaining = new Set(unlocked);
+  const removed = new Set([target.id]);
+  remaining.delete(target.id);
+  const result = [target];
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const node of nodes) {
+      if (!remaining.has(node.id) || node.availableAtStart || !node.parents.some((id) => removed.has(id))) continue;
+      const met = node.lockType === "Any" ? node.parents.some((id) => remaining.has(id)) : node.parents.every((id) => remaining.has(id));
+      if (met) continue;
+      remaining.delete(node.id);
+      removed.add(node.id);
+      result.push(node);
+      changed = true;
+    }
+  }
+  return result;
+}
+
+/** Perk IDs still granted by unlocked technologies or studied talent levels. */
+export function grantedPerks(catalog: ProgressionCatalog, technologies: Set<string>, studied: Set<string>) {
+  const perks = new Set<string>();
+  for (const node of catalog.technology.nodes)
+    if (technologies.has(node.id)) for (const reward of node.rewards) if (reward.type === "perk") perks.add(reward.id);
+  for (const level of catalog.talents.levelUps) { const perk = level.perkId ?? level.perk?.id; if (perk && studied.has(level.id)) perks.add(perk); }
+  return perks;
 }
 
 export function localized(value: string | null | undefined, key: string) {

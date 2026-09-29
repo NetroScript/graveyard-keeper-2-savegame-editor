@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { SaveDocument } from "../document.svelte";
-  import { dependencyClosure, loadProgressionCatalog, localized, readableId, type InspirationDef, type ProgressionCatalog, type ProgressionState, type TalentLevelNode } from "./catalog";
+  import { dependencyClosure, grantedPerks, loadProgressionCatalog, localized, lockClosure, readableId, type InspirationDef, type ProgressionCatalog, type ProgressionState, type TalentLevelNode } from "./catalog";
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
-  import { notifyError } from "../toasts.svelte";
+  import { notify, notifyError } from "../toasts.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -83,6 +83,22 @@
     try { await doc.transact([{op:"progression",action:{kind:"unlock_talent_levels",talent:branchId,levels:additions.map(item=>({id:item.id,talentValue:item.talentValue}))}}]); }
     catch(e){notifyError(e);} finally{saving=false;}
   }
+  async function lockPerk(node: TalentLevelNode) {
+    selectedPerk=node;
+    if(!studied.has(node.id)||!catalog||!snapshot||saving) return;
+    if(node.availableAtStart){notifyError(`${perkName(node)} is available from the start. The game unlocks it again when the save loads.`);return;}
+    const removals=lockClosure(node,perkNodes,studied);
+    const removed=new Set(removals.map(item=>item.id));
+    // Keep active perks still granted by other studied perks or unlocked technologies.
+    const kept=grantedPerks(catalog,new Set(snapshot.unlockedTechnologies),new Set(snapshot.talents.flatMap(t=>t.studiedLevelUps).filter(id=>!removed.has(id))));
+    const perks=[...new Set(removals.map(item=>item.perkId ?? item.perk?.id).filter((id):id is string=>!!id&&!kept.has(id)))];
+    saving=true;
+    try {
+      await doc.transact([{op:"progression",action:{kind:"lock_talent_levels",talent:branchId,levels:removals.map(item=>({id:item.id,talentValue:item.talentValue})),perks}}]);
+      if(removals.length>1) notify(`Locked ${perkName(node)} and ${removals.length-1} dependent perk${removals.length===2?"":"s"}.`);
+    }
+    catch(e){notifyError(e);} finally{saving=false;}
+  }
 </script>
 
 <div class="section-intro"><div><h2>Inspirations</h2><p>Edit inspiration progress and reveal the full perk tree for each talent.</p></div></div>
@@ -118,9 +134,9 @@
       </div></section>
       <section class="perk-panel panel"><h3 class="strip">Perks</h3><div class="perk-tree">
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">{#each perkNodes as node}{#each node.parents as id}{@const parent=perkNodes.find(n=>n.id===id)}{#if parent}<path class:unlocked={studied.has(parent.id)&&studied.has(node.id)} d={`M ${px(parent.x)} ${py(parent.y)} L ${px(node.x)} ${py(node.y)}`} />{/if}{/each}{/each}</svg>
-        {#each perkNodes as node}<button type="button" class="perk-node" class:unlocked={studied.has(node.id)} class:selected={selectedPerk?.id===node.id} style={`left:calc(${px(node.x)}% - 32px);top:calc(${py(node.y)}% - 32px)`} disabled={saving} onclick={()=>void unlockPerk(node)}><InfoPopover fill title={perkName(node)} description={perkDescription(node)} facts={[{label:"State",value:studied.has(node.id)?"Unlocked":"Locked"},{label:"Point cost",value:String(node.pointPrice)},{label:"Mastery",value:`+${node.talentValue}`}]}><ProgressionIcon name={node.sprite} label={perkName(node)} recolor={false} /><span>{node.pointPrice}</span></InfoPopover></button>{/each}
+        {#each perkNodes as node}<button type="button" class="perk-node" class:unlocked={studied.has(node.id)} class:selected={selectedPerk?.id===node.id} style={`left:calc(${px(node.x)}% - 32px);top:calc(${py(node.y)}% - 32px)`} disabled={saving} onclick={()=>void (studied.has(node.id)?lockPerk(node):unlockPerk(node))}><InfoPopover fill title={perkName(node)} description={perkDescription(node)} facts={[{label:"State",value:studied.has(node.id)?"Unlocked":"Locked"},{label:"Point cost",value:String(node.pointPrice)},{label:"Mastery",value:`+${node.talentValue}`}]}><ProgressionIcon name={node.sprite} label={perkName(node)} recolor={false} /><span>{node.pointPrice}</span></InfoPopover></button>{/each}
       </div>
-      <div class="perk-details">{#if selectedPerk}<h4>{perkName(selectedPerk)}</h4>{#if perkDescription(selectedPerk)}<p><LocalizedText text={perkDescription(selectedPerk)!} /></p>{/if}<strong>{studied.has(selectedPerk.id)?"Unlocked":"Locked"}</strong>{:else}<p>Hover for perk details. Selecting a locked perk unlocks it and all prerequisites.</p>{/if}</div>
+      <div class="perk-details">{#if selectedPerk}<h4>{perkName(selectedPerk)}</h4>{#if perkDescription(selectedPerk)}<p><LocalizedText text={perkDescription(selectedPerk)!} /></p>{/if}<strong>{studied.has(selectedPerk.id)?"Unlocked":"Locked"}</strong>{#if studied.has(selectedPerk.id)&&selectedPerk.availableAtStart}<p>Available from the start. The game unlocks it again when the save loads, so it cannot be locked.</p>{/if}{:else}<p>Hover for perk details. Selecting a locked perk unlocks it and all prerequisites; selecting an unlocked perk locks it again, together with perks that depend on it. Perk points are not changed.</p>{/if}</div>
       </section>
     </div>
   {/if}

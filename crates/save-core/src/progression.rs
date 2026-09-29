@@ -29,6 +29,23 @@ pub struct PerkUnlock {
     pub duration: String,
 }
 
+/// Rewards to take back when technologies are locked. The caller omits rewards
+/// that remaining technologies or perks still grant.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TechnologyLocks {
+    #[serde(default)]
+    pub crafts: Vec<String>,
+    #[serde(default)]
+    pub alchemy_formulas: Vec<String>,
+    #[serde(default)]
+    pub buildings: Vec<String>,
+    #[serde(default)]
+    pub town_buildings: Vec<String>,
+    #[serde(default)]
+    pub perks: Vec<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TalentUnlock {
@@ -43,9 +60,20 @@ pub enum Edit {
         ids: Vec<String>,
         rewards: TechnologyRewards,
     },
+    LockTechnologies {
+        ids: Vec<String>,
+        rewards: TechnologyLocks,
+    },
     UnlockTalentLevels {
         talent: String,
         levels: Vec<TalentUnlock>,
+    },
+    /// Removes studied levels, their mastery and the given linked active perks.
+    LockTalentLevels {
+        talent: String,
+        levels: Vec<TalentUnlock>,
+        #[serde(default)]
+        perks: Vec<String>,
     },
     SetTalent {
         talent: String,
@@ -123,6 +151,51 @@ fn append_strings(
     }
     Ok(())
 }
+fn valid_ids(values: &[String]) -> Result<HashSet<&str>, Error> {
+    if values
+        .iter()
+        .any(|value| value.is_empty() || value.len() > 256)
+    {
+        return Err(failure("Invalid progression ID"));
+    }
+    Ok(values.iter().map(String::as_str).collect())
+}
+/// Removes every entry of a string list that matches one of `values`; returns the removed values.
+fn remove_strings(
+    doc: &mut Document,
+    owner: usize,
+    name: &str,
+    values: &[String],
+) -> Result<HashSet<String>, Error> {
+    let remove = valid_ids(values)?;
+    let (array, _) = string_list(doc, owner, name)?;
+    let mut removed = HashSet::new();
+    for child in doc.records[array].children.clone().into_iter().rev() {
+        let value = text_value(doc, child)?;
+        if remove.contains(value.as_str()) {
+            apply(doc, Operation::Remove { node: child })?;
+            removed.insert(value);
+        }
+    }
+    Ok(removed)
+}
+fn remove_perks(doc: &mut Document, ids: &[String]) -> Result<(), Error> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let remove = valid_ids(ids)?;
+    let perks = root_field(doc, "perkSystemData")?;
+    let array = array(doc, field(doc, perks, "activePerks")?)?;
+    for child in doc.records[array].children.clone().into_iter().rev() {
+        let id = resolve(doc, child)
+            .and_then(|entry| field(doc, entry, "id"))
+            .and_then(|node| text_value(doc, node))?;
+        if remove.contains(id.as_str()) {
+            apply(doc, Operation::Remove { node: child })?;
+        }
+    }
+    Ok(())
+}
 fn talents(doc: &Document) -> Result<Vec<usize>, Error> {
     let system = root_field(doc, "talentSystemData")?;
     let items = array(doc, field(doc, system, "talentData")?)?;
@@ -187,7 +260,14 @@ pub(crate) fn read(doc: &Document) -> Result<Value, Error> {
         }
         branches.push(json!({"id":id,"curExp":value("curExp")?,"curTalentLevel":value("curTalentLevel")?,"talentExpPoints":value("talentExpPoints")?,"curTalentValue":value("curTalentValue")?,"studiedLevelUps":studied,"inspirations":inspirations}));
     }
-    Ok(json!({"unlockedTechnologies":unlocked,"talents":branches}))
+    let perks = root_field(doc, "perkSystemData")?;
+    let perk_array = array(doc, field(doc, perks, "activePerks")?)?;
+    let active_perks = doc.records[perk_array]
+        .children
+        .iter()
+        .map(|entry| text_value(doc, field(doc, resolve(doc, *entry)?, "id")?))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(json!({"unlockedTechnologies":unlocked,"talents":branches,"activePerks":active_perks}))
 }
 
 pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
@@ -240,6 +320,63 @@ pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
                     )?;
                 }
             }
+        }
+        Edit::LockTechnologies { ids, rewards } => {
+            if ids.is_empty() || ids.len() > 500 {
+                return Err(failure("Select 1..500 technologies"));
+            }
+            let knowledge = root_field(doc, "knowledgeSystem")?;
+            remove_strings(doc, knowledge, "unlockedTechs", &ids)?;
+            remove_strings(doc, knowledge, "unlockedCrafts", &rewards.crafts)?;
+            remove_strings(
+                doc,
+                knowledge,
+                "unlockedAlchemyFormulas",
+                &rewards.alchemy_formulas,
+            )?;
+            remove_strings(doc, knowledge, "unlockedBuildings", &rewards.buildings)?;
+            remove_strings(
+                doc,
+                knowledge,
+                "unlockedTownBuildings",
+                &rewards.town_buildings,
+            )?;
+            remove_perks(doc, &rewards.perks)?;
+        }
+        Edit::LockTalentLevels {
+            talent: talent_id,
+            levels,
+            perks,
+        } => {
+            if levels.is_empty() || levels.len() > 500 {
+                return Err(failure("Select 1..500 talent levels"));
+            }
+            let branch = talent(doc, &talent_id)?;
+            let ids: Vec<_> = levels.iter().map(|x| x.id.clone()).collect();
+            let removed = remove_strings(doc, branch, "studiedLevelUps", &ids)?;
+            let decrease: i32 =
+                levels
+                    .iter()
+                    .filter(|x| removed.contains(&x.id))
+                    .try_fold(0i32, |sum, x| {
+                        sum.checked_add(x.talent_value.max(0))
+                            .ok_or_else(|| failure("Talent value overflow"))
+                    })?;
+            if decrease > 0 {
+                let node = field(doc, branch, "curTalentValue")?;
+                let current: i32 = view(doc, node)
+                    .value
+                    .unwrap_or_default()
+                    .parse()
+                    .map_err(|_| failure("Invalid talent value"))?;
+                set_i32(
+                    doc,
+                    branch,
+                    "curTalentValue",
+                    current.saturating_sub(decrease).max(0).to_string(),
+                )?;
+            }
+            remove_perks(doc, &perks)?;
         }
         Edit::UnlockTalentLevels {
             talent: talent_id,

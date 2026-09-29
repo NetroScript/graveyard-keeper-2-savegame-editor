@@ -1,12 +1,12 @@
 <script lang="ts">
   import { tick } from "svelte";
   import type { SaveDocument } from "../document.svelte";
-  import { loadProgressionCatalog, dependencyClosure, localized, readableId, type ProgressionCatalog, type ProgressionState, type TechnologyNode } from "./catalog";
+  import { loadProgressionCatalog, dependencyClosure, grantedPerks, localized, lockClosure, readableId, type ProgressionCatalog, type ProgressionState, type TechnologyNode } from "./catalog";
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import InfoPopover from "./InfoPopover.svelte";
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
-  import { notifyError } from "../toasts.svelte";
+  import { notify, notifyError } from "../toasts.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } = $props();
   let catalog = $state<ProgressionCatalog>();
   let snapshot = $state<ProgressionState>();
@@ -75,9 +75,35 @@
       if (treePanel) { treePanel.scrollLeft = scrollLeft; treePanel.scrollTop = scrollTop; }
     } catch (e) { notifyError(e); } finally { saving = false; }
   }
+
+  async function lock(node: TechnologyNode) {
+    selected = node;
+    if (!unlocked.has(node.id) || !catalog || !snapshot || saving) return;
+    if (node.availableAtStart) { notifyError(`${node.name} is available from the start. The game unlocks it again when the save loads.`); return; }
+    const removals = lockClosure(node, catalog.technology.nodes, unlocked);
+    const removedIds = new Set(removals.map((item) => item.id));
+    const remaining = new Set([...unlocked].filter((id) => !removedIds.has(id)));
+    // Rewards shared with technologies that stay unlocked, or perks from studied talents, are kept.
+    const kept = new Set(catalog.technology.nodes.filter((item) => remaining.has(item.id)).flatMap((item) => item.rewards.map((r) => `${r.type}:${r.id}`)));
+    const perks = grantedPerks(catalog, remaining, new Set(snapshot.talents.flatMap((t) => t.studiedLevelUps)));
+    const rewards = removals.flatMap((item) => item.rewards).filter((r) => !kept.has(`${r.type}:${r.id}`));
+    const ids = (type: string) => [...new Set(rewards.filter((r) => r.type === type).map((r) => r.id))];
+    const scrollLeft = treePanel?.scrollLeft ?? 0;
+    const scrollTop = treePanel?.scrollTop ?? 0;
+    saving = true;
+    try {
+      await doc.transact([{ op: "progression", action: { kind: "lock_technologies", ids: removals.map((item) => item.id), rewards: {
+        crafts: ids("craft"), alchemyFormulas: ids("alchemy"), buildings: ids("building"), townBuildings: ids("townBuilding"),
+        perks: ids("perk").filter((id) => !perks.has(id)),
+      }}}]);
+      if (removals.length > 1) notify(`Locked ${node.name} and ${removals.length - 1} dependent technolog${removals.length === 2 ? "y" : "ies"}.`);
+      await tick();
+      if (treePanel) { treePanel.scrollLeft = scrollLeft; treePanel.scrollTop = scrollTop; }
+    } catch (e) { notifyError(e); } finally { saving = false; }
+  }
 </script>
 
-<div class="section-intro"><div><h2>Technologies</h2><p>Hover for details. Selecting a locked technology unlocks it and all of its prerequisites.</p></div></div>
+<div class="section-intro"><div><h2>Technologies</h2><p>Hover for details. Selecting a locked technology unlocks it and all of its prerequisites; selecting an unlocked technology locks it again, together with technologies that depend on it.</p></div></div>
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 {#if catalog && snapshot}
   <nav class="branch-tabs" aria-label="Technology trees">
@@ -97,7 +123,7 @@
           {/each}{/each}
         </svg>
         {#each nodes as node}
-          <button type="button" class="tech-node" class:gate={!!node.gate} class:unlocked={unlocked.has(node.id)} class:available={available(node)} class:selected={selected?.id === node.id} style={`left:${px(node.x)-(node.gate?50:96)}px;top:${py(node.y)-(node.gate?58:52)}px`} disabled={saving} onclick={() => node.gate ? selected=node : void unlock(node)}>
+          <button type="button" class="tech-node" class:gate={!!node.gate} class:unlocked={unlocked.has(node.id)} class:available={available(node)} class:selected={selected?.id === node.id} style={`left:${px(node.x)-(node.gate?50:96)}px;top:${py(node.y)-(node.gate?58:52)}px`} disabled={saving} onclick={() => node.gate ? selected=node : unlocked.has(node.id) ? void lock(node) : void unlock(node)}>
             {#if node.gate}
               <InfoPopover fill title={node.gate.name} facts={popoverFacts(node)}><span class="gate-value">{node.gate.value}</span><ProgressionIcon name={node.gate.sprite} label={node.gate.name} /></InfoPopover>
             {:else}
@@ -115,10 +141,12 @@
           {#if localized(selected.description, `${selected.id}_d`)}<p><LocalizedText text={selected.description} /></p>{/if}
           <p class="state"><strong>{unlocked.has(selected.id) ? "Unlocked" : "Locked"}</strong></p>
           {#if selected.type && selected.type !== "Common"}<p class="muted">This is a {nodeKind(selected).toLowerCase()} gate. Unlocking it bypasses that requirement without changing quests or reputation.</p>{:else if selected.hiddenAtStart}<p class="muted">The game normally reveals this technology through game or quest progress. Unlocking it does not mark that quest as completed.</p>{/if}
-          {#if additionalEffectCount(selected)}<p class="warning">The game normally applies {additionalEffectCount(selected)} additional side effect{additionalEffectCount(selected) === 1 ? "" : "s"} when this technology unlocks. The editor preserves story state and does not execute game scripts.</p>{/if}
+          {#if additionalEffectCount(selected)}<p class="warning">The game normally applies {additionalEffectCount(selected)} additional side effect{additionalEffectCount(selected) === 1 ? "" : "s"} when this technology unlocks. The editor preserves story state and does not execute game scripts, so locking it again does not reverse effects the game already applied.</p>{/if}
           {#if selected.parents.length}<h4>Prerequisites</h4><ul>{#each selected.parents as id}<li>{catalog.technology.nodes.find((n) => n.id === id)?.name ?? id}</li>{/each}</ul>{/if}
           {#if selected.rewards.length}<h4>Unlocks</h4><div class="reward-list">{#each selected.rewards as reward}<div><InfoPopover title={rewardName(reward)} description={localized(reward.description,`${reward.id}_d`)} facts={rewardFacts(reward)} entries={reward.ingredients ?? []}><ProgressionIcon name={reward.sprite} label={reward.name} /></InfoPopover><span><strong>{rewardName(reward)}</strong>{#if reward.craftedAt?.length}<small>Crafted at: {reward.craftedAt.join(", ")}</small>{/if}{#if localized(reward.description, `${reward.id}_d`)}<small><LocalizedText text={reward.description} /></small>{/if}</span></div>{/each}</div>{/if}
-          {#if !unlocked.has(selected.id)}<button class="primary wide" disabled={saving} onclick={() => void unlock(selected!)}>Unlock with prerequisites</button>{/if}
+          {#if !unlocked.has(selected.id)}<button class="primary wide" disabled={saving} onclick={() => void unlock(selected!)}>Unlock with prerequisites</button>
+          {:else if selected.availableAtStart}<p class="muted">Available from the start. The game unlocks it again when the save loads, so it cannot be locked.</p>
+          {:else}<button class="wide" disabled={saving} onclick={() => void lock(selected!)}>Lock with dependent technologies</button>{/if}
         </div>
       {:else}<div class="details-body muted"><p>Select a technology to see its description, prerequisites and rewards.</p></div>{/if}
     </aside>
