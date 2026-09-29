@@ -8,7 +8,12 @@ on:
         required: true
         default: asset-pack-input
       publish:
-        description: Publish GitHub Pages and a GitHub Release
+        description: Publish GitHub Pages and a GitHub Release (only GitHub Pages when web only)
+        required: true
+        type: boolean
+        default: false
+      web_only:
+        description: Build only the web application and skip all desktop builds
         required: true
         type: boolean
         default: false
@@ -80,6 +85,8 @@ jobs:
           if-no-files-found: error
 
   desktop:
+    # Tag pushes have no inputs, so they always build desktop bundles.
+    if: inputs.web_only != true
     permissions:
       contents: write
     strategy:
