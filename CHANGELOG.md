@@ -3,21 +3,33 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
-## [0.3.0] - Unreleased
+## [0.3.0] - Zombie editor
+
+### Zombie editor
 
 - Added a complete zombie worker editor with localized names, worker portraits, skull totals and available talent slots.
 - Added editing for zombie names, technology points, organs, body treatments, body pockets, collars, armor and tools, with item artwork, skull values and game-aware slot choices.
 - Added role-aware work storage. Porter cargo can be edited while preserving the game's reserved large-item slots; carried task items and workstation storage are identified for other worker roles.
 - Added zombie talent-tree editing, including individual unlocks and automatic body and specialty optimization.
 - Added an in-game-style appearance editor for supported bodies, heads and color palettes, with composited worker previews throughout the zombie editor.
-- Added extracted zombie customization, talent, perk and equipment data and sprites to the packaged game assets.
-- Compressed the packaged game assets, reducing the web editor's asset download from about 5.4 MB to 1.9 MB.
-- Cached zombie snapshots and applied incremental transaction updates so opening the editor, selecting workers and changing appearance no longer repeatedly reconstruct the entire zombie list.
 - Added automatic incremental loading to zombie item pickers and clearer groups for treatments, skull-adding items, tools, armor and cargo.
-- Added configurable desktop update checks with Never, Daily, and Weekly schedules. New and existing installations that have not chosen a schedule are prompted on startup, with Weekly preselected.
-- Added a side-rail notification when a new application version is available.
+- Cached zombie snapshots and applied incremental transaction updates so opening the editor, selecting workers and changing appearance no longer repeatedly reconstruct the entire zombie list.
+
+### Notifications
+
 - Added toast notifications for saves, settings changes and edit results, including a confirmation after each successful save. Notifications stack, pause while hovered or focused, and show their remaining time.
 - Failed edits now appear as temporary notifications instead of banners that remained until the next edit, and no longer also show a second error banner above the editor.
+
+### Desktop updates
+
+- Added configurable desktop update checks with Never, Daily, and Weekly schedules. New and existing installations that have not chosen a schedule are prompted on startup, with Weekly preselected.
+- Added a side-rail notification when a new application version is available.
+
+### Game data
+
+- Updated the bundled game data for Graveyard Keeper 2 version 1.007.
+- Added extracted zombie customization, talent, perk and equipment data and sprites to the packaged game assets.
+- Compressed the packaged game assets, reducing the web editor's asset download from about 5.4 MB to 1.9 MB.
 
 ## [0.2.0] - Save Inspector search
 
