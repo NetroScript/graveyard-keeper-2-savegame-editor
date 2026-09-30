@@ -28,6 +28,8 @@ struct Session {
     redo: Vec<Patch>,
     catalog: crate::inventory::Catalog,
     zombie_catalog: crate::zombies::Catalog,
+    /// Progression unlocked when the save was opened, which decides point refunds and charges.
+    progression_baseline: crate::progression::Baseline,
     inventory_cache: Option<crate::inventory::Cache>,
     zombie_cache: Option<crate::zombies::Cache>,
     zombie_handles: Option<Vec<usize>>,
@@ -318,6 +320,7 @@ impl Workspace {
             .copied()
             .filter(|node| crate::zombies::is_zombie(&doc, *node))
             .collect();
+        let progression_baseline = crate::progression::baseline(&doc);
         let mut s = Session {
             doc,
             revision: 1,
@@ -327,6 +330,7 @@ impl Workspace {
             redo: vec![],
             catalog: Default::default(),
             zombie_catalog: Default::default(),
+            progression_baseline,
             inventory_cache: None,
             zombie_cache: None,
             zombie_handles: Some(zombie_handles),
@@ -531,7 +535,9 @@ impl Workspace {
             }
             Command::General => Ok(crate::general::read(doc)),
             Command::Drops => crate::drops::read(doc),
-            Command::Progression => crate::progression::read(doc),
+            Command::Progression => {
+                crate::progression::read(doc, &self.session(id)?.progression_baseline)
+            }
             Command::Zombies => {
                 let s = self.sessions.get_mut(&id).unwrap();
                 if s.zombie_cache.is_none() {
@@ -619,6 +625,7 @@ impl Workspace {
                     | Operation::Zombie { .. }
             )
         });
+        // Locking and unlocking technologies can refund or charge technology points.
         let general_unchanged = operations.iter().all(|op| {
             matches!(
                 op,
@@ -626,6 +633,12 @@ impl Workspace {
                     | Operation::Drops { .. }
                     | Operation::Progression { .. }
                     | Operation::Zombie { .. }
+            ) && !matches!(
+                op,
+                Operation::Progression {
+                    action: crate::progression::Edit::LockTechnologies { .. }
+                        | crate::progression::Edit::UnlockTechnologies { .. }
+                }
             )
         });
         if operations
@@ -687,7 +700,7 @@ impl Workspace {
                 } else if let Operation::Drops { action } = op {
                     crate::drops::write(&mut s.doc, action)?;
                 } else if let Operation::Progression { action } = op {
-                    crate::progression::write(&mut s.doc, action)?;
+                    crate::progression::write(&mut s.doc, &s.progression_baseline, action)?;
                 } else if let Operation::Zombie { zombie, action } = op {
                     if let crate::zombies::Edit::BodyInventory { action, .. }
                     | crate::zombies::Edit::CargoInventory { action, .. } = &action

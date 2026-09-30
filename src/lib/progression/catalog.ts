@@ -119,6 +119,8 @@ export interface ProgressionState {
   unlockedTechnologies: string[];
   talents: TalentState[];
   activePerks: string[];
+  /** Unlocked when the save was opened: locking refunds these, re-unlocking charges them. */
+  paid: { technologies: string[]; levels: string[] };
 }
 
 export async function loadProgressionCatalog() {

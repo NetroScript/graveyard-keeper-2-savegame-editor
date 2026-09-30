@@ -85,6 +85,35 @@ pub(crate) fn read(doc: &Document) -> Value {
     }).collect();
     json!(fields)
 }
+/// Adds `amount` to a player resource such as `tech_red`, creating it when missing.
+/// A negative amount fails instead of taking the resource below zero.
+pub(crate) fn add(doc: &mut Document, key: &str, amount: f64) -> Result<(), Error> {
+    if amount == 0.0 {
+        return Ok(());
+    }
+    let current = match resources(doc)?.2.get(key) {
+        Some(node) => view(doc, *node)
+            .value
+            .unwrap_or_default()
+            .parse::<f64>()
+            .map_err(|_| failure("Invalid resource value"))?,
+        None => 0.0,
+    };
+    if current + amount < 0.0 {
+        let name = key.strip_prefix("tech_").map_or_else(
+            || key.replace('_', " "),
+            |color| format!("{color} technology points"),
+        );
+        return Err(failure(&format!(
+            "Not enough {name}: needs {}, has {current}",
+            -amount
+        )));
+    }
+    write(
+        doc,
+        BTreeMap::from([(key.to_string(), (current + amount).to_string())]),
+    )
+}
 pub(crate) fn write(doc: &mut Document, values: BTreeMap<String, String>) -> Result<(), Error> {
     for (key, value) in values {
         let number: f64 = value

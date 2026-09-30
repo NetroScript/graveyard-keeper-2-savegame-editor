@@ -3,6 +3,10 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.3.1] - Unreleased
+
+- Locking technologies and player perks that were unlocked when the save was opened now refunds the technology points or perk points they cost in the game. Unlocking them again costs those points again, so repeated locking and unlocking never adds points. Anything unlocked in the editor stays free and refunds nothing.
+
 ## [0.3.0] - Zombie editor
 
 ### Zombie editor

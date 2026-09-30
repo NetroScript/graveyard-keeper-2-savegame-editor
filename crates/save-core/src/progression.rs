@@ -46,23 +46,76 @@ pub struct TechnologyLocks {
     pub perks: Vec<String>,
 }
 
+/// A technology's price in the player's red, green and blue technology points.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct TechnologyPoints {
+    #[serde(default)]
+    pub red: u32,
+    #[serde(default)]
+    pub green: u32,
+    #[serde(default)]
+    pub blue: u32,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct TalentUnlock {
     pub id: String,
     pub talent_value: i32,
+    /// Perk point price. See [`Baseline`] for when it is charged or refunded.
+    #[serde(default)]
+    pub point_price: i32,
+}
+
+/// Technologies and talent levels that were unlocked when the save was opened.
+///
+/// The player paid for these in the game, so locking one refunds its price and
+/// unlocking it again charges the price again. Anything else was unlocked by the
+/// editor for free and neither costs nor refunds points. Repeated lock/unlock
+/// cycles therefore never create points, and undo stays consistent because the
+/// decision depends only on the current state and this baseline.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Baseline {
+    technologies: HashSet<String>,
+    levels: HashSet<String>,
+}
+
+pub(crate) fn baseline(doc: &Document) -> Baseline {
+    let technologies = root_field(doc, "knowledgeSystem")
+        .and_then(|knowledge| string_list(doc, knowledge, "unlockedTechs"))
+        .map(|(_, ids)| ids.into_iter().collect())
+        .unwrap_or_default();
+    let levels = talents(doc)
+        .map(|branches| {
+            branches
+                .into_iter()
+                .filter_map(|branch| string_list(doc, branch, "studiedLevelUps").ok())
+                .flat_map(|(_, ids)| ids)
+                .collect()
+        })
+        .unwrap_or_default();
+    Baseline {
+        technologies,
+        levels,
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Edit {
+    /// `costs` holds the prices of the technologies; see [`Baseline`].
     UnlockTechnologies {
         ids: Vec<String>,
         rewards: TechnologyRewards,
+        #[serde(default)]
+        costs: BTreeMap<String, TechnologyPoints>,
     },
     LockTechnologies {
         ids: Vec<String>,
         rewards: TechnologyLocks,
+        #[serde(default)]
+        costs: BTreeMap<String, TechnologyPoints>,
     },
     UnlockTalentLevels {
         talent: String,
@@ -217,6 +270,63 @@ fn talent(doc: &Document, id: &str) -> Result<usize, Error> {
         })
         .ok_or_else(|| failure("Unknown talent branch"))
 }
+fn int_field(doc: &Document, owner: usize, name: &str) -> Result<i32, Error> {
+    view(doc, field(doc, owner, name)?)
+        .value
+        .unwrap_or_default()
+        .parse()
+        .map_err(|_| failure("Invalid progression value"))
+}
+/// Adds (refund) or subtracts (charge) the prices of `ids` that belong to the baseline.
+fn settle_technologies(
+    doc: &mut Document,
+    ids: &HashSet<String>,
+    costs: &BTreeMap<String, TechnologyPoints>,
+    sign: f64,
+) -> Result<(), Error> {
+    let mut total = [0f64; 3];
+    for id in ids {
+        if let Some(cost) = costs.get(id) {
+            total[0] += f64::from(cost.red);
+            total[1] += f64::from(cost.green);
+            total[2] += f64::from(cost.blue);
+        }
+    }
+    for (key, amount) in ["tech_red", "tech_green", "tech_blue"]
+        .into_iter()
+        .zip(total)
+    {
+        crate::general::add(doc, key, sign * amount)?;
+    }
+    Ok(())
+}
+fn add_perk_points(doc: &mut Document, branch: usize, amount: i32) -> Result<(), Error> {
+    if amount == 0 {
+        return Ok(());
+    }
+    let current = int_field(doc, branch, "talentExpPoints")?;
+    let next = current
+        .checked_add(amount)
+        .ok_or_else(|| failure("Perk point overflow"))?;
+    if next < 0 {
+        return Err(failure(&format!(
+            "Not enough perk points: needs {}, has {current}",
+            -amount
+        )));
+    }
+    set_i32(doc, branch, "talentExpPoints", next.to_string())
+}
+fn level_points<'a>(
+    levels: impl Iterator<Item = &'a TalentUnlock>,
+    baseline: &Baseline,
+) -> Result<i32, Error> {
+    levels
+        .filter(|x| baseline.levels.contains(&x.id))
+        .try_fold(0i32, |sum, x| {
+            sum.checked_add(x.point_price.max(0))
+                .ok_or_else(|| failure("Perk point overflow"))
+        })
+}
 fn set_i32(doc: &mut Document, owner: usize, name: &str, value: String) -> Result<(), Error> {
     let parsed: i32 = value
         .parse()
@@ -238,7 +348,7 @@ fn set_i32(doc: &mut Document, owner: usize, name: &str, value: String) -> Resul
     )
 }
 
-pub(crate) fn read(doc: &Document) -> Result<Value, Error> {
+pub(crate) fn read(doc: &Document, baseline: &Baseline) -> Result<Value, Error> {
     let knowledge = root_field(doc, "knowledgeSystem")?;
     let (_, unlocked) = string_list(doc, knowledge, "unlockedTechs")?;
     let mut branches = Vec::new();
@@ -267,16 +377,38 @@ pub(crate) fn read(doc: &Document) -> Result<Value, Error> {
         .iter()
         .map(|entry| text_value(doc, field(doc, resolve(doc, *entry)?, "id")?))
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(json!({"unlockedTechnologies":unlocked,"talents":branches,"activePerks":active_perks}))
+    let mut paid_technologies: Vec<_> = baseline.technologies.iter().collect();
+    let mut paid_levels: Vec<_> = baseline.levels.iter().collect();
+    paid_technologies.sort();
+    paid_levels.sort();
+    Ok(json!({
+        "unlockedTechnologies": unlocked,
+        "talents": branches,
+        "activePerks": active_perks,
+        "paid": {"technologies": paid_technologies, "levels": paid_levels}
+    }))
 }
 
-pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
+pub(crate) fn write(doc: &mut Document, baseline: &Baseline, edit: Edit) -> Result<(), Error> {
     match edit {
-        Edit::UnlockTechnologies { ids, rewards } => {
+        Edit::UnlockTechnologies {
+            ids,
+            rewards,
+            costs,
+        } => {
             if ids.is_empty() || ids.len() > 500 {
                 return Err(failure("Select 1..500 technologies"));
             }
             let knowledge = root_field(doc, "knowledgeSystem")?;
+            let (_, existing) = string_list(doc, knowledge, "unlockedTechs")?;
+            let existing: HashSet<_> = existing.into_iter().collect();
+            // Re-unlocking a technology whose price was refunded charges it again.
+            let charged: HashSet<_> = ids
+                .iter()
+                .filter(|id| !existing.contains(*id) && baseline.technologies.contains(*id))
+                .cloned()
+                .collect();
+            settle_technologies(doc, &charged, &costs, -1.0)?;
             append_strings(doc, knowledge, "unlockedTechs", ids)?;
             append_strings(doc, knowledge, "unlockedCrafts", rewards.crafts)?;
             append_strings(
@@ -321,12 +453,21 @@ pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
                 }
             }
         }
-        Edit::LockTechnologies { ids, rewards } => {
+        Edit::LockTechnologies {
+            ids,
+            rewards,
+            costs,
+        } => {
             if ids.is_empty() || ids.len() > 500 {
                 return Err(failure("Select 1..500 technologies"));
             }
             let knowledge = root_field(doc, "knowledgeSystem")?;
-            remove_strings(doc, knowledge, "unlockedTechs", &ids)?;
+            let removed = remove_strings(doc, knowledge, "unlockedTechs", &ids)?;
+            let refunded: HashSet<_> = removed
+                .into_iter()
+                .filter(|id| baseline.technologies.contains(id))
+                .collect();
+            settle_technologies(doc, &refunded, &costs, 1.0)?;
             remove_strings(doc, knowledge, "unlockedCrafts", &rewards.crafts)?;
             remove_strings(
                 doc,
@@ -362,13 +503,9 @@ pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
                         sum.checked_add(x.talent_value.max(0))
                             .ok_or_else(|| failure("Talent value overflow"))
                     })?;
+            let refund = level_points(levels.iter().filter(|x| removed.contains(&x.id)), baseline)?;
             if decrease > 0 {
-                let node = field(doc, branch, "curTalentValue")?;
-                let current: i32 = view(doc, node)
-                    .value
-                    .unwrap_or_default()
-                    .parse()
-                    .map_err(|_| failure("Invalid talent value"))?;
+                let current = int_field(doc, branch, "curTalentValue")?;
                 set_i32(
                     doc,
                     branch,
@@ -376,6 +513,7 @@ pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
                     current.saturating_sub(decrease).max(0).to_string(),
                 )?;
             }
+            add_perk_points(doc, branch, refund)?;
             remove_perks(doc, &perks)?;
         }
         Edit::UnlockTalentLevels {
@@ -396,6 +534,9 @@ pub(crate) fn write(doc: &mut Document, edit: Edit) -> Result<(), Error> {
                 sum.checked_add(x.talent_value)
                     .ok_or_else(|| failure("Talent value overflow"))
             })?;
+            // Re-unlocking a level whose price was refunded charges it again.
+            let charge = level_points(added.iter(), baseline)?;
+            add_perk_points(doc, branch, -charge)?;
             append_strings(
                 doc,
                 branch,

@@ -114,12 +114,45 @@
       : []),
   ];
 
+  // Technologies unlocked in the opened save were paid for in the game. The core
+  // refunds their price when they are locked and charges it again on re-unlock;
+  // editor unlocks are free and refund nothing.
+  const paid = $derived(new Set<string>(snapshot?.paid.technologies ?? []));
+  const colors = ["red", "green", "blue"] as const;
+  const costs = (items: TechnologyNode[]) =>
+    Object.fromEntries(
+      items.map((item) => [
+        item.id,
+        Object.fromEntries(
+          colors.map((color) => [color, item.price[`tech_${color}`] ?? 0]),
+        ),
+      ]),
+    );
+  const pointSummary = (items: TechnologyNode[]) =>
+    colors
+      .map(
+        (color) =>
+          [
+            color,
+            items
+              .filter((item) => paid.has(item.id))
+              .reduce(
+                (sum, item) => sum + (item.price[`tech_${color}`] ?? 0),
+                0,
+              ),
+          ] as const,
+      )
+      .filter(([, amount]) => amount > 0)
+      .map(([color, amount]) => `${amount} ${color}`)
+      .join(", ");
+
   async function unlock(node: TechnologyNode) {
     selected = node;
     if (unlocked.has(node.id) || !catalog || saving) return;
     const allNodes = catalog.technology.nodes;
     const additions = dependencyClosure(node, allNodes, unlocked);
     const rewards = additions.flatMap((item) => item.rewards);
+    const spent = pointSummary(additions);
     const scrollLeft = treePanel?.scrollLeft ?? 0;
     const scrollTop = treePanel?.scrollTop ?? 0;
     saving = true;
@@ -147,9 +180,12 @@
                 .filter((r) => r.type === "perk")
                 .map((r) => ({ id: r.id, duration: String(r.duration ?? 0) })),
             },
+            costs: costs(additions),
           },
         },
       ]);
+      if (spent)
+        notify(`Unlocked ${node.name}. Spent ${spent} technology points.`);
       await tick();
       if (treePanel) {
         treePanel.scrollLeft = scrollLeft;
@@ -193,6 +229,7 @@
     const ids = (type: string) => [
       ...new Set(rewards.filter((r) => r.type === type).map((r) => r.id)),
     ];
+    const refunded = pointSummary(removals);
     const scrollLeft = treePanel?.scrollLeft ?? 0;
     const scrollTop = treePanel?.scrollTop ?? 0;
     saving = true;
@@ -210,12 +247,20 @@
               townBuildings: ids("townBuilding"),
               perks: ids("perk").filter((id) => !perks.has(id)),
             },
+            costs: costs(removals),
           },
         },
       ]);
-      if (removals.length > 1)
+      if (removals.length > 1 || refunded)
         notify(
-          `Locked ${node.name} and ${removals.length - 1} dependent technolog${removals.length === 2 ? "y" : "ies"}.`,
+          [
+            removals.length > 1
+              ? `Locked ${node.name} and ${removals.length - 1} dependent technolog${removals.length === 2 ? "y" : "ies"}.`
+              : `Locked ${node.name}.`,
+            refunded ? `Refunded ${refunded} technology points.` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
         );
       await tick();
       if (treePanel) {
@@ -236,7 +281,9 @@
     <p>
       Hover for details. Selecting a locked technology unlocks it and all of its
       prerequisites; selecting an unlocked technology locks it again, together
-      with technologies that depend on it.
+      with technologies that depend on it. Technologies that were already
+      unlocked when the save was opened refund their technology points when
+      locked and cost them again when unlocked; everything else is free.
     </p>
   </div>
 </div>

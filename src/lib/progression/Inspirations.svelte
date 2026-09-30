@@ -210,6 +210,14 @@
       void setInspiration(levels, next, value);
     }
   }
+  // Perks studied in the opened save were paid for in the game. The core refunds
+  // their points when they are locked and charges them again on re-unlock.
+  const paidPoints = (items: TalentLevelNode[]) => {
+    const paid = new Set(snapshot?.paid.levels ?? []);
+    return items
+      .filter((item) => paid.has(item.id))
+      .reduce((sum, item) => sum + item.pointPrice, 0);
+  };
   async function unlockPerk(node: TalentLevelNode) {
     selectedPerk = node;
     if (studied.has(node.id) || saving) return;
@@ -225,10 +233,16 @@
             levels: additions.map((item) => ({
               id: item.id,
               talentValue: item.talentValue,
+              pointPrice: item.pointPrice,
             })),
           },
         },
       ]);
+      const spent = paidPoints(additions);
+      if (spent > 0)
+        notify(
+          `Unlocked ${perkName(node)}. Spent ${spent} perk point${spent === 1 ? "" : "s"}.`,
+        );
     } catch (e) {
       notifyError(e);
     } finally {
@@ -274,14 +288,25 @@
             levels: removals.map((item) => ({
               id: item.id,
               talentValue: item.talentValue,
+              pointPrice: item.pointPrice,
             })),
             perks,
           },
         },
       ]);
-      if (removals.length > 1)
+      const refund = paidPoints(removals);
+      if (removals.length > 1 || refund > 0)
         notify(
-          `Locked ${perkName(node)} and ${removals.length - 1} dependent perk${removals.length === 2 ? "" : "s"}.`,
+          [
+            removals.length > 1
+              ? `Locked ${perkName(node)} and ${removals.length - 1} dependent perk${removals.length === 2 ? "" : "s"}.`
+              : `Locked ${perkName(node)}.`,
+            refund > 0
+              ? `Refunded ${refund} perk point${refund === 1 ? "" : "s"}.`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
         );
     } catch (e) {
       notifyError(e);
@@ -507,7 +532,9 @@
               </p>{/if}{:else}<p>
               Hover for perk details. Selecting a locked perk unlocks it and all
               prerequisites; selecting an unlocked perk locks it again, together
-              with perks that depend on it. Perk points are not changed.
+              with perks that depend on it. Perks that were already unlocked
+              when the save was opened refund their perk points when locked and
+              cost them again when unlocked; everything else is free.
             </p>{/if}
         </div>
       </section>
