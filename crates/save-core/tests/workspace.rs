@@ -485,11 +485,12 @@ fn general_resource_insert_float_precision_and_malformed_mapping() {
         json!({"op":"transact","revision":1,"operations":[{"op":"general","values":{"money":"12345","energy":"0.1","hp":"110"}}]}),
     );
     let fields = request(&mut w, id, json!({"op":"general"}));
+    // This fixture has no inventories, so only the item currencies are unavailable.
     assert!(fields
         .as_array()
         .unwrap()
         .iter()
-        .all(|f| f["error"].is_null()));
+        .all(|f| f["error"].is_null() != (f["key"] == "faith" || f["key"] == "science")));
     let energy = fields
         .as_array()
         .unwrap()

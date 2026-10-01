@@ -23,6 +23,8 @@ const resources: Record<string, string> = {
   tech_blue: "tech_blue",
   insanity: "insanity",
   happiness: "happiness",
+  faith: "faith",
+  science: "science",
 };
 
 let loading: Promise<Record<string, string>> | undefined;

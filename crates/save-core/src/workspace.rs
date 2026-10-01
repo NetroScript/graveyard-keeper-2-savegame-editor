@@ -126,6 +126,9 @@ pub enum Operation {
     },
     General {
         values: BTreeMap<String, String>,
+        /// Fresh GUIDs for faith or science stacks that need to be created.
+        #[serde(default)]
+        guids: Vec<String>,
     },
     Inventory {
         container: usize,
@@ -490,7 +493,7 @@ pub(crate) fn apply(doc: &mut Document, op: Operation) -> Result<(), Error> {
             }
             doc.records[parent].children.insert(index, start);
         }
-        Operation::General { values } => crate::general::write(doc, values)?,
+        Operation::General { values, guids } => crate::general::write(doc, values, &guids)?,
         Operation::Inventory { .. } => return Err(failure("Inventory edits require a catalog")),
         Operation::Drops { .. } => return Err(failure("Drop edits require a transaction")),
         Operation::Progression { .. } => {

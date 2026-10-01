@@ -1066,7 +1066,8 @@ mod tests {
         assert_eq!(result["inventory"]["upsert"].as_array().unwrap().len(), 1);
         assert_eq!(result["inventory"]["rules"], json!({}));
         assert_eq!(result["inventoryInvalidated"], false);
-        assert!(result["general"].is_null());
+        // Player inventory edits can change faith, which General displays.
+        assert!(result["general"].is_array());
         let after = w.export(id).unwrap();
         assert_eq!(Some(after.len()), w.summary(id).unwrap().encoded_bytes);
         let rev = w.summary(id).unwrap().revision;
@@ -1078,6 +1079,80 @@ mod tests {
         assert_eq!(redone["inventory"]["upsert"].as_array().unwrap().len(), 1);
         assert_eq!(w.export(id).unwrap(), after);
         Document::decode(&after).unwrap();
+    }
+    #[test]
+    fn general_faith_edits_item_stacks_with_history() {
+        let bytes = fixture();
+        let mut w = Workspace::default();
+        let id = w.open(&bytes).unwrap().document_id;
+        request(
+            &mut w,
+            id,
+            json!({"op":"inventory_catalog","catalog":catalog()}),
+        )
+        .unwrap();
+        let c = request(&mut w, id, json!({"op":"inventories"})).unwrap()[0]["node"]
+            .as_u64()
+            .unwrap() as usize;
+        let general = |w: &mut Workspace, values: Value, guids: Value| {
+            let revision = w.summary(id).unwrap().revision;
+            request(
+                w,
+                id,
+                json!({"op":"transact","revision":revision,"operations":[{"op":"general","values":values,"guids":guids}]}),
+            )
+        };
+        let faith = |result: &Value| {
+            result["general"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|f| f["key"] == "faith")
+                .unwrap()
+                .clone()
+        };
+        let guids = json!([
+            "66666666-6666-4666-8666-666666666666",
+            "77777777-7777-4777-8777-777777777777"
+        ]);
+        // Two stacks are needed; the inventory has three slots.
+        let result = general(&mut w, json!({"faith":"1500"}), guids.clone()).unwrap();
+        assert_eq!(faith(&result)["value"], "1500");
+        let science = request(&mut w, id, json!({"op":"general"})).unwrap();
+        assert!(science
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["key"] == "science" && f["error"].is_string()));
+        let items = &result["inventory"]["upsert"][0]["items"];
+        assert_eq!(items[0]["count"], "999");
+        assert_eq!(items[1]["count"], "501");
+        let stacked = w.export(id).unwrap();
+        Document::decode(&stacked).unwrap();
+        assert!(general(&mut w, json!({"faith":"3000"}), guids.clone()).is_err());
+        assert!(general(&mut w, json!({"faith":"1.5"}), json!([])).is_err());
+        assert_eq!(w.export(id).unwrap(), stacked);
+        let result = general(&mut w, json!({"faith":"10"}), json!([])).unwrap();
+        assert_eq!(faith(&result)["value"], "10");
+        assert_eq!(
+            result["inventory"]["upsert"][0]["items"],
+            json!([{"node":items[0]["node"],"id":"faith","count":"10","durability":null}])
+        );
+        // Removing the stack through the inventory refreshes General.
+        let stack = items[0]["node"].as_u64().unwrap();
+        let result = transact(&mut w, id, c, json!({"kind":"remove","node":stack}), false).unwrap();
+        assert_eq!(faith(&result)["value"], "0");
+        let result = general(&mut w, json!({"faith":"20"}), guids.clone()).unwrap();
+        assert_eq!(result["inventory"]["upsert"][0]["items"][0]["count"], "20");
+        for _ in 0..4 {
+            let revision = w.summary(id).unwrap().revision;
+            request(&mut w, id, json!({"op":"undo","revision":revision})).unwrap();
+        }
+        assert_eq!(w.export(id).unwrap(), bytes);
+        let revision = w.summary(id).unwrap().revision;
+        let redone = request(&mut w, id, json!({"op":"redo","revision":revision})).unwrap();
+        assert_eq!(faith(&redone)["value"], "1500");
+        assert_eq!(w.export(id).unwrap(), stacked);
     }
     #[test]
     fn tool_belt_accepts_only_equipment_and_one_item_per_type() {

@@ -626,6 +626,7 @@ impl Workspace {
             )
         });
         // Locking and unlocking technologies can refund or charge technology points.
+        // Faith and science are item stacks in the player inventory and study table.
         let general_unchanged = operations.iter().all(|op| {
             matches!(
                 op,
@@ -639,7 +640,9 @@ impl Workspace {
                     action: crate::progression::Edit::LockTechnologies { .. }
                         | crate::progression::Edit::UnlockTechnologies { .. }
                 }
-            )
+            ) && !matches!(op, Operation::Inventory { container, .. }
+                if crate::workspace::active(&s.doc, *container).is_ok()
+                    && crate::general::shows_items(&s.doc, *container))
         });
         if operations
             .iter()
@@ -650,12 +653,12 @@ impl Workspace {
         }
         let containers = operations
             .iter()
-            .filter_map(|op| {
-                if let Operation::Inventory { container, .. } = op {
-                    Some(*container)
-                } else {
-                    None
+            .flat_map(|op| match op {
+                Operation::Inventory { container, .. } => vec![*container],
+                Operation::General { values, .. } => {
+                    crate::general::item_containers(&s.doc, values)
                 }
+                _ => vec![],
             })
             .collect();
         let invalidated = operations.iter().any(|op| {
@@ -697,6 +700,10 @@ impl Workspace {
                         true,
                         true,
                     )?;
+                } else if let Operation::General { values, guids } = op {
+                    // Unused GUIDs are harmless: the final check only counts live identities.
+                    new_guids.extend(guids.iter().map(|guid| guid.to_ascii_lowercase()));
+                    crate::general::write(&mut s.doc, values, &guids)?;
                 } else if let Operation::Drops { action } = op {
                     crate::drops::write(&mut s.doc, action)?;
                 } else if let Operation::Progression { action } = op {

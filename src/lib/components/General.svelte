@@ -38,13 +38,23 @@
     tech_blue: "Blue points",
     insanity: "Insanity",
     happiness: "Happiness",
+    faith: "Faith",
+    science: "Science",
   };
+  // Faith and science are item stacks; see `general.rs`.
+  const itemKeys = ["faith", "science"];
+  const itemStack = 999;
   const groups = [
     { name: "Vitals", keys: ["hp", "max_hp", "energy", "stamina"] },
     { name: "Money", keys: ["money"] },
     {
       name: "Technology Points",
       keys: ["tech_red", "tech_green", "tech_blue"],
+    },
+    {
+      name: "Faith and Science",
+      keys: itemKeys,
+      hint: "The game stores faith and science as items: faith in the player inventory and its bags, science in the study table. These fields are a shortcut for editing those item stacks, which are also available in Inventory. Each stack holds up to 999; larger amounts need free inventory slots.",
     },
     { name: "Mental State", keys: ["insanity", "happiness"] },
   ];
@@ -104,8 +114,17 @@
       while (Object.keys(pending).length) {
         const values = pending;
         pending = {};
+        // New faith or science stacks need fresh item GUIDs; unused ones are ignored.
+        const stacks = itemKeys.reduce(
+          (sum, key) =>
+            key in values
+              ? sum + Math.min(Math.ceil(Number(values[key]) / itemStack), 100)
+              : sum,
+          0,
+        );
+        const guids = Array.from({ length: stacks }, () => crypto.randomUUID());
         try {
-          await doc.transact([{ op: "general", values }]);
+          await doc.transact([{ op: "general", values, guids }]);
           fields = doc.general ?? fields;
           for (const [key, value] of Object.entries(values)) {
             if (drafts[key] === value && !invalid.has(key)) {
@@ -220,7 +239,11 @@
                   ><input
                     aria-label={labels[key]}
                     type="number"
-                    step={key === "hp" || key === "max_hp" ? "1" : "any"}
+                    step={key === "hp" ||
+                    key === "max_hp" ||
+                    itemKeys.includes(key)
+                      ? "1"
+                      : "any"}
                     min={key === "max_hp" ? "1" : "0"}
                     required
                     disabled={!field || !!field.error}
@@ -236,6 +259,7 @@
               {#if field?.error}<p class="hint warning">{field.error}</p>{/if}
             </div>
           {/each}
+          {#if group.hint}<p class="hint group-hint">{group.hint}</p>{/if}
         </div>
         {#if group.name === "Vitals"}<div class="form-actions">
             <button
@@ -318,6 +342,10 @@
   }
   .general-field {
     min-width: 0;
+  }
+  .group-hint {
+    grid-column: 1 / -1;
+    margin: 0;
   }
   .field {
     display: flex;

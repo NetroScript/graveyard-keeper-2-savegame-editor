@@ -275,6 +275,7 @@ test("multiple saves preserve drafts, navigation, edits, undo and downloads", as
     "Vitals",
     "Money",
     "Technology Points",
+    "Faith and Science",
     "Mental State",
     "Save utilities",
   ]);
