@@ -3,10 +3,11 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
-## [0.3.1] - Unreleased
+## [0.3.1] - Faith and science
 
 - Added faith and science to the General view. The game stores them as items: faith in the player inventory, including bags, and science in the study table. The new fields are a shortcut for editing those item stacks, which can still be edited in the Inventory view. The editor shows each total and updates, adds or removes stacks of up to 999 to match the entered amount, as long as the inventory has free slots.
 - Locking technologies and player perks that were unlocked when the save was opened now refunds the technology points or perk points they cost in the game. Unlocking them again costs those points again, so repeated locking and unlocking never adds points. Anything unlocked in the editor stays free and refunds nothing.
+- Updated the bundled game data for Graveyard Keeper 2 version 1.009.1.
 
 ## [0.3.0] - Zombie editor
 
