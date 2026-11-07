@@ -1,5 +1,6 @@
 <script lang="ts">
   import GameIcon from "../components/GameIcon.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     red = 0,
     white = 0,
@@ -14,7 +15,7 @@
 <span
   class="skulls"
   class:compact
-  aria-label={`${red} red skulls, ${white} white skulls`}
+  aria-label={t("{red} red skulls, {white} white skulls", { red, white })}
 >
   {#if Number(red) !== 0}<span><GameIcon name="rskull" />{red}</span>{/if}
   {#if Number(white) !== 0 || Number(red) === 0}<span

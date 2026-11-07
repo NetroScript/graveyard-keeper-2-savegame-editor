@@ -7,6 +7,7 @@
   import SearchPane from "./SearchPane.svelte";
   import type { NodeLocation } from "../save-api";
   import { matchWidget } from "./widgets";
+  import { t } from "$lib/i18n.svelte";
   import DotsSixVertical from "~icons/ph/dots-six-vertical";
   import Warning from "~icons/ph/warning";
   import X from "~icons/ph/x";
@@ -223,21 +224,21 @@
   {#if !safetyWarningDismissed}<aside
       class="inspector-safety-note"
       role="note"
-      aria-label="Save Inspector warning"
+      aria-label={t("Save Inspector warning")}
     >
       <Warning />
       <div>
-        <strong>Save Inspector edits can break a save.</strong>
+        <strong>{t("Save Inspector edits can break a save.")}</strong>
         <p>
-          Keep an independent backup and change only fields you understand. Raw
-          structural edits may make the save unreadable or cause problems in the
-          game.
+          {t(
+            "Keep an independent backup and change only fields you understand. Raw structural edits may make the save unreadable or cause problems in the game.",
+          )}
         </p>
       </div>
       <button
         type="button"
-        aria-label="Dismiss Save Inspector warning"
-        title="Dismiss"
+        aria-label={t("Dismiss Save Inspector warning")}
+        title={t("Dismiss")}
         onclick={dismissSafetyWarning}><X /></button
       >
     </aside>{/if}
@@ -247,7 +248,7 @@
     style:--tree-width={treeWidth === null ? "38%" : `${treeWidth}px`}
   >
     <div class="panel tree-pane">
-      <h3 class="strip">Save structure</h3>
+      <h3 class="strip">{t("Save structure")}</h3>
       <SearchPane
         {doc}
         {active}
@@ -271,17 +272,17 @@
     </div>
     <button
       class="pane-grabber"
-      aria-label="Resize inspector panes"
-      title="Drag to resize panes; press Home to reset"
+      aria-label={t("Resize inspector panes")}
+      title={t("Drag to resize panes; press Home to reset")}
       onpointerdown={resizeStart}
       onkeydown={resizeKey}
       ondblclick={() => (treeWidth = null)}><DotsSixVertical /></button
     >
     <section class="panel details-pane">
-      <h3 class="strip">{node?.name ?? "Record details"}</h3>
+      <h3 class="strip">{node?.name ?? t("Record details")}</h3>
       <div class="panel-body">
         {#if node}
-          <nav class="breadcrumbs" aria-label="Record path">
+          <nav class="breadcrumbs" aria-label={t("Record path")}>
             {#each breadcrumbs as crumb}<button
                 onclick={() => void select(crumb)}
                 >{crumb.name ?? crumb.kind}</button
@@ -293,13 +294,15 @@
               {children}
               transact={transaction}
             /><label class="check"
-              ><input type="checkbox" bind:checked={raw} />Show raw structure</label
+              ><input type="checkbox" bind:checked={raw} />{t(
+                "Show raw structure",
+              )}</label
             >{/if}
           {#if !widget || raw}
             <dl class="record-meta">
-              <dt>Handle</dt>
+              <dt>{t("Handle")}</dt>
               <dd>{node.id}</dd>
-              <dt>Wire type</dt>
+              <dt>{t("Wire type")}</dt>
               <dd>{node.kind} · {node.tag}</dd>
             </dl>
             {#if node.editable}<form
@@ -319,14 +322,15 @@
                 }}
               >
                 <label class="field stacked"
-                  >Value<input
-                    aria-label="Record value"
+                  >{t("Value")}<input
+                    aria-label={t("Record value")}
                     value={drafts[node.id] ?? node.value ?? ""}
                     oninput={(e) => {
                       if (node) drafts[node.id] = e.currentTarget.value;
                     }}
                   /></label
-                ><button class="primary" disabled={doc.busy}>Apply value</button
+                ><button class="primary" disabled={doc.busy}
+                  >{t("Apply value")}</button
                 >
               </form>{:else if node.value !== null}<pre>{node.value}</pre>{/if}
             {#if node.referenceTarget !== null}<button
@@ -336,7 +340,7 @@
                     node?.referenceTarget !== undefined
                   )
                     await select((await doc.nodes([node.referenceTarget]))[0]);
-                }}>Go to referenced object</button
+                }}>{t("Go to referenced object")}</button
               >
               <form
                 onsubmit={(e) => {
@@ -348,12 +352,12 @@
                 }}
               >
                 <label class="field"
-                  >Target handle<input
+                  >{t("Target handle")}<input
                     type="number"
                     min="0"
                     bind:value={target}
                   /></label
-                ><button>Retarget reference</button>
+                ><button>{t("Retarget reference")}</button>
               </form>{/if}
             {#if node.childCount}<div class="child-links">
                 {#each children as child}<button
@@ -364,7 +368,7 @@
               </div>{/if}
             {#if [1, 2, 3, 4, 6].includes(node.tag)}
               <details>
-                <summary>Add a field or entry</summary>
+                <summary>{t("Add a field or entry")}</summary>
                 <form
                   onsubmit={(e) => {
                     e.preventDefault();
@@ -382,16 +386,16 @@
                   }}
                 >
                   {#if node.tag !== 6}<label class="field"
-                      >Name<input bind:value={name} /></label
+                      >{t("Name")}<input bind:value={name} /></label
                     >{/if}
                   <label class="field"
-                    >Type<select bind:value={kind}
+                    >{t("Type")}<select bind:value={kind}
                       >{#each ["i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "string", "bool", "null", "array"] as k}<option
                           >{k}</option
                         >{/each}</select
                     ></label
-                  ><label class="field">Value<input bind:value /></label><button
-                    >Add scalar / array</button
+                  ><label class="field">{t("Value")}<input bind:value /></label
+                  ><button>{t("Add scalar / array")}</button
                   >
                 </form>
                 <form
@@ -411,22 +415,22 @@
                   }}
                 >
                   <label class="field"
-                    >Template<select bind:value={template}
-                      ><option value="">Choose a supported type</option
+                    >{t("Template")}<select bind:value={template}
+                      ><option value="">{t("Choose a supported type")}</option
                       >{#each templates as t}<option value={t.id}>{t.id}</option
                         >{/each}</select
                     ></label
-                  ><button disabled={!template}>Create from template</button>
+                  ><button disabled={!template}>{t("Create from template")}</button>
                 </form>
               </details>{/if}
             {#if node.parent !== null}<div class="form-actions">
                 <button
                   onclick={() =>
                     node && action([{ op: "duplicate", node: node.id }])}
-                  >Duplicate subtree</button
+                  >{t("Duplicate subtree")}</button
                 ><label class="field"
-                  >Sibling index<input
-                    aria-label="Sibling index"
+                  >{t("Sibling index")}<input
+                    aria-label={t("Sibling index")}
                     type="number"
                     min="0"
                     bind:value={position}
@@ -436,14 +440,14 @@
                     node &&
                     action([
                       { op: "move", node: node.id, index: Number(position) },
-                    ])}>Move</button
-                ><button class="danger" onclick={remove}>Remove</button>
+                    ])}>{t("Move")}</button
+                ><button class="danger" onclick={remove}>{t("Remove")}</button>
               </div>
               <p class="hint">
-                Duplication preserves game identifiers, including SGuid.
+                {t("Duplication preserves game identifiers, including SGuid.")}
               </p>{/if}
           {/if}
-        {:else}<p>Select a record in the tree to inspect or edit it.</p>{/if}
+        {:else}<p>{t("Select a record in the tree to inspect or edit it.")}</p>{/if}
         {#if error}<p class="warning" role="alert">{error}</p>{/if}
       </div>
     </section>

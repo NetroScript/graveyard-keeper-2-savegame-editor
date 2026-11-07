@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n.svelte";
 
   let {
     onclose,
@@ -89,64 +90,79 @@
     onclose();
   }}
 >
-  <h2 id="search-help-title" class="strip">Inspector search syntax</h2>
+  <h2 id="search-help-title" class="strip">{t("Inspector search syntax")}</h2>
   <div class="help-content">
     <section>
-      <h3>Simple search</h3>
+      <h3>{t("Simple search")}</h3>
       <p>
-        Simple search checks a record's value, name, class, wire type and
-        logical path. Results rank direct value matches first, followed by
-        names, classes, types and paths. Each result states which field matched.
+        {t(
+          "Simple search checks a record's value, name, class, wire type and logical path. Results rank direct value matches first, followed by names, classes, types and paths. Each result states which field matched.",
+        )}
       </p>
       <p>
-        Substring matching is literal, so <code>iron</code> also occurs inside
-        <code>environmentData</code>. Use <code>value:*iron*</code> in Advanced mode,
-        or the Value filter in Simple mode, when only stored values should match.
+        {t("Substring matching is literal, so")} <code>iron</code>
+        {t("also occurs inside")}
+        <code>environmentData</code>. {t("Use")} <code>value:*iron*</code>
+        {t(
+          "in Advanced mode, or the Value filter in Simple mode, when only stored values should match.",
+        )}
       </p>
     </section>
 
     <section>
-      <h3>Operators and text</h3>
+      <h3>{t("Operators and text")}</h3>
       <table>
-        <thead><tr><th>Syntax</th><th>Meaning</th></tr></thead>
+        <thead><tr><th>{t("Syntax")}</th><th>{t("Meaning")}</th></tr></thead>
         <tbody>
           <tr
-            ><td><code>space</code></td><td
-              >AND. Every adjacent expression must match.</td
+            ><td><code>{t("space")}</code></td><td
+              >{t("AND. Every adjacent expression must match.")}</td
             ></tr
           >
           <tr
-            ><td><code>|</code></td><td>OR. Either expression may match.</td
+            ><td><code>|</code></td><td
+              >{t("OR. Either expression may match.")}</td
             ></tr
           >
           <tr
-            ><td><code>!</code></td><td>NOT. Excludes matching records.</td></tr
+            ><td><code>!</code></td><td
+              >{t("NOT. Excludes matching records.")}</td
+            ></tr
           >
           <tr
             ><td><code>( )</code></td><td
-              >Groups expressions. Grouping is evaluated before NOT, AND and OR.</td
+              >{t(
+                "Groups expressions. Grouping is evaluated before NOT, AND and OR.",
+              )}</td
             ></tr
           >
           <tr
             ><td><code>"text"</code></td><td
-              >Treats spaces, operators and wildcards as literal text. Use <code
-                >\"</code
-              >
-              and <code>\\</code> inside quotes.</td
+              >{t(
+                "Treats spaces, operators and wildcards as literal text. Use",
+              )}
+              <code>\"</code>
+              {t("and")} <code>\\</code>
+              {t("inside quotes.")}</td
             ></tr
           >
           <tr
             ><td><code>*</code></td><td
-              >Matches zero or more characters. A wildcard pattern must match
-              the whole selected field.</td
+              >{t(
+                "Matches zero or more characters. A wildcard pattern must match the whole selected field.",
+              )}</td
             ></tr
           >
-          <tr><td><code>?</code></td><td>Matches exactly one character.</td></tr
+          <tr
+            ><td><code>?</code></td><td
+              >{t("Matches exactly one character.")}</td
+            ></tr
           >
           <tr
             ><td><code>==</code></td><td
-              >Matches the entire selected text field. It can qualify a group of
-              alternatives.</td
+              >{t(
+                "Matches the entire selected text field. It can qualify a group of alternatives.",
+              )}</td
             ></tr
           >
         </tbody>
@@ -154,102 +170,118 @@
     </section>
 
     <section>
-      <h3>Qualifiers</h3>
+      <h3>{t("Qualifiers")}</h3>
       <dl>
         <dt><code>name:</code></dt>
-        <dd>The record's field or entry name.</dd>
+        <dd>{t("The record's field or entry name.")}</dd>
         <dt><code>value:</code></dt>
         <dd>
-          The displayed scalar value. This is textual matching, even for <code
-            >value:10</code
-          >.
+          {t("The displayed scalar value. This is textual matching, even for")}
+          <code>value:10</code>.
         </dd>
         <dt><code>type:</code></dt>
         <dd>
-          The wire data type, such as <code>string</code>, <code>i32</code> or
-          <code>f32</code>. Aliases are <code>int</code>, <code>float</code> and
+          {t("The wire data type, such as")} <code>string</code>,
+          <code>i32</code>
+          {t("or")}
+          <code>f32</code>. {t("Aliases are")} <code>int</code>,
+          <code>float</code>
+          {t("and")}
           <code>number</code>.
         </dd>
         <dt><code>class:</code></dt>
         <dd>
-          The record's own serialized class. A string field normally has no own
-          class.
+          {t(
+            "The record's own serialized class. A string field normally has no own class.",
+          )}
         </dd>
         <dt><code>owner:</code></dt>
         <dd>
-          The nearest typed object containing the record, excluding the record
-          itself.
+          {t(
+            "The nearest typed object containing the record, excluding the record itself.",
+          )}
         </dd>
         <dt><code>ancestor:</code></dt>
         <dd>
-          Any typed object containing the record at any depth, excluding the
-          record itself.
+          {t(
+            "Any typed object containing the record at any depth, excluding the record itself.",
+          )}
         </dd>
         <dt><code>path:</code></dt>
         <dd>
-          The logical route to the record. It includes field names, array
-          positions and followed internal references.
+          {t(
+            "The logical route to the record. It includes field names, array positions and followed internal references.",
+          )}
         </dd>
       </dl>
       <p>
-        Class names may be short (<code>Item</code>), namespace-qualified (<code
-          >Game.Items.Item</code
-        >) or fully serialized with an assembly name. Search uses actual
-        serialized identities and does not infer inheritance.
+        {t("Class names may be short")} (<code>Item</code>), {t(
+          "namespace-qualified",
+        )} (<code>Game.Items.Item</code>) {t(
+          "or fully serialized with an assembly name. Search uses actual serialized identities and does not infer inheritance.",
+        )}
       </p>
     </section>
 
     <section>
-      <h3>Numeric comparisons</h3>
+      <h3>{t("Numeric comparisons")}</h3>
       <p>
-        Use <code>value=10</code>, <code>value&gt;10</code>,
-        <code>value&gt;=10</code>, <code>value&lt;100</code> and
-        <code>value&lt;=100</code>. Negative numbers, decimals and scientific
-        notation are accepted. Multiple comparisons form a range. Integer
-        comparisons remain exact for 64-bit values. A single <code>=</code> is
-        numeric equality; use <code>==</code> for exact text.
+        {t("Use")} <code>value=10</code>, <code>value&gt;10</code>,
+        <code>value&gt;=10</code>, <code>value&lt;100</code>
+        {t("and")}
+        <code>value&lt;=100</code>. {t(
+          "Negative numbers, decimals and scientific notation are accepted. Multiple comparisons form a range. Integer comparisons remain exact for 64-bit values. A single",
+        )} <code>=</code>
+        {t("is numeric equality; use")} <code>==</code>
+        {t("for exact text.")}
       </p>
     </section>
 
     <section>
-      <h3>Structure</h3>
+      <h3>{t("Structure")}</h3>
       <dl>
         <dt><code>child:(…)</code></dt>
         <dd>
-          The result has at least one direct stored child that matches the
-          enclosed expression.
+          {t(
+            "The result has at least one direct stored child that matches the enclosed expression.",
+          )}
         </dd>
         <dt><code>descendant:(…)</code></dt>
         <dd>
-          The result has a matching stored descendant at any depth. Direct
-          children are included.
+          {t(
+            "The result has a matching stored descendant at any depth. Direct children are included.",
+          )}
         </dd>
         <dt><code>parent:(…)</code></dt>
         <dd>
-          The result's direct stored parent matches the enclosed expression.
+          {t(
+            "The result's direct stored parent matches the enclosed expression.",
+          )}
         </dd>
       </dl>
       <p>
-        Structural predicates change which record is returned: the enclosed
-        expression identifies a related record while the outer expression
-        filters the result itself. They may contain <code>name</code>,
-        <code>type</code>, <code>class</code>, <code>value</code>, numeric
-        comparisons and nested structural predicates. Route-relative qualifiers
-        such as <code>path</code>, <code>owner</code> and
-        <code>ancestor</code> belong outside them.
+        {t(
+          "Structural predicates change which record is returned: the enclosed expression identifies a related record while the outer expression filters the result itself. They may contain",
+        )} <code>name</code>, <code>type</code>, <code>class</code>,
+        <code>value</code>, {t(
+          "numeric comparisons and nested structural predicates. Route-relative qualifiers such as",
+        )} <code>path</code>, <code>owner</code>
+        {t("and")}
+        <code>ancestor</code>
+        {t("belong outside them.")}
       </p>
     </section>
 
     <section>
-      <h3>Examples</h3>
+      <h3>{t("Examples")}</h3>
       <div class="examples">
         {#each examples as example}
           <article class="search-example">
-            <h4>{example.name}</h4>
+            <h4>{t(example.name)}</h4>
             <code>{example.query}</code>
-            <p>{example.explanation}</p>
+            <p>{t(example.explanation)}</p>
             <button type="button" onclick={() => onuse(example.query)}
-              >Use query</button
+              >{t("Use query")}</button
             >
           </article>
         {/each}
@@ -257,18 +289,16 @@
     </section>
 
     <section>
-      <h3>Reference paths and limits</h3>
+      <h3>{t("Reference paths and limits")}</h3>
       <p>
-        Search follows internal object references and evaluates all conditions
-        on the same logical route. A record reachable by several routes is shown
-        once, using its first matching route. Cycles stop before revisiting an
-        object. If a depth or traversal limit is reached, the result state says
-        Incomplete and explains why.
+        {t(
+          "Search follows internal object references and evaluates all conditions on the same logical route. A record reachable by several routes is shown once, using its first matching route. Cycles stop before revisiting an object. If a depth or traversal limit is reached, the result state says Incomplete and explains why.",
+        )}
       </p>
     </section>
   </div>
   <div class="dialog-actions">
-    <button type="button" class="primary" onclick={onclose}>Close</button>
+    <button type="button" class="primary" onclick={onclose}>{t("Close")}</button>
   </div>
 </dialog>
 

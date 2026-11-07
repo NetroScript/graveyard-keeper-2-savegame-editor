@@ -1,5 +1,6 @@
 import FuzzySearch from "fz-search";
 import type { AssetPack } from "../assets/asset-pack";
+import { t } from "$lib/i18n.svelte";
 
 export interface ItemDefinition {
   id: string;
@@ -237,18 +238,28 @@ export function itemSearch(families: Family[]) {
 }
 export function variantLabel(item: ItemDefinition) {
   if (item.fields.isMainOrgan)
-    return `${item.fields.whiteSkulls} white / ${item.fields.redSkulls} red skulls · Quality ${item.quality.value}`;
+    return t("{white} white / {red} red skulls · Quality {quality}", {
+      white: item.fields.whiteSkulls,
+      red: item.fields.redSkulls,
+      quality: item.quality.value,
+    });
   if (item.quality.type === "Star")
     return (
       (
-        { 0: "No star", 1: "Bronze", 2: "Silver", 3: "Gold" } as Record<
-          number,
-          string
-        >
-      )[item.quality.value] ?? `Quality ${item.quality.value}`
+        {
+          0: t("No star"),
+          1: t("Bronze"),
+          2: t("Silver"),
+          3: t("Gold"),
+        } as Record<number, string>
+      )[item.quality.value] ??
+      t("Quality {quality}", { quality: item.quality.value })
     );
   if (item.fields.whiteSkulls || item.fields.redSkulls)
-    return `${item.fields.whiteSkulls} white / ${item.fields.redSkulls} red skulls`;
+    return t("{white} white / {red} red skulls", {
+      white: item.fields.whiteSkulls,
+      red: item.fields.redSkulls,
+    });
   return (
     plainText(item.name || item.id) +
     (item.id.includes(":") ? ` (${item.id.split(":").slice(1).join(":")})` : "")

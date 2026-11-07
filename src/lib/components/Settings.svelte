@@ -1,6 +1,7 @@
 <script lang="ts">
   import { desktop, type Settings } from "../document.svelte";
   import { notify, notifyError } from "../toasts.svelte";
+  import { t, languages, type Language } from "../i18n.svelte";
   let {
     settings,
     onsettings,
@@ -9,7 +10,7 @@
   async function update(s: Settings) {
     try {
       await onsettings(s);
-      notify("Settings saved");
+      notify(t("Settings saved"));
     } catch (e) {
       notifyError(e);
     }
@@ -17,14 +18,31 @@
 </script>
 
 <header class="page-heading">
-  <h1>Settings</h1>
-  <p>Configure the editor.</p>
+  <h1>{t("Settings")}</h1>
+  <p>{t("Configure the editor.")}</p>
 </header>
 <section class="panel settings-panel">
-  <h2 class="strip">Interface</h2>
+  <h2 class="strip">{t("Interface")}</h2>
   <div class="panel-body">
     <label class="field"
-      >Interface scale<select
+      >{t("Language")}<select
+        value={settings.language ?? "auto"}
+        onchange={(e) =>
+          update({
+            ...settings,
+            language:
+              e.currentTarget.value === "auto"
+                ? null
+                : (e.currentTarget.value as Language),
+          })}
+        ><option value="auto">{t("Auto (system language)")}</option
+        >{#each languages as language}<option value={language.value}
+            >{language.label}</option
+          >{/each}</select
+      ></label
+    >
+    <label class="field"
+      >{t("Interface scale")}<select
         value={settings.interfaceScale}
         onchange={(e) =>
           update({
@@ -39,7 +57,7 @@
   </div>
 </section>
 <section class="panel settings-panel">
-  <h2 class="strip">Editing</h2>
+  <h2 class="strip">{t("Editing")}</h2>
   <div class="panel-body">
     <label
       ><input
@@ -47,19 +65,20 @@
         checked={settings.outOfBoundsEdits}
         onchange={(e) =>
           update({ ...settings, outOfBoundsEdits: e.currentTarget.checked })}
-      /> Allow out of bounds edits</label
+      /> {t("Allow out of bounds edits")}</label
     >
     <p class="hint">
-      Allow inventory capacity changes and item amounts above the normal stack
-      size.
+      {t(
+        "Allow inventory capacity changes and item amounts above the normal stack size.",
+      )}
     </p>
   </div>
 </section>
 {#if desktop}<section class="panel settings-panel">
-    <h2 class="strip">Application updates</h2>
+    <h2 class="strip">{t("Application updates")}</h2>
     <div class="panel-body">
       <label class="field"
-        >Check for updates<select
+        >{t("Check for updates")}<select
           value={settings.updateCheckInterval ?? "weekly"}
           onchange={(e) =>
             update({
@@ -68,22 +87,23 @@
                 "never" | "daily" | "weekly",
             })}
         >
-          <option value="never">Never</option>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
+          <option value="never">{t("Never")}</option>
+          <option value="daily">{t("Daily")}</option>
+          <option value="weekly">{t("Weekly")}</option>
         </select></label
       >
       <p class="hint">
-        The desktop application checks on this schedule while it is open and
-        when it starts. You can still check manually from About.
+        {t(
+          "The desktop application checks on this schedule while it is open and when it starts. You can still check manually from About.",
+        )}
       </p>
     </div>
   </section>
   <section class="panel settings-panel">
-    <h2 class="strip">Save protection</h2>
+    <h2 class="strip">{t("Save protection")}</h2>
     <div class="panel-body">
       <label class="field"
-        >Backups per save<input
+        >{t("Backups per save")}<input
           type="number"
           min="0"
           max="50"
@@ -96,10 +116,11 @@
         /></label
       >
       <p class="hint">
-        Each editor backup is a compressed ZIP containing the previous .dat and
-        .info together, separately from game backups. Set to 0 to disable them.
+        {t(
+          "Each editor backup is a compressed ZIP containing the previous .dat and .info together, separately from game backups. Set to 0 to disable them.",
+        )}
       </p>
-      <h3>Custom save directories</h3>
+      <h3>{t("Custom save directories")}</h3>
       {#each settings.customDirectories as path}<div class="copy-path">
           <code>{path}</code><button
             onclick={() =>
@@ -108,13 +129,14 @@
                 customDirectories: settings.customDirectories.filter(
                   (p) => p !== path,
                 ),
-              })}>Remove</button
+              })}>{t("Remove")}</button
           >
         </div>{:else}<p class="hint">
-          Use Choose Folder on Load Saves to add a directory.
+          {t("Use Choose Folder on Load Saves to add a directory.")}
         </p>{/each}
     </div>
   </section>{:else}<p class="hint">
-    Saving downloads a copy. Automatic backups and folder discovery are
-    unavailable.
+    {t(
+      "Saving downloads a copy. Automatic backups and folder discovery are unavailable.",
+    )}
   </p>{/if}

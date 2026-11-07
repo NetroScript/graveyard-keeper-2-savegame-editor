@@ -3,6 +3,7 @@
   import type { SaveDocument } from "../document.svelte";
   import type { NodeView } from "../save-api";
   import { matchTree } from "./widgets";
+  import { t } from "$lib/i18n.svelte";
   import TreeNode from "./TreeNode.svelte";
   let {
     doc,
@@ -79,7 +80,9 @@
   <div bind:this={row} class:selected={selected === node.id} class="tree-row">
     <button
       class="expander"
-      aria-label={`${isExpanded ? "Collapse" : "Expand"} ${node.name ?? node.kind}`}
+      aria-label={t(isExpanded ? "Collapse {name}" : "Expand {name}", {
+        name: node.name ?? node.kind,
+      })}
       disabled={!canExpand}
       onclick={() =>
         isExpanded ? expanded.delete(node.id) : expanded.add(node.id)}
@@ -95,7 +98,7 @@
               class:tree-value={badge.tone === "value"}
               >{#if badge.label}<b>{badge.label}</b>{/if}{badge.value}</span
             >{/each}{:else}{node.value ??
-            `${node.childCount} fields`}{/if}</small
+            t("{count} fields", { count: node.childCount })}{/if}</small
       ></button
     >
   </div>
@@ -109,10 +112,12 @@
         {revealOffsets}
         {active}
       />{/each}{#if pageStart > 0}<li>
-        <button onclick={() => load(0)}>Load from beginning</button>
+        <button onclick={() => load(0)}>{t("Load from beginning")}</button>
       </li>{/if}{#if pageStart + children.length < total}<li>
         <button onclick={() => load(pageStart + children.length)}
-          >Load more ({total - pageStart - children.length})</button
+          >{t("Load more ({count})", {
+            count: total - pageStart - children.length,
+          })}</button
         >
       </li>{/if}
   </ul>

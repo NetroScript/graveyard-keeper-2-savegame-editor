@@ -1,6 +1,7 @@
 import { untrack } from "svelte";
 import type { SaveBackend, Summary, Operation, NodeView } from "./save-api";
 import type { InventoryDelta } from "./inventory/catalog";
+import type { Language } from "./i18n.svelte";
 export interface Preview {
   path?: string;
   name: string;
@@ -123,6 +124,8 @@ export interface Settings {
   interfaceScale: number;
   updateCheckInterval: UpdateCheckInterval | null;
   lastUpdateCheck: number | null;
+  /** Interface language; null follows the system language. */
+  language: Language | null;
 }
 export const defaultSettings: Settings = {
   outOfBoundsEdits: false,
@@ -131,6 +134,7 @@ export const defaultSettings: Settings = {
   interfaceScale: 1,
   updateCheckInterval: null,
   lastUpdateCheck: null,
+  language: null,
 };
 export async function native<T>(
   command: string,

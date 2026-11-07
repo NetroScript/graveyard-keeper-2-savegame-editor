@@ -22,6 +22,7 @@
     type Settings,
     type UpdateCheckInterval,
   } from "../document.svelte";
+  import { t } from "$lib/i18n.svelte";
 
   let {
     ready,
@@ -107,7 +108,7 @@
   async function checkForUpdates() {
     if (checking || installing) return;
     checking = true;
-    message = "Checking for updates…";
+    message = t("Checking for updates…");
     progress = undefined;
     const checkedAt = Date.now();
     try {
@@ -116,10 +117,12 @@
       const { check } = await import("@tauri-apps/plugin-updater");
       update = await check({ timeout: 20_000 });
       message = update
-        ? `Version ${update.version} is available.`
-        : "This application is up to date.";
+        ? t("Version {version} is available.", { version: update.version })
+        : t("This application is up to date.");
     } catch (updateError) {
-      message = `Update check failed: ${String(updateError)}`;
+      message = t("Update check failed: {error}", {
+        error: String(updateError),
+      });
     } finally {
       checking = false;
       try {
@@ -131,7 +134,7 @@
   async function installUpdate() {
     if (!update) return;
     installing = true;
-    message = `Downloading version ${update.version}…`;
+    message = t("Downloading version {version}…", { version: update.version });
     let downloaded = 0;
     let total: number | undefined;
     try {
@@ -140,11 +143,11 @@
         if (event.event === "Progress") downloaded += event.data.chunkLength;
         if (total)
           progress = Math.min(100, Math.round((downloaded / total) * 100));
-        if (event.event === "Finished") message = "Installing update…";
+        if (event.event === "Finished") message = t("Installing update…");
       });
-      message = "Update installed. Restart the application to use it.";
+      message = t("Update installed. Restart the application to use it.");
     } catch (updateError) {
-      message = `Update failed: ${String(updateError)}`;
+      message = t("Update failed: {error}", { error: String(updateError) });
     } finally {
       installing = false;
     }
@@ -185,17 +188,18 @@
       aria-labelledby="update-welcome-title"
       oncancel={(event) => event.preventDefault()}
     >
-      <h2 id="update-welcome-title" class="strip">Welcome</h2>
+      <h2 id="update-welcome-title" class="strip">{t("Welcome")}</h2>
       <div class="panel-body welcome-dialog">
         <p>
-          Choose how often the desktop application should check for a new
-          version. You can change this later in Settings.
+          {t(
+            "Choose how often the desktop application should check for a new version. You can change this later in Settings.",
+          )}
         </p>
         <label class="field"
-          >Check for updates<select bind:value={welcomeInterval}>
-            <option value="never">Never</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
+          >{t("Check for updates")}<select bind:value={welcomeInterval}>
+            <option value="never">{t("Never")}</option>
+            <option value="daily">{t("Daily")}</option>
+            <option value="weekly">{t("Weekly")}</option>
           </select></label
         >
         {#if welcomeError}<p class="warning" role="alert">
@@ -206,7 +210,7 @@
             class="primary"
             disabled={savingWelcome}
             onclick={confirmSchedule}
-            >{savingWelcome ? "Saving…" : "Continue"}</button
+            >{savingWelcome ? t("Saving…") : t("Continue")}</button
           >
         </div>
       </div>

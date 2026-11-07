@@ -11,6 +11,7 @@
     variantLabel,
   } from "./catalog";
   import ItemImage from "./ItemImage.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     doc,
     catalog,
@@ -106,7 +107,7 @@
   async function confirm() {
     if (!valid || saving) return;
     if (doc.summary!.revision !== revision) {
-      error = "The document changed. Close and reopen this dialog.";
+      error = t("The document changed. Close and reopen this dialog.");
       return;
     }
     saving = true;
@@ -146,7 +147,7 @@
   aria-labelledby="item-dialog-title"
 >
   <h2 id="item-dialog-title" class="strip">
-    {existing ? "Edit item" : "Add item"}
+    {existing ? t("Edit item") : t("Add item")}
   </h2>
   <form
     onsubmit={(e) => {
@@ -166,7 +167,7 @@
           />{/if}
       </div>
       <div class="search-box">
-        <label for="item-search">Item</label>
+        <label for="item-search">{t("Item")}</label>
         <input
           id="item-search"
           role="combobox"
@@ -231,7 +232,7 @@
         }}
         id="item-options"
         role="listbox"
-        aria-label="Valid items"
+        aria-label={t("Valid items")}
       >
         {#each results as result, i}<button
             type="button"
@@ -244,13 +245,13 @@
             <span class="result-icon"
               ><ItemImage {catalog} id={result.variants[0].id} /></span
             ><span>{result.name}<small>{result.id}</small></span>
-          </button>{:else}<p>No matching items</p>{/each}
+          </button>{:else}<p>{t("No matching items")}</p>{/each}
       </div>
     {/if}
     {#if family && family.variants.length > 1}
       {#if family.variants.some((v) => v.quality.overlaySprite) && !selected?.fields.isMainOrgan}
         <fieldset class="variants">
-          <legend>Variant</legend>
+          <legend>{t("Variant")}</legend>
           {#each family.variants as variant}<button
               type="button"
               aria-pressed={itemId === variant.id}
@@ -261,7 +262,7 @@
             >{/each}
         </fieldset>
       {:else}<label class="dialog-field"
-          >Variant<select
+          >{t("Variant")}<select
             value={itemId}
             onchange={(e) => changeVariant(e.currentTarget.value)}
             >{#each family.variants as variant}<option value={variant.id}
@@ -270,8 +271,8 @@
           ></label
         >{/if}{/if}
     <label class="dialog-field"
-      >Amount<input
-        aria-label="Item amount"
+      >{t("Amount")}<input
+        aria-label={t("Item amount")}
         type="number"
         min="1"
         max={maximum}
@@ -283,10 +284,10 @@
       /></label
     >
     {#if selected}<p class="hint">
-        Stack size: {selected.fields.stackCount}
+        {t("Stack size: {size}", { size: selected.fields.stackCount })}
       </p>{/if}
     {#if selected?.fields.hasDurability}<div class="durability-field">
-        <label for="item-durability">Durability</label>
+        <label for="item-durability">{t("Durability")}</label>
         <input
           id="item-durability"
           type="range"
@@ -297,16 +298,17 @@
         />
         <output for="item-durability">{durability}%</output>
         <button type="button" onclick={() => (durability = "100")}
-          >Repair</button
+          >{t("Repair")}</button
         >
       </div>{/if}
     {#if error}<p role="alert">{error}</p>{/if}
     <div class="dialog-actions">
-      <button type="button" disabled={saving} onclick={onclose}>Cancel</button
+      <button type="button" disabled={saving} onclick={onclose}
+        >{t("Cancel")}</button
       ><button
         class="primary"
         type="submit"
-        disabled={!valid || saving || doc.busy}>Confirm</button
+        disabled={!valid || saving || doc.busy}>{t("Confirm")}</button
       >
     </div>
   </form>

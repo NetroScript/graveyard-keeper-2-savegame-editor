@@ -14,6 +14,7 @@
   } from "../inventory/catalog";
   import ProgressionIcon from "../progression/ProgressionIcon.svelte";
   import { notify, notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   import ZombieItemDialog from "./ZombieItemDialog.svelte";
   import ZombiePortrait from "./ZombiePortrait.svelte";
   import ZombieSlot from "./ZombieSlot.svelte";
@@ -297,7 +298,7 @@
   function editOrgan(type: string, label: string) {
     const current = organ(type);
     itemDialog = {
-      title: `Choose ${label.toLowerCase()}`,
+      title: t("Choose {label}", { label: t(label).toLowerCase() }),
       current: current?.id,
       filter: (item) =>
         !!item.fields.isMainOrgan &&
@@ -311,7 +312,7 @@
   function editPocket(index: number) {
     const current = pocketItems[index];
     itemDialog = {
-      title: "Choose body item",
+      title: t("Choose body item"),
       current: current?.id,
       filter: (item) =>
         !item.fields.isMainOrgan &&
@@ -327,7 +328,7 @@
   }
   function editCargo(item?: ZombieBodyItem) {
     itemDialog = {
-      title: "Choose porter cargo",
+      title: t("Choose porter cargo"),
       current: item?.id,
       filter: (candidate) =>
         candidate.id !== "fake_porter_slot_filler" &&
@@ -368,7 +369,7 @@
           : !!item.fields.talentIds?.length &&
             !["Collar", "BodyArmor"].includes(item.fields.type);
     itemDialog = {
-      title: `Choose ${label.toLowerCase()}`,
+      title: t("Choose {label}", { label: t(label).toLowerCase() }),
       current: current?.id,
       filter: matches,
       confirm: async (id) =>
@@ -441,7 +442,9 @@
   async function perfectBody() {
     if (!selected || !items) return;
     await mutate(perfectBodyOperations(selected, items));
-    notify("The strongest available body parts and collar have been applied.");
+    notify(
+      t("The strongest available body parts and collar have been applied."),
+    );
   }
   function closure(ids: string[], current = new Set(studied)) {
     const byId = new Map((catalog?.nodes ?? []).map((node) => [node.id, node]));
@@ -485,7 +488,14 @@
       (best.embalming?.fields.redSkulls ?? 0) * 6;
     if (next.size > maximumRed) {
       notify(
-        `${selectedBranch.name} needs ${next.size} talent slots, but the strongest available body provides ${maximumRed}.`,
+        t(
+          "{branch} needs {needed} talent slots, but the strongest available body provides {available}.",
+          {
+            branch: selectedBranch.name,
+            needed: next.size,
+            available: maximumRed,
+          },
+        ),
         "error",
       );
       return;
@@ -514,7 +524,10 @@
     });
     await mutate(operations);
     notify(
-      `${zombieName(selected)} is now optimized for ${selectedBranch.name}.`,
+      t("{name} is now optimized for {branch}.", {
+        name: zombieName(selected),
+        branch: selectedBranch.name,
+      }),
     );
   }
   function cycle<T>(values: T[], current: T, direction: number) {
@@ -528,26 +541,28 @@
 
 <div class="section-intro">
   <div>
-    <h2>Zombies</h2>
-    <p>Customize each worker’s body, equipment, talents and appearance.</p>
+    <h2>{t("Zombies")}</h2>
+    <p>
+      {t("Customize each worker’s body, equipment, talents and appearance.")}
+    </p>
   </div>
   {#if selected}<button
       class="primary"
       onclick={() => void perfectBody().catch(notifyError)}
-      ><MagicWand />Optimize body</button
+      ><MagicWand />{t("Optimize body")}</button
     >{/if}
 </div>
 <section class="zombie-editor">
   {#if loading}<LoadingIndicator
-      label="Loading zombie definitions and save state…"
+      label={t("Loading zombie definitions and save state…")}
     />{:else if loadError}<p class="error-banner" role="alert">
       {loadError}
     </p>{:else if !snapshot?.zombies.length}<p class="empty">
-      No zombies were found in this save.
+      {t("No zombies were found in this save.")}
     </p>
   {:else if catalog && items}
     <div class="workspace">
-      <aside class="zombie-list" aria-label="Zombies">
+      <aside class="zombie-list" aria-label={t("Zombies")}>
         {#each snapshot.zombies as zombie}<button
             class:active={zombie.node === selectedNode}
             onclick={() => {
@@ -558,7 +573,7 @@
             <span class="list-portrait"
               ><ZombiePortrait
                 appearance={zombie.appearance}
-                alt={`${zombieName(zombie)} portrait`}
+                alt={t("{name} portrait", { name: zombieName(zombie) })}
               /></span
             ><span class="list-copy"
               ><strong>{zombieName(zombie)}</strong><span>{zombie.role}</span
@@ -567,11 +582,13 @@
                   compact
                   red={zombie.redSkulls}
                   white={zombie.whiteSkulls}
-                /> · {availableTalentSlots(zombie)} talent {availableTalentSlots(
-                  zombie,
-                ) === 1
-                  ? "slot"
-                  : "slots"} available</small
+                /> · {availableTalentSlots(zombie) === 1
+                  ? t("{count} talent slot available", {
+                      count: availableTalentSlots(zombie),
+                    })
+                  : t("{count} talent slots available", {
+                      count: availableTalentSlots(zombie),
+                    })}</small
               ></span
             >
           </button>{/each}
@@ -581,13 +598,14 @@
             <div class="portrait">
               <ZombiePortrait
                 appearance={selected.appearance}
-                alt={`${zombieName(selected)} portrait`}
+                alt={t("{name} portrait", { name: zombieName(selected) })}
               />
             </div>
             <div>
               <h3>{zombieName(selected)}</h3>
               <p>
-                {selected.role} · {selected.world || "Not currently assigned"}
+                {selected.role} · {selected.world ||
+                  t("Not currently assigned")}
               </p>
               <SkullValue
                 red={selected.redSkulls}
@@ -595,18 +613,18 @@
               />
             </div>
           </div>
-          <nav class="detail-tabs" aria-label="Zombie details">
+          <nav class="detail-tabs" aria-label={t("Zombie details")}>
             {#each ["Overview", "Body & equipment", "Talents", "Appearance"] as tab}<button
                 class:active={detailTab === tab}
-                onclick={() => (detailTab = tab)}>{tab}</button
+                onclick={() => (detailTab = tab)}>{t(tab)}</button
               >{/each}
           </nav>
 
           <div hidden={detailTab !== "Overview"} class="panel-grid">
             <section class="panel">
-              <h4>Name</h4>
+              <h4>{t("Name")}</h4>
               <label
-                >Zombie name<input
+                >{t("Zombie name")}<input
                   bind:value={nameDraft}
                   maxlength="80"
                 /></label
@@ -616,14 +634,14 @@
                 onclick={() =>
                   void mutate({ kind: "rename", name: nameDraft }).catch(
                     notifyError,
-                  )}>Apply name</button
+                  )}>{t("Apply name")}</button
               >
             </section>
             <section class="panel">
-              <h4>Technology points</h4>
+              <h4>{t("Technology points")}</h4>
               <div class="point-fields">
                 {#each [["red", "tech_red"], ["green", "tech_green"], ["blue", "tech_blue"]] as point}<label
-                    ><span><GameIcon name={point[1]} />{point[0]}</span><input
+                    ><span><GameIcon name={point[1]} />{t(point[0])}</span><input
                       type="number"
                       min="0"
                       max="2147483647"
@@ -641,61 +659,62 @@
                 <button
                   onclick={() =>
                     (pointDraft = { red: "9999", green: "9999", blue: "9999" })}
-                  >Set all to 9,999</button
+                  >{t("Set all to 9,999")}</button
                 ><button
                   class="primary"
                   onclick={() => void applyPoints().catch(notifyError)}
-                  >Apply points</button
+                  >{t("Apply points")}</button
                 >
               </div>
             </section>
             <section class="panel">
-              <h4>Assignment</h4>
+              <h4>{t("Assignment")}</h4>
               <dl>
-                <dt>Role</dt>
+                <dt>{t("Role")}</dt>
                 <dd>{selected.role}</dd>
-                <dt>Location</dt>
-                <dd>{selected.world || "Not assigned"}</dd>
-                <dt>Workstation</dt>
-                <dd>{selected.attachedGuid ? "Assigned" : "None"}</dd>
-                <dt>Free talent slots</dt>
+                <dt>{t("Location")}</dt>
+                <dd>{selected.world || t("Not assigned")}</dd>
+                <dt>{t("Workstation")}</dt>
+                <dd>{selected.attachedGuid ? t("Assigned") : t("None")}</dd>
+                <dt>{t("Free talent slots")}</dt>
                 <dd>
                   {availableTalentSlots(selected)}
                 </dd>
               </dl>
             </section>
             <section class="panel">
-              <h4>Quick improvement</h4>
+              <h4>{t("Quick improvement")}</h4>
               <button
                 class="primary wide"
                 onclick={() => void perfectBody().catch(notifyError)}
-                ><MagicWand />Optimize body</button
+                ><MagicWand />{t("Optimize body")}</button
               >
               <p class="hint">
-                Applies the strongest available organs, body treatments and
-                collar.
+                {t(
+                  "Applies the strongest available organs, body treatments and collar.",
+                )}
               </p>
             </section>
             <section class="panel advanced">
-              <h4>Advanced save data</h4>
+              <h4>{t("Advanced save data")}</h4>
               <dl>
-                <dt>Zombie record</dt>
+                <dt>{t("Zombie record")}</dt>
                 <dd>
                   {selected.node}
                   {#if oninspect}<button
                       onclick={() => oninspect(selected.node)}
-                      >Open in Save Inspector</button
+                      >{t("Open in Save Inspector")}</button
                     >{/if}
                 </dd>
-                <dt>Body record</dt>
+                <dt>{t("Body record")}</dt>
                 <dd>
                   {selected.body}
                   {#if oninspect}<button
                       onclick={() => oninspect(selected.body)}
-                      >Open in Save Inspector</button
+                      >{t("Open in Save Inspector")}</button
                     >{/if}
                 </dd>
-                <dt>Unique ID</dt>
+                <dt>{t("Unique ID")}</dt>
                 <dd>{selected.guid}</dd>
               </dl>
             </section>
@@ -706,16 +725,20 @@
               <SkullValue
                 red={selected.redSkulls}
                 white={selected.whiteSkulls}
-              /><span>{pocketItems.length}/6 body pockets used</span>
+              /><span
+                >{t("{count}/6 body pockets used", {
+                  count: pocketItems.length,
+                })}</span
+              >
             </div>
             <div class="body-layout">
               <section>
-                <h4>Organs</h4>
+                <h4>{t("Organs")}</h4>
                 <div class="slot-grid">
                   {#each organTypes as [type, label]}<ZombieSlot
                       catalog={loadedItems}
                       item={organ(type)}
-                      {label}
+                      label={t(label)}
                       background={slotBackground}
                       onclick={() => editOrgan(type, label)}
                       onremove={organ(type)
@@ -726,12 +749,12 @@
                         : undefined}
                     />{/each}
                 </div>
-                <h4>Body pockets</h4>
+                <h4>{t("Body pockets")}</h4>
                 <div class="slot-grid">
                   {#each Array(6) as _, index}<ZombieSlot
                       catalog={loadedItems}
                       item={pocketItems[index]}
-                      label={`Slot ${index + 1}`}
+                      label={t("Slot {number}", { number: index + 1 })}
                       background={slotBackground}
                       onclick={() => editPocket(index)}
                       onremove={pocketItems[index]
@@ -744,11 +767,11 @@
                 </div>
               </section>
               <section class="equipment">
-                <h4>Equipment</h4>
+                <h4>{t("Equipment")}</h4>
                 {#each equipmentSlots as [slot, label]}<ZombieSlot
                     catalog={loadedItems}
                     item={equipped(slot)}
-                    {label}
+                    label={t(label)}
                     background={slotBackground}
                     onclick={() => editEquipment(slot, label)}
                     onremove={equipped(slot)
@@ -764,20 +787,23 @@
               </section>
             </div>
             <section class="work-storage">
-              <h4>Work storage</h4>
+              <h4>{t("Work storage")}</h4>
               {#if selected.role === "Porter" && selected.cargo}<div
                   class="storage-heading"
                 >
                   <div>
-                    <strong>Current cargo</strong>
+                    <strong>{t("Current cargo")}</strong>
                     <p>
-                      Items currently being transported. Large cargo and its
-                      reserved slot are shown but remain game-managed.
+                      {t(
+                        "Items currently being transported. Large cargo and its reserved slot are shown but remain game-managed.",
+                      )}
                     </p>
                   </div>
                   <span
-                    >{selected.cargo.items.length}/{selected.cargo.capacity}
-                    slots used</span
+                    >{t("{used}/{capacity} slots used", {
+                      used: selected.cargo.items.length,
+                      capacity: selected.cargo.capacity,
+                    })}</span
                   >
                 </div>
                 <div class="cargo-grid">
@@ -788,8 +814,8 @@
                       catalog={loadedItems}
                       item={reserved ? undefined : item}
                       label={reserved
-                        ? "Reserved for large cargo"
-                        : `Cargo ${index + 1}`}
+                        ? t("Reserved for large cargo")
+                        : t("Cargo {number}", { number: index + 1 })}
                       background={slotBackground}
                       disabled={large || reserved}
                       onclick={() => editCargo(item)}
@@ -804,7 +830,9 @@
                     />{/each}
                   {#each Array(freeCargoSlots) as _, index}<ZombieSlot
                       catalog={loadedItems}
-                      label={`Empty cargo slot ${index + 1}`}
+                      label={t("Empty cargo slot {number}", {
+                        number: index + 1,
+                      })}
                       background={slotBackground}
                       onclick={() => editCargo()}
                     />{/each}
@@ -813,28 +841,33 @@
                   <div>
                     <strong>{selected.carriedItem.label}</strong>
                     <p>
-                      This is live work state. The game will deposit or replace
-                      it as the current task progresses.
+                      {t(
+                        "This is live work state. The game will deposit or replace it as the current task progresses.",
+                      )}
                     </p>
                   </div>
                   <ZombieSlot
                     catalog={loadedItems}
                     item={selected.carriedItem.item}
-                    label="In transit"
+                    label={t("In transit")}
                     background={slotBackground}
                     disabled
                     onclick={() => {}}
                   />
                 </div>
               {:else if selected.role === "Gardener"}<p>
-                  Gardeners use their body pockets while working. Edit them
-                  above.
+                  {t(
+                    "Gardeners use their body pockets while working. Edit them above.",
+                  )}
                 </p>
               {:else if selected.attachedGuid}<p>
-                  This worker uses the inventory of its assigned workstation.
-                  Edit that container from the Inventories section.
+                  {t(
+                    "This worker uses the inventory of its assigned workstation. Edit that container from the Inventories section.",
+                  )}
                 </p>
-              {:else}<p>This worker has no separate work inventory.</p>{/if}
+              {:else}<p>
+                  {t("This worker has no separate work inventory.")}
+                </p>{/if}
             </section>
           </div>
 
@@ -859,14 +892,18 @@
                 </div>
                 <label class="spend-points"
                   ><input type="checkbox" bind:checked={spendPoints} /><span
-                    ><strong>Use technology points</strong><small
-                      >Deduct costs when unlocking individual talents.</small
+                    ><strong>{t("Use technology points")}</strong><small
+                      >{t(
+                        "Deduct costs when unlocking individual talents.",
+                      )}</small
                     ></span
                   ></label
                 ><button
                   class="primary"
                   onclick={() => void perfectBranch().catch(notifyError)}
-                  ><MagicWand />Optimize for {selectedBranch.name}</button
+                  ><MagicWand />{t("Optimize for {branch}", {
+                    branch: selectedBranch.name,
+                  })}</button
                 >
               </div>{/if}
             <div class="talent-tree">
@@ -916,22 +953,22 @@
             <div class="large-portrait">
               <ZombiePortrait
                 appearance={appearanceDraft}
-                alt="Zombie appearance preview"
+                alt={t("Zombie appearance preview")}
                 includeStone={false}
                 crop={false}
               />
             </div>
             <div class="appearance-controls">
               {#if hasUnsupportedAppearance}<p class="appearance-warning">
-                  This save contains a body style that this worker cannot load
-                  safely. Applying this appearance will restore a valid body
-                  while keeping any compatible head settings.
+                  {t(
+                    "This save contains a body style that this worker cannot load safely. Applying this appearance will restore a valid body while keeping any compatible head settings.",
+                  )}
                 </p>{/if}
               {#if (appearanceSet?.bodyIds.length ?? 0) > 1}<div
                   class="appearance-row"
                 >
-                  <strong>Body</strong><button
-                    aria-label="Previous body"
+                  <strong>{t("Body")}</strong><button
+                    aria-label={t("Previous body")}
                     onclick={() =>
                       (appearanceDraft.body = cycle(
                         appearanceSet!.bodyIds,
@@ -942,7 +979,7 @@
                     >{appearanceSet!.bodyIds.indexOf(appearanceDraft.body) + 1}
                     / {appearanceSet!.bodyIds.length}</span
                   ><button
-                    aria-label="Next body"
+                    aria-label={t("Next body")}
                     onclick={() =>
                       (appearanceDraft.body = cycle(
                         appearanceSet!.bodyIds,
@@ -954,8 +991,8 @@
               {#if (appearanceSet?.headIds.length ?? 0) > 1}<div
                   class="appearance-row"
                 >
-                  <strong>Head</strong><button
-                    aria-label="Previous head"
+                  <strong>{t("Head")}</strong><button
+                    aria-label={t("Previous head")}
                     onclick={() =>
                       (appearanceDraft.head = cycle(
                         appearanceSet!.headIds,
@@ -966,7 +1003,7 @@
                     >{appearanceSet!.headIds.indexOf(appearanceDraft.head) + 1}
                     / {appearanceSet!.headIds.length}</span
                   ><button
-                    aria-label="Next head"
+                    aria-label={t("Next head")}
                     onclick={() =>
                       (appearanceDraft.head = cycle(
                         appearanceSet!.headIds,
@@ -978,8 +1015,8 @@
               {#if (appearanceSet?.bodyLuts.length ?? 0) > 1}<div
                   class="appearance-row"
                 >
-                  <strong>Body palette</strong><button
-                    aria-label="Previous body palette"
+                  <strong>{t("Body palette")}</strong><button
+                    aria-label={t("Previous body palette")}
                     onclick={() =>
                       (appearanceDraft.bodyLut = cycle(
                         appearanceSet!.bodyLuts.map((entry) => entry.name),
@@ -991,7 +1028,7 @@
                       (entry) => entry.name === appearanceDraft.bodyLut,
                     ) + 1} / {appearanceSet!.bodyLuts.length}</span
                   ><button
-                    aria-label="Next body palette"
+                    aria-label={t("Next body palette")}
                     onclick={() =>
                       (appearanceDraft.bodyLut = cycle(
                         appearanceSet!.bodyLuts.map((entry) => entry.name),
@@ -1003,8 +1040,8 @@
               {#if (appearanceSet?.headLuts.length ?? 0) > 1}<div
                   class="appearance-row"
                 >
-                  <strong>Head palette</strong><button
-                    aria-label="Previous head palette"
+                  <strong>{t("Head palette")}</strong><button
+                    aria-label={t("Previous head palette")}
                     onclick={() =>
                       (appearanceDraft.headLut = cycle(
                         appearanceSet!.headLuts.map((entry) => entry.name),
@@ -1016,7 +1053,7 @@
                       (entry) => entry.name === appearanceDraft.headLut,
                     ) + 1} / {appearanceSet!.headLuts.length}</span
                   ><button
-                    aria-label="Next head palette"
+                    aria-label={t("Next head palette")}
                     onclick={() =>
                       (appearanceDraft.headLut = cycle(
                         appearanceSet!.headLuts.map((entry) => entry.name),
@@ -1035,7 +1072,7 @@
                     head: Number(appearanceDraft.head),
                     body_lut: appearanceDraft.bodyLut,
                     head_lut: appearanceDraft.headLut,
-                  }).catch(notifyError)}>Apply appearance</button
+                  }).catch(notifyError)}>{t("Apply appearance")}</button
               >
             </div>
           </div>

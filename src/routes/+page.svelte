@@ -21,6 +21,7 @@
   import LoadingIndicator from "$lib/components/LoadingIndicator.svelte";
   import Toasts from "$lib/components/Toasts.svelte";
   import { notify, notifyError } from "$lib/toasts.svelte";
+  import { t, detectLanguage, setLanguage } from "$lib/i18n.svelte";
   import { loadAssetManifest } from "$lib/assets/game-icons";
   import { preloadProgressionAssets } from "$lib/progression/catalog";
   import FolderOpen from "~icons/ph/folder-open";
@@ -75,13 +76,16 @@
       backend?.dispose();
     };
   });
+  $effect(() => {
+    setLanguage(settings.language ?? detectLanguage(navigator.language));
+  });
   async function saveSettings(value: Settings) {
     if (
       !Number.isFinite(value.interfaceScale) ||
       value.interfaceScale < 0.75 ||
       value.interfaceScale > 1.5
     )
-      throw new Error("Invalid scale");
+      throw new Error(t("Invalid scale"));
     if (desktop) await native("settings_set", { settings: value });
     else localStorage.setItem("gk2-settings", JSON.stringify(value));
     settings = value;
@@ -102,7 +106,7 @@
     const saves = files.filter((f) => f.name.toLowerCase().endsWith(".dat"));
     if (!saves.length)
       throw new Error(
-        "Choose at least one .dat file, optionally with its matching .info.",
+        t("Choose at least one .dat file, optionally with its matching .info."),
       );
     const failures = [];
     for (const file of saves) {
@@ -166,14 +170,14 @@
         );
         doc.summary = result.summary;
         doc.updatePreview(result.preview);
-        notify(`Saved ${doc.name}`);
+        notify(t("Saved {name}", { name: doc.name }));
       } else {
         const revision = doc.summary!.revision;
         download(await backend.export(doc.id), doc.name);
         if (doc.infoBytes)
           download(doc.infoBytes, doc.name.replace(/\.dat$/i, ".info"));
         doc.summary = await doc.query<Summary>({ op: "mark_saved", revision });
-        notify(`Downloaded ${doc.name}`);
+        notify(t("Downloaded {name}", { name: doc.name }));
       }
       conflict = undefined;
     } catch (e) {
@@ -204,12 +208,12 @@
 <div class="workspace" style={`--interface-scale:${settings.interfaceScale}`}>
   <button
     class="mobile-menu"
-    aria-label="Toggle navigation"
+    aria-label={t("Toggle navigation")}
     onclick={() => (drawer = !drawer)}><List /></button
   >
   {#if drawer}<button
       class="drawer-scrim"
-      aria-label="Close navigation"
+      aria-label={t("Close navigation")}
       onclick={() => (drawer = false)}
     ></button>{/if}
   <aside class:open={drawer} class="rail">
@@ -217,22 +221,24 @@
       <img class="brand-icon" src={`${base}/app-icon.png`} alt="" />
       <div>GRAVEYARD KEEPER <b>2</b><small>SAVE EDITOR</small></div>
     </div>
-    <nav aria-label="Workspace">
+    <nav aria-label={t("Workspace")}>
       <button class:active={active === "load"} onclick={() => activate("load")}
-        ><FolderOpen /><span>Load Saves</span></button
+        ><FolderOpen /><span>{t("Load Saves")}</span></button
       >
-      <div class="rail-caption">OPEN SAVES <span>{documents.length}</span></div>
+      <div class="rail-caption">
+        {t("OPEN SAVES")} <span>{documents.length}</span>
+      </div>
       {#each documents as doc (doc.id)}<div
           class="rail-document"
           class:active={active === doc.id}
         >
           <button onclick={() => activate(doc.id)} title={doc.name}
             ><File /><span>{doc.name}</span>{#if doc.summary?.dirty}<i
-                aria-label="Unsaved changes">●</i
+                aria-label={t("Unsaved changes")}>●</i
               >{/if}</button
           ><button
             class="close-save"
-            aria-label={`Close ${doc.name}`}
+            aria-label={t("Close {name}", { name: doc.name })}
             onclick={() => (doc.summary?.dirty ? (closing = doc) : close(doc))}
             ><X /></button
           >
@@ -240,9 +246,9 @@
     </nav>
     <div
       class="asset-version"
-      title="Game version represented by the loaded game data"
+      title={t("Game version represented by the loaded game data")}
     >
-      Game data version <b>{assetVersion}</b>
+      {t("Game data version")} <b>{t(assetVersion)}</b>
     </div>
     {#if updates?.update}<button
         class="update-notice"
@@ -250,17 +256,19 @@
         onclick={() => activate("about")}
       >
         <Info /><span
-          >Update available<b>Version {updates.update.version}</b></span
+          >{t("Update available")}<b
+            >{t("Version {version}", { version: updates.update.version })}</b
+          ></span
         >
       </button>{/if}
     <button
       class="about-link"
       class:active={active === "about"}
-      onclick={() => activate("about")}><Info />About</button
+      onclick={() => activate("about")}><Info />{t("About")}</button
     ><button
       class="settings-link"
       class:active={active === "settings"}
-      onclick={() => activate("settings")}><Gear />Settings</button
+      onclick={() => activate("settings")}><Gear />{t("Settings")}</button
     >
   </aside>
   <main>
@@ -281,7 +289,7 @@
         >
           <DocumentView {doc} {settings} {assetVersion} onsave={save} />
         </div>{/each}{:else}<div class="page-content">
-        <LoadingIndicator label="Loading editor…" />
+        <LoadingIndicator label={t("Loading editor…")} />
       </div>{/if}
   </main>
 </div>
@@ -296,21 +304,25 @@
     <dialog
       use:showModal
       class="panel modal"
-      aria-label="Save changed on disk"
+      aria-label={t("Save changed on disk")}
       oncancel={() => (conflict = undefined)}
     >
-      <h2 class="strip">Save changed on disk</h2>
+      <h2 class="strip">{t("Save changed on disk")}</h2>
       <div class="panel-body">
         <p>
-          Another process changed {conflict.name}. Reload the disk version, or
-          save your edits to another file.
+          {t(
+            "Another process changed {name}. Reload the disk version, or save your edits to another file.",
+            { name: conflict.name },
+          )}
         </p>
         <div class="form-actions">
-          <button onclick={() => conflict && reload(conflict)}>Reload</button
+          <button onclick={() => conflict && reload(conflict)}
+            >{t("Reload")}</button
           ><button
             class="primary"
-            onclick={() => conflict && save(conflict, true)}>Save As</button
-          ><button onclick={() => (conflict = undefined)}>Cancel</button>
+            onclick={() => conflict && save(conflict, true)}
+            >{t("Save As")}</button
+          ><button onclick={() => (conflict = undefined)}>{t("Cancel")}</button>
         </div>
       </div>
     </dialog>
@@ -319,16 +331,20 @@
     <dialog
       use:showModal
       class="panel modal"
-      aria-label="Close unsaved document"
+      aria-label={t("Close unsaved document")}
       oncancel={() => (closing = undefined)}
     >
-      <h2 class="strip">Unsaved changes</h2>
+      <h2 class="strip">{t("Unsaved changes")}</h2>
       <div class="panel-body">
-        <p>Close {closing.name} and discard its edits?</p>
+        <p>
+          {t("Close {name} and discard its edits?", { name: closing.name })}
+        </p>
         <div class="form-actions">
           <button class="danger" onclick={() => closing && close(closing)}
-            >Discard and close</button
-          ><button onclick={() => (closing = undefined)}>Keep editing</button>
+            >{t("Discard and close")}</button
+          ><button onclick={() => (closing = undefined)}
+            >{t("Keep editing")}</button
+          >
         </div>
       </div>
     </dialog>

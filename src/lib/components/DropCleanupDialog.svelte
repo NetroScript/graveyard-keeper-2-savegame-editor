@@ -2,6 +2,7 @@
   import { onMount, untrack } from "svelte";
   import type { SaveDocument } from "../document.svelte";
   import type { WorldDrop } from "../drops";
+  import { t } from "$lib/i18n.svelte";
 
   let {
     doc,
@@ -40,7 +41,7 @@
   async function removeSelected() {
     if (!selected.length || saving) return;
     if (doc.summary!.revision !== revision) {
-      error = "The document changed. Close and reopen this dialog.";
+      error = t("The document changed. Close and reopen this dialog.");
       return;
     }
     saving = true;
@@ -66,7 +67,7 @@
   }}
   aria-labelledby="drop-cleanup-title"
 >
-  <h2 id="drop-cleanup-title" class="strip">Delete dropped items</h2>
+  <h2 id="drop-cleanup-title" class="strip">{t("Delete dropped items")}</h2>
   <form
     onsubmit={(event) => {
       event.preventDefault();
@@ -74,17 +75,23 @@
     }}
   >
     <p>
-      Select the drops to remove from the save. You can undo this change until
-      the document is closed.
+      {t(
+        "Select the drops to remove from the save. You can undo this change until the document is closed.",
+      )}
     </p>
     <div class="selection-actions">
       <button
         type="button"
         onclick={() =>
           (selected = allSelected ? [] : drops.map((drop) => drop.node))}
-        >{allSelected ? "Select none" : "Select all"}</button
+        >{allSelected ? t("Select none") : t("Select all")}</button
       >
-      <span>{selected.length} of {drops.length} selected</span>
+      <span
+        >{t("{selected} of {total} selected", {
+          selected: selected.length,
+          total: drops.length,
+        })}</span
+      >
     </div>
     <div class="drop-list">
       {#each drops as drop (drop.node)}
@@ -99,9 +106,11 @@
               <strong>{drop.id}</strong>
               {#if drop.count !== "1"}<span>×{drop.count}</span>{/if}
             </span>
-            <span>{drop.type} · {drop.source}</span>
-            <span title={`Coordinates: ${coordinates(drop)}`}>
-              {drop.location.world || "Unknown location"} · {coordinates(drop)}
+            <span>{drop.type} · {t(drop.source)}</span>
+            <span title={t("Coordinates: {coords}", { coords: coordinates(drop) })}>
+              {drop.location.world || t("Unknown location")} · {coordinates(
+                drop,
+              )}
             </span>
           </span>
         </label>
@@ -109,12 +118,14 @@
     </div>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="dialog-actions">
-      <button type="button" disabled={saving} onclick={onclose}>Cancel</button>
+      <button type="button" disabled={saving} onclick={onclose}
+        >{t("Cancel")}</button
+      >
       <button
         class="danger"
         type="submit"
         disabled={!selected.length || saving || doc.busy}
-        >Delete selected</button
+        >{t("Delete selected")}</button
       >
     </div>
   </form>

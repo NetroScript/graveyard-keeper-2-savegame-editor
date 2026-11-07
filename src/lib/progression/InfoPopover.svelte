@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import ProgressionIcon from "./ProgressionIcon.svelte";
   import LocalizedText from "./LocalizedText.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     title,
     description,
@@ -79,7 +80,7 @@
           <dd>{fact.value}</dd>
         </div>{/each}
     </dl>{/if}
-  {#if entries.length}<span class="list-title">Materials</span><span
+  {#if entries.length}<span class="list-title">{t("Materials")}</span><span
       class="entries"
       >{#each entries as entry}<span class="entry"
           ><ProgressionIcon name={entry.sprite} label={entry.name} /><span
@@ -87,7 +88,7 @@
           ><b>{entry.count}</b></span
         >{/each}</span
     >{/if}
-  {#if items.length}<span class="list-title">Unlocks</span>
+  {#if items.length}<span class="list-title">{t("Unlocks")}</span>
     <ul>
       {#each items as item}<li>{item}</li>{/each}
     </ul>{/if}

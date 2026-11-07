@@ -9,6 +9,7 @@
     type ItemDefinition,
     type Family,
   } from "../inventory/catalog";
+  import { t } from "$lib/i18n.svelte";
 
   type PickerMode = "organ" | "tool" | "armor" | "body" | "collar" | "cargo";
 
@@ -128,17 +129,17 @@
     return (
       (
         {
-          FishingRod: "Fishing rods",
-          Reagents: "Alchemy kits",
-          Axe: "Axes",
-          Hammer: "Hammers",
-          Pickaxe: "Pickaxes",
-          Shovel: "Shovels",
-          SmallTools: "Crafting tools",
-          SurgicalKit: "Surgical kits",
-          Book: "Books",
-          Talisman: "Talismans",
-          Hand: "Hands",
+          FishingRod: t("Fishing rods"),
+          Reagents: t("Alchemy kits"),
+          Axe: t("Axes"),
+          Hammer: t("Hammers"),
+          Pickaxe: t("Pickaxes"),
+          Shovel: t("Shovels"),
+          SmallTools: t("Crafting tools"),
+          SurgicalKit: t("Surgical kits"),
+          Book: t("Books"),
+          Talisman: t("Talismans"),
+          Hand: t("Hands"),
         } as Record<string, string>
       )[type] ?? type.replace(/([a-z])([A-Z])/g, "$1 $2")
     );
@@ -172,9 +173,11 @@
         );
         add(
           "recommended",
-          `Best for ${talentNames[preferredTalent] ?? "current specialty"}`,
+          t("Best for {talent}", {
+            talent: talentNames[preferredTalent] ?? t("current specialty"),
+          }),
           relevant,
-          "Higher ability levels improve work that uses this specialty.",
+          t("Higher ability levels improve work that uses this specialty."),
         );
         const relevantIds = new Set(relevant.map((family) => family.id));
         remaining = source.filter((family) => !relevantIds.has(family.id));
@@ -193,43 +196,47 @@
     } else if (mode === "armor") {
       add(
         "normal",
-        "Normal armor",
+        t("Normal armor"),
         source.filter((family) =>
           family.variants.some((item) => /^armor_\d+$/.test(item.id)),
         ),
-        "Higher armor levels provide stronger combat protection.",
+        t("Higher armor levels provide stronger combat protection."),
       );
       add(
         "debug",
-        "Debug and NPC armor",
+        t("Debug and NPC armor"),
         source.filter(
           (family) =>
             !family.variants.some((item) => /^armor_\d+$/.test(item.id)),
         ),
-        "Not normally obtainable. These entries may not behave correctly on a worker.",
+        t(
+          "Not normally obtainable. These entries may not behave correctly on a worker.",
+        ),
       );
     } else if (mode === "body") {
       add(
         "embalming",
-        "Body treatments",
+        t("Body treatments"),
         source.filter((family) => family.variants[0].fields.type === "Embalm"),
-        "Treatments can add or remove skulls and occupy body-inventory slots.",
+        t(
+          "Treatments can add or remove skulls and occupy body-inventory slots.",
+        ),
       );
       add(
         "skulls",
-        "Skull-adding items",
+        t("Skull-adding items"),
         source.filter(
           (family) =>
             family.variants[0].fields.type !== "Embalm" &&
             (family.variants[0].fields.redSkulls > 0 ||
               family.variants[0].fields.whiteSkulls > 0),
         ),
-        "These items increase the zombie's red or white skull total.",
+        t("These items increase the zombie's red or white skull total."),
         compareSkullFamilies,
       );
       add(
         "items",
-        "Other items",
+        t("Other items"),
         source.filter(
           (family) =>
             family.variants[0].fields.type !== "Embalm" &&
@@ -240,11 +247,12 @@
     } else if (mode === "cargo") {
       add(
         "cargo",
-        "Cargo items",
+        t("Cargo items"),
         source,
-        "Choose an item and the amount this porter should carry.",
+        t("Choose an item and the amount this porter should carry."),
       );
-    } else add("choices", mode === "organ" ? "Variants" : "Choices", source);
+    } else
+      add("choices", mode === "organ" ? t("Variants") : t("Choices"), source);
     return result;
   }
   function abilityText(item: ItemDefinition) {
@@ -253,23 +261,29 @@
       .map((id) => talentNames[id] ?? id)
       .join(", ");
     return bonus > 0
-      ? `Ability +${bonus}${talents ? ` · ${talents}` : ""}`
-      : talents || "No ability bonus";
+      ? `${t("Ability +{bonus}", { bonus })}${talents ? ` · ${talents}` : ""}`
+      : talents || t("No ability bonus");
   }
   function itemMeta(item: ItemDefinition) {
     if (mode === "tool") return abilityText(item);
     if (mode === "armor") {
       if (!/^armor_\d+$/.test(item.id))
-        return `Level ${item.quality.value} · not normally obtainable`;
-      const protection =
+        return t("Level {level} · not normally obtainable", {
+          level: item.quality.value,
+        });
+      const protection = t(
         ["Minimal", "Basic", "Good", "Strong", "Strongest"][
           item.quality.value
-        ] ?? "Unknown";
-      return `Armor level ${item.quality.value} · ${protection} normal protection`;
+        ] ?? "Unknown",
+      );
+      return t("Armor level {level} · {protection} normal protection", {
+        level: item.quality.value,
+        protection,
+      });
     }
     return item.fields.type && item.fields.type !== "None"
       ? typeName(item.fields.type)
-      : "Item";
+      : t("Item");
   }
 
   onMount(() => {
@@ -320,7 +334,7 @@
     }}
   >
     {#if mode !== "organ"}<label class="search"
-        >Search<input
+        >{t("Search")}<input
           value={query}
           autocomplete="off"
           oninput={(event) => {
@@ -373,7 +387,7 @@
       )}
       {#if family && family.variants.length > 1}
         <fieldset>
-          <legend>Variant</legend>
+          <legend>{t("Variant")}</legend>
           <div class="variants">
             {#each family.variants as item}<button
                 type="button"
@@ -390,7 +404,7 @@
                     />{/if}
                   <small
                     >{mode === "organ"
-                      ? `Quality ${item.quality.value}`
+                      ? t("Quality {quality}", { quality: item.quality.value })
                       : itemMeta(item)}</small
                   >
                 </span></button
@@ -410,8 +424,8 @@
           />{/if}
       </p>
       {#if mode === "cargo"}<label class="amount"
-          >Amount<input
-            aria-label="Cargo amount"
+          >{t("Amount")}<input
+            aria-label={t("Cargo amount")}
             type="number"
             min="1"
             max={maximum}
@@ -420,7 +434,11 @@
             disabled={!chosen || (!outOfBounds && maximum === 1)}
             value={count}
             oninput={(event) => (count = event.currentTarget.value)}
-          /><small>Stack size: {chosen.fields.stackCount}</small></label
+          /><small
+            >{t("Stack size: {size}", {
+              size: chosen.fields.stackCount,
+            })}</small
+          ></label
         >{/if}
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -429,13 +447,13 @@
           class="clear"
           type="button"
           onclick={() => void clear()}
-          disabled={saving}>Clear slot</button
+          disabled={saving}>{t("Clear slot")}</button
         >{/if}<span></span><button
         type="button"
         onclick={onclose}
-        disabled={saving}>Cancel</button
+        disabled={saving}>{t("Cancel")}</button
       ><button class="primary" disabled={!chosen || !validCount || saving}
-        >Apply</button
+        >{t("Apply")}</button
       >
     </footer>
   </form>

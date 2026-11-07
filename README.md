@@ -7,6 +7,9 @@ inspect data that does not yet have a dedicated editor.
 The editor runs on your own device. The web version processes saves in your
 browser and does not upload them to a server.
 
+The interface is available in English and Brazilian Portuguese. It follows the
+system language by default; the language can be changed in Settings.
+
 ## Use the editor
 
 ### Web version

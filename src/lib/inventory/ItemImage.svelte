@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ItemCatalog } from "./catalog";
+  import { t } from "$lib/i18n.svelte";
   let {
     catalog,
     id,
@@ -42,14 +43,16 @@
       class="missing"
       title={id}>?</span
     >{/if}
-  {#if star}<img class="quality" src={star} alt="Quality" />{/if}
+  {#if star}<img class="quality" src={star} alt={t("Quality")} />{/if}
   {#if Number(count) !== 1}<span class="count">{count}</span>{/if}
   {#if durability !== null}<meter
       class="durability"
       min="0"
       max="1"
       value={Number(durability)}
-      title={`Durability: ${Math.round(Number(durability) * 100)}%`}
+      title={t("Durability: {percent}%", {
+        percent: Math.round(Number(durability) * 100),
+      })}
     ></meter><span class="durability-value"
       >{Math.round(Number(durability) * 100)}%</span
     >{/if}

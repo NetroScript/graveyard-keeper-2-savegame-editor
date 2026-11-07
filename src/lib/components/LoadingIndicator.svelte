@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { t } from "$lib/i18n.svelte";
+
   let {
-    label = "Loading…",
+    label = t("Loading…"),
     compact = false,
   }: { label?: string; compact?: boolean } = $props();
 </script>
