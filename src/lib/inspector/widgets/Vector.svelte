@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WidgetProps } from "./index";
+  import { t } from "$lib/i18n.svelte";
   let { node, children, transact }: WidgetProps = $props();
   let drafts = $state<Record<number, string>>({});
   let error = $state("");
@@ -34,7 +35,7 @@
   <div class="vector-fields">
     {#each children as child, i}<label
         ><span>{["X", "Y", "Z", "W"][i]}</span><input
-          aria-label={`Vector ${["X", "Y", "Z", "W"][i]}`}
+          aria-label={t("Vector {axis}", { axis: ["X", "Y", "Z", "W"][i] })}
           type="number"
           step="any"
           value={drafts[child.id] ?? child.value ?? ""}
@@ -43,6 +44,6 @@
       >{/each}
   </div>
   <button class="primary" disabled={!Object.keys(drafts).length}
-    >Apply vector</button
+    >{t("Apply vector")}</button
   >{#if error}<p role="alert">{error}</p>{/if}
 </form>

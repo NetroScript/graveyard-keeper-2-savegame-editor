@@ -1,0 +1,36 @@
+export const shell: Record<string, string> = {
+  "Toggle navigation": "Alternar navegação",
+  "Close navigation": "Fechar navegação",
+  Workspace: "Área de trabalho",
+  "Load Saves": "Carregar Saves",
+  "OPEN SAVES": "SAVES ABERTOS",
+  "Unsaved changes": "Alterações não salvas",
+  "Close {name}": "Fechar {name}",
+  "Game version represented by the loaded game data":
+    "Versão do jogo representada pelos dados carregados",
+  "Game data version": "Versão dos dados do jogo",
+  "Loading…": "Carregando…",
+  Unknown: "desconhecida",
+  Unavailable: "indisponível",
+  "Update available": "Atualização disponível",
+  "Version {version}": "Versão {version}",
+  About: "Sobre",
+  Settings: "Configurações",
+  "Loading editor…": "Carregando o editor…",
+  "Invalid scale": "Escala inválida",
+  "Choose at least one .dat file, optionally with its matching .info.":
+    "Escolha pelo menos um arquivo .dat, opcionalmente com o .info correspondente.",
+  "Saved {name}": "{name} salvo",
+  "Downloaded {name}": "{name} baixado",
+  "Save changed on disk": "Save alterado no disco",
+  "Another process changed {name}. Reload the disk version, or save your edits to another file.":
+    "Outro processo alterou {name}. Recarregue a versão do disco ou salve suas edições em outro arquivo.",
+  Reload: "Recarregar",
+  "Save As": "Salvar como",
+  Cancel: "Cancelar",
+  "Close unsaved document": "Fechar documento não salvo",
+  "Close {name} and discard its edits?":
+    "Fechar {name} e descartar as edições?",
+  "Discard and close": "Descartar e fechar",
+  "Keep editing": "Continuar editando",
+};

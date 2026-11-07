@@ -11,6 +11,7 @@
   import X from "~icons/ph/x";
   import Question from "~icons/ph/question";
   import SearchHelpDialog from "./SearchHelpDialog.svelte";
+  import { t } from "$lib/i18n.svelte";
 
   let {
     doc,
@@ -351,99 +352,120 @@
 </script>
 
 <form class="inspector-search" onsubmit={submitted}>
-  <div class="search-mode" role="group" aria-label="Search mode">
+  <div class="search-mode" role="group" aria-label={t("Search mode")}>
     <button
       type="button"
       class:active={mode === "simple"}
-      onclick={() => switchMode("simple")}>Simple</button
+      onclick={() => switchMode("simple")}>{t("Simple")}</button
     ><button
       type="button"
       class:active={mode === "advanced"}
-      onclick={() => switchMode("advanced")}>Advanced</button
+      onclick={() => switchMode("advanced")}>{t("Advanced")}</button
     >
   </div>
   <label class="search-input">
     <MagnifyingGlass />
     {#if mode === "simple"}<input
         type="search"
-        aria-label="Search save structure"
-        placeholder="Search names, values, classes and paths"
+        aria-label={t("Search save structure")}
+        placeholder={t("Search names, values, classes and paths")}
         bind:value={simple}
       />{:else}<input
         type="search"
-        aria-label="Search save structure"
-        placeholder="Enter an advanced query"
+        aria-label={t("Search save structure")}
+        placeholder={t("Enter an advanced query")}
         bind:value={advanced}
       />{/if}
-    {#if query()}<button type="button" aria-label="Clear search" onclick={clear}
+    {#if query()}<button
+        type="button"
+        aria-label={t("Clear search")}
+        onclick={clear}
         ><X /></button
       >{/if}
   </label>
   {#if mode === "simple"}
     <details class="search-filters">
-      <summary>Filters</summary>
+      <summary>{t("Filters")}</summary>
       <div>
         <label
-          >Path<input
+          >{t("Path")}<input
             bind:value={path}
             placeholder="*playerInventory*"
           /></label
         >
-        <label>Name<input bind:value={name} placeholder="id" /></label>
+        <label>{t("Name")}<input bind:value={name} placeholder="id" /></label>
         <label
-          >Data types<input
+          >{t("Data types")}<input
             bind:value={type}
             placeholder="string, int"
           /></label
         >
         <label
-          >Own class<input bind:value={ownClass} placeholder="Item" /></label
+          >{t("Own class")}<input
+            bind:value={ownClass}
+            placeholder="Item"
+          /></label
         >
         <label
-          >Nearest class<input bind:value={owner} placeholder="Item" /></label
+          >{t("Nearest class")}<input
+            bind:value={owner}
+            placeholder="Item"
+          /></label
         >
         <label
-          >Any ancestor<input bind:value={ancestor} placeholder="Item" /></label
+          >{t("Any ancestor")}<input
+            bind:value={ancestor}
+            placeholder="Item"
+          /></label
         >
-        <label>Value<input bind:value placeholder="*iron*" /></label>
-        <label>Minimum<input bind:value={minimum} inputmode="decimal" /></label>
-        <label>Maximum<input bind:value={maximum} inputmode="decimal" /></label>
+        <label>{t("Value")}<input bind:value placeholder="*iron*" /></label>
+        <label
+          >{t("Minimum")}<input bind:value={minimum} inputmode="decimal" /></label
+        >
+        <label
+          >{t("Maximum")}<input bind:value={maximum} inputmode="decimal" /></label
+        >
       </div>
     </details>
   {:else}
     <details class="search-help">
-      <summary>Query syntax</summary>
+      <summary>{t("Query syntax")}</summary>
       <p>
-        Spaces mean AND, <code>|</code> means OR, <code>!</code> means NOT, and parentheses
-        group expressions.
+        {t("Spaces mean AND,")} <code>|</code>
+        {t("means OR,")} <code>!</code>
+        {t("means NOT, and parentheses group expressions.")}
       </p>
       <p>
-        Qualifiers: <code>name:</code>, <code>path:</code>, <code>type:</code>,
-        <code>class:</code>, <code>owner:</code>, <code>ancestor:</code>,
-        <code>value:</code>.
+        {t("Qualifiers:")} <code>name:</code>, <code>path:</code>,
+        <code>type:</code>, <code>class:</code>, <code>owner:</code>,
+        <code>ancestor:</code>, <code>value:</code>.
       </p>
       <p>
-        Use <code>*</code> and <code>?</code> as wildcards, or <code>==</code>
-        for an exact text match. Numeric comparisons use
-        <code>value&gt;=10</code> and similar operators.
+        {t("Use")} <code>*</code> {t("and")} <code>?</code>
+        {t("as wildcards, or")} <code>==</code>
+        {t("for an exact text match. Numeric comparisons use")}
+        <code>value&gt;=10</code> {t("and similar operators.")}
       </p>
       <p>
-        Use <code>child:(…)</code>, <code>descendant:(…)</code> and
-        <code>parent:(…)</code> to match related stored records.
+        {t("Use")} <code>child:(…)</code>, <code>descendant:(…)</code>
+        {t("and")}
+        <code>parent:(…)</code> {t("to match related stored records.")}
       </p>
     </details>
   {/if}
   <div class="search-options">
     <label
-      ><input type="checkbox" bind:checked={caseSensitive} />Case sensitive</label
+      ><input type="checkbox" bind:checked={caseSensitive} />{t(
+        "Case sensitive",
+      )}</label
     >
     <span>
       <button
         type="button"
         class="search-help-button"
-        onclick={() => (helpOpen = true)}><Question />Syntax help</button
+        onclick={() => (helpOpen = true)}><Question />{t("Syntax help")}</button
       >
-      <button type="submit">Search</button>
+      <button type="submit">{t("Search")}</button>
     </span>
   </div>
 </form>
@@ -463,7 +485,7 @@
   <div
     class="search-view-toggle"
     role="group"
-    aria-label="Inspector search view"
+    aria-label={t("Inspector search view")}
   >
     <button
       type="button"
@@ -471,11 +493,14 @@
       onclick={() => {
         onactive(true);
         void tick().then(loadVisible);
-      }}>Results ({status.discovered.toLocaleString()})</button
+      }}
+      >{t("Results ({count})", {
+        count: status.discovered.toLocaleString(),
+      })}</button
     ><button
       type="button"
       class:active={!showResults}
-      onclick={() => onactive(false)}>Structure</button
+      onclick={() => onactive(false)}>{t("Structure")}</button
     >
   </div>
 {/if}
@@ -484,15 +509,19 @@
   <div class="search-results-view" hidden={!showResults}>
     <div class="search-summary" aria-live="polite">
       {#if status}
-        <span>{status.discovered.toLocaleString()} matches</span>
+        <span
+          >{t("{count} matches", {
+            count: status.discovered.toLocaleString(),
+          })}</span
+        >
         <span
           >{status.status === "searching"
-            ? "Searching…"
+            ? t("Searching…")
             : status.status === "incomplete"
-              ? "Incomplete"
-              : "Complete"}</span
+              ? t("Incomplete")
+              : t("Complete")}</span
         >
-      {:else if !error}<span>Preparing search…</span>{/if}
+      {:else if !error}<span>{t("Preparing search…")}</span>{/if}
     </div>
     {#if status?.completionReason}<p class="warning search-warning">
         {status.completionReason}
@@ -501,7 +530,7 @@
     <div
       class="search-result-list"
       role="listbox"
-      aria-label="Search results"
+      aria-label={t("Search results")}
       tabindex="0"
       bind:this={list}
       onkeydown={keyboard}
@@ -534,7 +563,7 @@
                 <span
                   ><b>{result.name}</b><em
                     >{result.typeName?.split(",")[0] ?? result.kind}</em
-                  ><i>{result.matchField} match</i></span
+                  ><i>{t("{field} match", { field: result.matchField })}</i></span
                 >
                 <small>{result.value ?? result.path}</small>
                 <small class="result-path">{result.path}</small>
@@ -542,9 +571,9 @@
               <button
                 type="button"
                 class="reveal-result"
-                onclick={() => void reveal(result)}>Reveal</button
+                onclick={() => void reveal(result)}>{t("Reveal")}</button
               >
-            {:else}<span class="result-loading">Loading…</span>{/if}
+            {:else}<span class="result-loading">{t("Loading…")}</span>{/if}
           </div>
         {/each}
       </div>

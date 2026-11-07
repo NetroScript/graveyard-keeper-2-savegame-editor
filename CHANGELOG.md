@@ -3,6 +3,10 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.3.2] - Unreleased
+
+- Added a Brazilian Portuguese translation of the editor interface. The editor follows the system language by default, and the language can be changed in Settings.
+
 ## [0.3.1] - Faith and science
 
 - Added faith and science to the General view. The game stores them as items: faith in the player inventory, including bags, and science in the study table. The new fields are a shortcut for editing those item stacks, which can still be edited in the Inventory view. The editor shows each total and updates, adds or removes stacks of up to 999 to match the entered amount, as long as the inventory has free slots.

@@ -15,6 +15,7 @@
   import GameIcon from "./GameIcon.svelte";
   import { gameDayIcon } from "../assets/game-icons";
   import { notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     doc,
     onsave,
@@ -60,105 +61,118 @@
   <div class="document-title">
     <h1>
       {doc.name}<span class="dirty-label"
-        >{doc.summary?.dirty ? "Unsaved changes" : "Saved"}</span
+        >{doc.summary?.dirty ? t("Unsaved changes") : t("Saved")}</span
       >
     </h1>
     {#if newerSaveVersion || doc.unknownItemIds.length}<details
         class="compatibility-status"
       >
-        <summary title="Show compatibility information">
+        <summary title={t("Show compatibility information")}>
           <Warning />
-          <span class="visually-hidden">Compatibility information</span>
+          <span class="visually-hidden">{t("Compatibility information")}</span>
         </summary>
         <div class="compatibility-popover" role="status">
-          <strong>Compatibility information</strong>
+          <strong>{t("Compatibility information")}</strong>
           {#if newerSaveVersion}<p>
-              This save is from game version {String(
-                doc.metadata?.gameSaveVersion,
-              )}, but the loaded game data describes {assetVersion}. New items
-              or progression data may be shown by ID or unavailable for
-              structured editing.
+              {t(
+                "This save is from game version {saveVersion}, but the loaded game data describes {assetVersion}. New items or progression data may be shown by ID or unavailable for structured editing.",
+                {
+                  saveVersion: String(doc.metadata?.gameSaveVersion),
+                  assetVersion,
+                },
+              )}
             </p>{/if}
           {#if doc.unknownItemIds.length}<p>
-              {doc.unknownItemIds.length} item {doc.unknownItemIds.length === 1
-                ? "definition is"
-                : "definitions are"} missing from the loaded game data. Existing data
-              is preserved, but those items cannot be safely added or replaced.
+              {doc.unknownItemIds.length === 1
+                ? t(
+                    "{count} item definition is missing from the loaded game data. Existing data is preserved, but those items cannot be safely added or replaced.",
+                    { count: doc.unknownItemIds.length },
+                  )
+                : t(
+                    "{count} item definitions are missing from the loaded game data. Existing data is preserved, but those items cannot be safely added or replaced.",
+                    { count: doc.unknownItemIds.length },
+                  )}
             </p>{/if}
         </div>
       </details>{/if}
   </div>
   {#if doc.metadata}{@const m = doc.metadata}
     <details class="save-metadata">
-      <summary title="Show complete save information">
+      <summary title={t("Show complete save information")}>
         <GameIcon name={gameDayIcon(m.day)} />
-        <strong>Day {String(m.day ?? "—")}</strong>
+        <strong>{t("Day {day}", { day: String(m.day ?? "—") })}</strong>
         <span class="metadata-date"
-          >{String(m.saveDateTime ?? "Unknown date")}</span
+          >{String(m.saveDateTime ?? t("Unknown date"))}</span
         >
         <span class="metadata-summary-fields">
-          <span>Version {String(m.gameSaveVersion ?? "—")}</span>
+          <span
+            >{t("Version {version}", {
+              version: String(m.gameSaveVersion ?? "—"),
+            })}</span
+          >
           <span>{String(m.platform ?? "—")}</span>
-          <span>{m.isDemoSave ? "Demo" : "Release"}</span>
+          <span>{m.isDemoSave ? t("Demo") : t("Release")}</span>
         </span>
       </summary>
       <div class="metadata-expanded">
         <dl>
-          <dt><Tag />Version</dt>
+          <dt><Tag />{t("Version")}</dt>
           <dd>{String(m.gameSaveVersion ?? "—")}</dd>
-          <dt><DesktopTower />Platform</dt>
+          <dt><DesktopTower />{t("Platform")}</dt>
           <dd>{String(m.platform ?? "—")}</dd>
-          <dt><GameIcon name="wskull" />Graveyard quality</dt>
+          <dt><GameIcon name="wskull" />{t("Graveyard quality")}</dt>
           <dd>{String(m.graveyardQuality ?? "—")}</dd>
-          <dt><GameIcon name="cross" variant="church" />Church quality</dt>
+          <dt><GameIcon name="cross" variant="church" />{t("Church quality")}</dt>
           <dd>{String(m.churchQuality ?? "—")}</dd>
-          <dt><GameIcon name="village_REP" />Village reputation</dt>
+          <dt><GameIcon name="village_REP" />{t("Village reputation")}</dt>
           <dd>{String(m.villageRep ?? "—")}</dd>
         </dl>
         <p class="hint">
-          Metadata records the original game save and is preserved unchanged.
+          {t(
+            "Metadata records the original game save and is preserved unchanged.",
+          )}
         </p>
       </div>
     </details>
   {/if}
   <div class="toolbar">
     <button
-      title="Undo"
-      aria-label="Undo"
+      title={t("Undo")}
+      aria-label={t("Undo")}
       disabled={!doc.summary?.canUndo || doc.busy}
       onclick={() => doc.mutate("undo").catch(notifyError)}
       ><ArrowCounterClockwise /></button
     ><button
-      title="Redo"
-      aria-label="Redo"
+      title={t("Redo")}
+      aria-label={t("Redo")}
       disabled={!doc.summary?.canRedo || doc.busy}
       onclick={() => doc.mutate("redo").catch(notifyError)}
       ><ArrowClockwise /></button
     ><button
       disabled={doc.busy || doc.invalidGeneralDraft}
-      onclick={() => onsave(doc, true)}>Save As</button
+      onclick={() => onsave(doc, true)}>{t("Save As")}</button
     ><button
       class="primary"
       disabled={!doc.summary?.dirty || doc.busy || doc.invalidGeneralDraft}
-      onclick={() => onsave(doc, false)}><FloppyDisk />Save</button
+      onclick={() => onsave(doc, false)}><FloppyDisk />{t("Save")}</button
     >
   </div>
 </header>
-<nav class="main-tabs" aria-label="Save views">
+<nav class="main-tabs" aria-label={t("Save views")}>
   <div class="tab-group">
     <button class:active={view === "editor"} onclick={() => (view = "editor")}
-      >Save Editor</button
+      >{t("Save Editor")}</button
     ><button
       class:active={view === "inspector"}
       onclick={() => {
         view = "inspector";
         inspectorVisited = true;
-      }}>Save Inspector</button
+      }}>{t("Save Inspector")}</button
     >
   </div>
 </nav>
 <div hidden={view !== "editor"} class="editor-view">
-  <nav class="category-tabs" aria-label="Editor categories">
+  <nav class="category-tabs" aria-label={t("Editor categories")}>
     <div class="tab-group">
       {#each ["General", "Inventory", "Zombies", "Technologies", "Inspirations"] as tab}<button
           class:active={category === tab}
@@ -168,7 +182,7 @@
             if (tab === "Technologies") technologiesVisited = true;
             if (tab === "Inspirations") inspirationsVisited = true;
             if (tab === "Zombies") zombiesVisited = true;
-          }}>{tab}</button
+          }}>{t(tab)}</button
         >{/each}
     </div>
   </nav>

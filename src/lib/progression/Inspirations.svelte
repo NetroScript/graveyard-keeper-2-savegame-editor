@@ -17,6 +17,7 @@
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
   import { notify, notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } =
     $props();
   let catalog = $state<ProgressionCatalog>();
@@ -98,11 +99,11 @@
     exported !== id
       ? exported
       : ({
-          talent_orange: "Building",
-          talent_red: "Metallurgy",
-          talent_green: "Farming",
-          talent_yellow: "Theology",
-          talent_blue: "Anatomy",
+          talent_orange: t("Building"),
+          talent_red: t("Metallurgy"),
+          talent_green: t("Farming"),
+          talent_yellow: t("Theology"),
+          talent_blue: t("Anatomy"),
         }[id] ?? id);
   const perkName = (node: TalentLevelNode) =>
     localized(node.name, node.id) ??
@@ -241,7 +242,14 @@
       const spent = paidPoints(additions);
       if (spent > 0)
         notify(
-          `Unlocked ${perkName(node)}. Spent ${spent} perk point${spent === 1 ? "" : "s"}.`,
+          spent === 1
+            ? t("Unlocked {name}. Spent 1 perk point.", {
+                name: perkName(node),
+              })
+            : t("Unlocked {name}. Spent {points} perk points.", {
+                name: perkName(node),
+                points: spent,
+              }),
         );
     } catch (e) {
       notifyError(e);
@@ -254,7 +262,10 @@
     if (!studied.has(node.id) || !catalog || !snapshot || saving) return;
     if (node.availableAtStart) {
       notifyError(
-        `${perkName(node)} is available from the start. The game unlocks it again when the save loads.`,
+        t(
+          "{name} is available from the start. The game unlocks it again when the save loads.",
+          { name: perkName(node) },
+        ),
       );
       return;
     }
@@ -299,10 +310,19 @@
         notify(
           [
             removals.length > 1
-              ? `Locked ${perkName(node)} and ${removals.length - 1} dependent perk${removals.length === 2 ? "" : "s"}.`
-              : `Locked ${perkName(node)}.`,
+              ? removals.length === 2
+                ? t("Locked {name} and 1 dependent perk.", {
+                    name: perkName(node),
+                  })
+                : t("Locked {name} and {count} dependent perks.", {
+                    name: perkName(node),
+                    count: removals.length - 1,
+                  })
+              : t("Locked {name}.", { name: perkName(node) }),
             refund > 0
-              ? `Refunded ${refund} perk point${refund === 1 ? "" : "s"}.`
+              ? refund === 1
+                ? t("Refunded 1 perk point.")
+                : t("Refunded {points} perk points.", { points: refund })
               : "",
           ]
             .filter(Boolean)
@@ -318,15 +338,17 @@
 
 <div class="section-intro">
   <div>
-    <h2>Inspirations</h2>
+    <h2>{t("Inspirations")}</h2>
     <p>
-      Edit inspiration progress and reveal the full perk tree for each talent.
+      {t(
+        "Edit inspiration progress and reveal the full perk tree for each talent.",
+      )}
     </p>
   </div>
 </div>
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 {#if catalog && snapshot}
-  <nav class="talent-tabs" aria-label="Inspiration categories">
+  <nav class="talent-tabs" aria-label={t("Inspiration categories")}>
     {#each catalog.talents.branches as item}{@const saved =
         snapshot.talents.find((t) => t.id === item.id)}
       <button
@@ -347,7 +369,7 @@
   {#if branch}
     <section class="branch-summary panel">
       <label
-        >Experience<input
+        >{t("Experience")}<input
           type="number"
           min="0"
           value={drafts.curExp ?? branch.curExp}
@@ -356,7 +378,7 @@
         /></label
       >
       <label
-        >Inspiration level<input
+        >{t("Inspiration level")}<input
           type="number"
           min="0"
           value={drafts.curTalentLevel ?? branch.curTalentLevel}
@@ -366,7 +388,7 @@
         /></label
       >
       <label
-        >Perk points<input
+        >{t("Perk points")}<input
           type="number"
           min="0"
           value={drafts.talentExpPoints ?? branch.talentExpPoints}
@@ -376,7 +398,7 @@
         /></label
       >
       <label
-        >Mastery<input
+        >{t("Mastery")}<input
           type="number"
           min="0"
           value={drafts.curTalentValue ?? branch.curTalentValue}
@@ -388,7 +410,7 @@
     </section>
     <div class="inspiration-layout">
       <section class="inspiration-panel panel">
-        <h3 class="strip">Inspirations</h3>
+        <h3 class="strip">{t("Inspirations")}</h3>
         <div class="inspiration-list">
           {#each inspirations as levels}{@const base =
               levels[0].baseId}{@const progress = branch.inspirations.find(
@@ -418,11 +440,14 @@
                 description={inspirationDescription(levels)}
                 facts={[
                   {
-                    label: "Unlocked levels",
+                    label: t("Unlocked levels"),
                     value: `${chosenLevel} / ${levels.length}`,
                   },
-                  { label: "Current goal", value: String(progressMax) },
-                  { label: "Experience", value: String(shown.completionExp) },
+                  { label: t("Current goal"), value: String(progressMax) },
+                  {
+                    label: t("Experience"),
+                    value: String(shown.completionExp),
+                  },
                 ]}
                 ><ProgressionIcon
                   name={shown.sprite}
@@ -436,9 +461,9 @@
                   </p>{/if}
                 <div class="inspiration-fields">
                   <label class="progress-control"
-                    >Progress<span
+                    >{t("Progress")}<span
                       ><input
-                        aria-label={`${shown.name} progress`}
+                        aria-label={t("{name} progress", { name: shown.name })}
                         type="range"
                         min="0"
                         max={progressMax}
@@ -455,11 +480,14 @@
                     ></label
                   >
                   <fieldset>
-                    <legend>Unlocked levels</legend>
+                    <legend>{t("Unlocked levels")}</legend>
                     <div class="level-buttons">
                       {#each Array(levels.length + 1) as _, i}<button
                           type="button"
-                          aria-label={`${shown.name}: ${i} unlocked levels`}
+                          aria-label={t("{name}: {count} unlocked levels", {
+                            name: shown.name,
+                            count: i,
+                          })}
                           aria-pressed={chosenLevel === i}
                           onclick={() => (drafts[`${base}:level`] = String(i))}
                           >{i}</button
@@ -468,7 +496,8 @@
                   </fieldset>
                   <button
                     disabled={saving}
-                    onclick={() => void setInspiration(levels)}>Apply</button
+                    onclick={() => void setInspiration(levels)}
+                    >{t("Apply")}</button
                   >
                 </div>
               </div>
@@ -477,7 +506,7 @@
         </div>
       </section>
       <section class="perk-panel panel">
-        <h3 class="strip">Perks</h3>
+        <h3 class="strip">{t("Perks")}</h3>
         <div class="perk-tree">
           <svg
             viewBox="0 0 100 100"
@@ -505,11 +534,11 @@
                 description={perkDescription(node)}
                 facts={[
                   {
-                    label: "State",
-                    value: studied.has(node.id) ? "Unlocked" : "Locked",
+                    label: t("State"),
+                    value: studied.has(node.id) ? t("Unlocked") : t("Locked"),
                   },
-                  { label: "Point cost", value: String(node.pointPrice) },
-                  { label: "Mastery", value: `+${node.talentValue}` },
+                  { label: t("Point cost"), value: String(node.pointPrice) },
+                  { label: t("Mastery"), value: `+${node.talentValue}` },
                 ]}
                 ><ProgressionIcon
                   name={node.sprite}
@@ -524,24 +553,25 @@
             {#if perkDescription(selectedPerk)}<p>
                 <LocalizedText text={perkDescription(selectedPerk)!} />
               </p>{/if}<strong
-              >{studied.has(selectedPerk.id) ? "Unlocked" : "Locked"}</strong
+              >{studied.has(selectedPerk.id)
+                ? t("Unlocked")
+                : t("Locked")}</strong
             >{#if studied.has(selectedPerk.id) && selectedPerk.availableAtStart}<p
               >
-                Available from the start. The game unlocks it again when the
-                save loads, so it cannot be locked.
+                {t(
+                  "Available from the start. The game unlocks it again when the save loads, so it cannot be locked.",
+                )}
               </p>{/if}{:else}<p>
-              Hover for perk details. Selecting a locked perk unlocks it and all
-              prerequisites; selecting an unlocked perk locks it again, together
-              with perks that depend on it. Perks that were already unlocked
-              when the save was opened refund their perk points when locked and
-              cost them again when unlocked; everything else is free.
+              {t(
+                "Hover for perk details. Selecting a locked perk unlocks it and all prerequisites; selecting an unlocked perk locks it again, together with perks that depend on it. Perks that were already unlocked when the save was opened refund their perk points when locked and cost them again when unlocked; everything else is free.",
+              )}
             </p>{/if}
         </div>
       </section>
     </div>
   {/if}
 {:else}<LoadingIndicator
-    label="Loading inspiration definitions and save state…"
+    label={t("Loading inspiration definitions and save state…")}
   />{/if}
 
 <style>

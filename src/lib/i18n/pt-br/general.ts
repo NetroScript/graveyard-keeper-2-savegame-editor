@@ -1,0 +1,57 @@
+export const general: Record<string, string> = {
+  // General.svelte
+  "General": "Geral",
+  "Edit player status and resources.": "Edite o status e os recursos do jogador.",
+  "Vitals": "Sinais vitais",
+  "Money": "Dinheiro",
+  "Technology Points": "Pontos de Tecnologia",
+  "Faith and Science": "Fé e Ciência",
+  "Mental State": "Estado Mental",
+  "Current health": "Vida atual",
+  "Maximum health": "Vida máxima",
+  "Energy": "Energia",
+  "Stamina": "Vigor",
+  "Red points": "Pontos vermelhos",
+  "Green points": "Pontos verdes",
+  "Blue points": "Pontos azuis",
+  "Insanity": "Insanidade",
+  "Happiness": "Felicidade",
+  "Faith": "Fé",
+  "Science": "Ciência",
+  "The game stores faith and science as items: faith in the player inventory and its bags, science in the study table. These fields are a shortcut for editing those item stacks, which are also available in Inventory. Each stack holds up to 999; larger amounts need free inventory slots.":
+    "O jogo armazena fé e ciência como itens: a fé no inventário do jogador e em suas bolsas, e a ciência na mesa de estudos. Esses campos são um atalho para editar essas pilhas de itens, que também estão disponíveis em Inventário. Cada pilha comporta até 999; quantidades maiores precisam de espaços livres no inventário.",
+  "Gold": "Ouro",
+  "Silver": "Prata",
+  "Bronze": "Bronze",
+  "Gold coins": "Moedas de ouro",
+  "Silver coins": "Moedas de prata",
+  "Bronze coins": "Moedas de bronze",
+  "Restore Health": "Restaurar Vida",
+  "Enter valid values before saving.": "Insira valores válidos antes de salvar.",
+  "Save utilities": "Utilitários do save",
+  "Dropped items": "Itens dropados",
+  "Remove item drops that have accumulated in the world. You can review their type, ID and location before deleting them.":
+    "Remova drops de itens que se acumularam no mundo. Você pode revisar o tipo, o ID e a localização deles antes de excluí-los.",
+  "Finding drops…": "Procurando drops…",
+  "Delete drops ({count})": "Excluir drops ({count})",
+  "No drops found": "Nenhum drop encontrado",
+  "Technology point trivia: current versions of the game already collect stranded points through their collect-all routine, including points that have no visible world object.":
+    "Curiosidade sobre pontos de tecnologia: as versões atuais do jogo já coletam pontos perdidos pela rotina de coleta geral, incluindo pontos que não têm um objeto visível no mundo.",
+  "Changes remain in memory until the save file is written. Resource values use the game’s float32 precision.":
+    "As alterações permanecem na memória até o arquivo de save ser gravado. Os valores de recursos usam a precisão float32 do jogo.",
+  // DropCleanupDialog.svelte
+  "Delete dropped items": "Excluir itens dropados",
+  "Select the drops to remove from the save. You can undo this change until the document is closed.":
+    "Selecione os drops que serão removidos do save. Você pode desfazer essa alteração até o documento ser fechado.",
+  "Select none": "Desmarcar tudo",
+  "Select all": "Selecionar tudo",
+  "{selected} of {total} selected": "{selected} de {total} selecionados",
+  "Dropped": "Dropado",
+  "Queued": "Na fila",
+  "Coordinates: {coords}": "Coordenadas: {coords}",
+  "Unknown location": "Local desconhecido",
+  "The document changed. Close and reopen this dialog.":
+    "O documento mudou. Feche e reabra esta janela.",
+  "Cancel": "Cancelar",
+  "Delete selected": "Excluir selecionados",
+};

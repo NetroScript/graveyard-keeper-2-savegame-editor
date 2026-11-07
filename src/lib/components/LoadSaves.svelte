@@ -17,6 +17,7 @@
   import LoadingIndicator from "./LoadingIndicator.svelte";
   import { gameDayIcon } from "../assets/game-icons";
   import { notify, notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     onfiles,
     onpath,
@@ -159,11 +160,19 @@
       });
       backupMessage = result.restored
         ? result.backupCreated
-          ? "Backup restored. The previous current save was retained in the backup history."
+          ? t(
+              "Backup restored. The previous current save was retained in the backup history.",
+            )
           : settings.backupRetention > 0
-            ? "Backup restored. The previous current save was already in the backup history."
-            : "Backup restored. Automatic backups are disabled, so the previous current save was not retained."
-        : "This backup already matches the current save. No restore point was added.";
+            ? t(
+                "Backup restored. The previous current save was already in the backup history.",
+              )
+            : t(
+                "Backup restored. Automatic backups are disabled, so the previous current save was not retained.",
+              )
+        : t(
+            "This backup already matches the current save. No restore point was added.",
+          );
       selectedBackup = undefined;
       await refresh();
       backups = (
@@ -178,10 +187,16 @@
     }
   }
   function backupDate(seconds: number) {
-    return seconds ? new Date(seconds * 1000).toLocaleString() : "Unknown date";
+    return seconds
+      ? new Date(seconds * 1000).toLocaleString()
+      : t("Unknown date");
   }
   function backupSize(bytes: number) {
-    return `${(bytes / 1024 / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 })} MB`;
+    return t("{size} MB", {
+      size: (bytes / 1024 / 1024).toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      }),
+    });
   }
   function saveMayBeNewer(version: unknown) {
     const save = String(version ?? "")
@@ -206,21 +221,26 @@
 </script>
 
 <header class="page-heading">
-  <h1>Save files</h1>
-  <p>Select a save file to open.</p>
+  <h1>{t("Save files")}</h1>
+  <p>{t("Select a save file to open.")}</p>
 </header>
 {#if desktop}
   <div class="toolbar load-toolbar">
-    <button onclick={() => void refresh()}><ArrowClockwise />Refresh</button
-    ><button onclick={() => dialog(true)}><FolderOpen />Choose Folder</button
+    <button onclick={() => void refresh()}
+      ><ArrowClockwise />{t("Refresh")}</button
+    ><button onclick={() => dialog(true)}
+      ><FolderOpen />{t("Choose Folder")}</button
     ><button class="primary" onclick={() => dialog(false)}
-      ><Upload />Open File</button
+      ><Upload />{t("Open File")}</button
     ><label class="check"
-      ><input type="checkbox" bind:checked={includeBackups} />Include game
-      backups</label
+      ><input type="checkbox" bind:checked={includeBackups} />{t(
+        "Include game backups",
+      )}</label
     >
   </div>
-  {#if discovering}<LoadingIndicator label="Finding save files…" />{:else}<div
+  {#if discovering}<LoadingIndicator
+      label={t("Finding save files…")}
+    />{:else}<div
       class="save-grid"
     >
       {#each saves as save}<article class="save-card panel">
@@ -232,46 +252,48 @@
             <div class="panel-body">
               {#if save.metadata}{@const m = save.metadata}
                 <div class="save-day">
-                  <GameIcon name={gameDayIcon(m.day)} />Day {String(
-                    m.day ?? "—",
-                  )}<span class="save-kind"
-                    >{m.isDemoSave ? "Demo" : "Release"}</span
+                  <GameIcon name={gameDayIcon(m.day)} />{t("Day {day}", {
+                    day: String(m.day ?? "—"),
+                  })}<span class="save-kind"
+                    >{m.isDemoSave ? t("Demo") : t("Release")}</span
                   >
                 </div>
-                <p>{String(m.saveDateTime ?? "Unknown save date")}</p>
+                <p>{String(m.saveDateTime ?? t("Unknown save date"))}</p>
                 {#if saveMayBeNewer(m.gameSaveVersion)}<p
                     class="save-compat warning"
                   >
-                    Newer than the loaded {assetVersion} asset data. Some content
-                    may be unavailable in the editor.
+                    {t(
+                      "Newer than the loaded {version} asset data. Some content may be unavailable in the editor.",
+                      { version: assetVersion },
+                    )}
                   </p>{/if}
                 <dl>
-                  <dt><Tag />Version</dt>
+                  <dt><Tag />{t("Version")}</dt>
                   <dd>{String(m.gameSaveVersion ?? "—")}</dd>
-                  <dt><DesktopTower />Platform</dt>
+                  <dt><DesktopTower />{t("Platform")}</dt>
                   <dd>{String(m.platform ?? "—")}</dd>
-                  <dt><GameIcon name="wskull" />Graveyard</dt>
+                  <dt><GameIcon name="wskull" />{t("Graveyard")}</dt>
                   <dd>{String(m.graveyardQuality ?? "—")}</dd>
-                  <dt><GameIcon name="cross" variant="church" />Church</dt>
+                  <dt><GameIcon name="cross" variant="church" />{t("Church")}</dt>
                   <dd>{String(m.churchQuality ?? "—")}</dd>
-                  <dt><GameIcon name="village_REP" />Village reputation</dt>
+                  <dt><GameIcon name="village_REP" />{t("Village reputation")}</dt>
                   <dd>{String(m.villageRep ?? "—")}</dd>
                 </dl>{:else}<p>
                   {save.metadataError
-                    ? "Metadata could not be read."
-                    : "No companion metadata."}
+                    ? t("Metadata could not be read.")
+                    : t("No companion metadata.")}
                 </p>
-                <small>The save can still be opened.</small>{/if}
+                <small>{t("The save can still be opened.")}</small>{/if}
             </div>
           </button>
           {#if save.editorBackups}<div class="save-card-actions">
               <button onclick={() => manageBackups(save)}
-                ><Archive />Restore backup</button
+                ><Archive />{t("Restore backup")}</button
               >
             </div>{/if}
         </article>{:else}<div class="empty-state panel">
-          <h2>No saves found</h2>
-          <p>Choose a save folder or open an individual .dat file.</p>
+          <h2>{t("No saves found")}</h2>
+          <p>{t("Choose a save folder or open an individual .dat file.")}</p>
         </div>{/each}
     </div>{/if}
 {:else}
@@ -285,7 +307,7 @@
       void files(Array.from(e.currentTarget.files ?? []));
       e.currentTarget.value = "";
     }}
-    aria-label="Select save files"
+    aria-label={t("Select save files")}
   />
   <button
     class="drop-zone panel"
@@ -302,36 +324,39 @@
       void files(Array.from(e.dataTransfer?.files ?? []));
     }}
     ><div class="upload-emblem"><Upload /></div>
-    <h2>Open save files</h2>
-    <p>Drop .dat files here or click to select files.</p>
-    <span>Matching .info files are optional and provide save metadata.</span
-    ><small>Files are processed locally and are not uploaded.</small></button
+    <h2>{t("Open save files")}</h2>
+    <p>{t("Drop .dat files here or click to select files.")}</p>
+    <span
+      >{t("Matching .info files are optional and provide save metadata.")}</span
+    ><small>{t("Files are processed locally and are not uploaded.")}</small
+    ></button
   >
   <aside class="web-backup-note panel">
-    <strong>Keep your original save files</strong>
+    <strong>{t("Keep your original save files")}</strong>
     <p>
-      The web editor downloads edited copies and cannot manage backups in the
-      game's save folder. Keep the original <code>.dat</code> and matching
-      <code>.info</code> files until the edited save works in the game.
+      {t(
+        "The web editor downloads edited copies and cannot manage backups in the game's save folder. Keep the original",
+      )} <code>.dat</code> {t("and matching")}
+      <code>.info</code> {t("files until the edited save works in the game.")}
     </p>
     <a
       href="https://github.com/NetroScript/graveyard-keeper-2-savegame-editor/releases"
       target="_blank"
       rel="noreferrer"
-      >Download the desktop application for automatic paired backups</a
+      >{t("Download the desktop application for automatic paired backups")}</a
     >
   </aside>
   <section class="panel location-panel">
-    <h3 class="strip">Save file locations</h3>
+    <h3 class="strip">{t("Save file locations")}</h3>
     <div class="panel-body">
       <label class="field"
-        >Platform<select bind:value={platform}
+        >{t("Platform")}<select bind:value={platform}
           >{#each Object.keys(paths) as p}<option>{p}</option>{/each}</select
         ></label
       >
       <div class="copy-path">
         <code>{paths[platform]}</code><button
-          aria-label="Copy save location"
+          aria-label={t("Copy save location")}
           onclick={async () => {
             try {
               await navigator.clipboard.writeText(paths[platform]);
@@ -339,16 +364,17 @@
               setTimeout(() => (copied = false), 2000);
             } catch {
               notify(
-                "Clipboard unavailable. Select and copy the path above.",
+                t("Clipboard unavailable. Select and copy the path above."),
                 "error",
               );
             }
-          }}><Copy />{copied ? "Copied" : "Copy"}</button
+          }}><Copy />{copied ? t("Copied") : t("Copy")}</button
         >
       </div>
       <p class="hint">
-        Steam libraries may be stored elsewhere. Linux also respects
-        XDG_CONFIG_HOME.
+        {t(
+          "Steam libraries may be stored elsewhere. Linux also respects XDG_CONFIG_HOME.",
+        )}
       </p>
     </div>
   </section>
@@ -363,11 +389,14 @@
       aria-labelledby="backup-dialog-title"
       oncancel={() => !restoring && (backupSave = undefined)}
     >
-      <h2 id="backup-dialog-title" class="strip">Restore backup</h2>
+      <h2 id="backup-dialog-title" class="strip">{t("Restore backup")}</h2>
       <div class="panel-body">
-        <p>Select an earlier version of <strong>{backupSave.name}</strong>.</p>
+        <p>
+          {t("Select an earlier version of")}
+          <strong>{backupSave.name}</strong>.
+        </p>
         {#if backupsLoading}<LoadingIndicator
-            label="Loading backups…"
+            label={t("Loading backups…")}
             compact
           />
         {:else if backups.length}<div class="backup-list">
@@ -379,40 +408,48 @@
                 <strong>{backupDate(backup.modified)}</strong>
                 <span>{backupSize(backup.bytes)}</span>
                 {#if backup.metadata}<small
-                    >Day {String(backup.metadata.day ?? "—")} · {String(
-                      backup.metadata.gameSaveVersion ?? "Unknown version",
+                    >{t("Day {day}", {
+                      day: String(backup.metadata.day ?? "—"),
+                    })} · {String(
+                      backup.metadata.gameSaveVersion ?? t("Unknown version"),
                     )}</small
                   >{:else if backup.metadataError}<small
-                    >Companion metadata could not be read</small
+                    >{t("Companion metadata could not be read")}</small
                   >
-                {:else}<small>No companion metadata</small>{/if}
+                {:else}<small>{t("No companion metadata")}</small>{/if}
               </button>{/each}
           </div>
         {:else}<p class="hint">
-            No editor backups are available for this save.
+            {t("No editor backups are available for this save.")}
           </p>{/if}
         {#if selectedBackup}<p class="warning backup-warning">
-            Restoring replaces the current <code>.dat</code> and matching
+            {t("Restoring replaces the current")} <code>.dat</code> {t(
+              "and matching",
+            )}
             <code>.info</code>. {settings.backupRetention > 0
-              ? "The current pair will remain available in the backup history."
-              : "Automatic backups are disabled, so the current pair will not be retained."}
+              ? t(
+                  "The current pair will remain available in the backup history.",
+                )
+              : t(
+                  "Automatic backups are disabled, so the current pair will not be retained.",
+                )}
           </p>{/if}
         {#if backupMessage}<p class="hint" role="status">
             {backupMessage}
           </p>{/if}
         {#if restoring}<LoadingIndicator
-            label="Restoring backup…"
+            label={t("Restoring backup…")}
             compact
           />{/if}
         <div class="form-actions">
           <button disabled={restoring} onclick={() => (backupSave = undefined)}
-            >Close</button
+            >{t("Close")}</button
           >
           <button
             class="primary"
             disabled={!selectedBackup || restoring}
             onclick={restoreBackup}
-            >{restoring ? "Restoring…" : "Restore selected"}</button
+            >{restoring ? t("Restoring…") : t("Restore selected")}</button
           >
         </div>
       </div>
@@ -420,7 +457,7 @@
   </div>{/if}
 {#if opening}<div class="modal-backdrop">
     <div class="panel open-loader">
-      <LoadingIndicator label="Opening save…" compact />
+      <LoadingIndicator label={t("Opening save…")} compact />
     </div>
   </div>{/if}
 

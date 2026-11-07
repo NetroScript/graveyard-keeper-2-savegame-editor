@@ -17,6 +17,7 @@
   import LocalizedText from "./LocalizedText.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
   import { notify, notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let { doc, active = false }: { doc: SaveDocument; active?: boolean } =
     $props();
   let catalog = $state<ProgressionCatalog>();
@@ -78,16 +79,16 @@
     localized(reward.name, reward.id) ?? readableId(reward.id);
   const rewardFacts = (reward: TechnologyNode["rewards"][number]) =>
     reward.craftedAt?.length
-      ? [{ label: "Crafted at", value: reward.craftedAt.join(", ") }]
+      ? [{ label: t("Crafted at"), value: reward.craftedAt.join(", ") }]
       : [];
   const nodeKind = (node: TechnologyNode) =>
     node.type === "CharRep"
-      ? "Character reputation"
+      ? t("Character reputation")
       : node.type === "DisRep"
-        ? "District reputation"
+        ? t("District reputation")
         : node.hiddenAtStart
-          ? "Revealed by game progress"
-          : "Technology";
+          ? t("Revealed by game progress")
+          : t("Technology");
   const requirementText = (node: TechnologyNode) =>
     Object.entries(node.requirements ?? {})
       .filter(([, value]) => value > 0)
@@ -98,16 +99,19 @@
     Object.keys(node.additionalEffects?.setResources ?? {}).length +
     (node.additionalEffects?.expressions.length ?? 0);
   const popoverFacts = (node: TechnologyNode) => [
-    { label: "State", value: unlocked.has(node.id) ? "Unlocked" : "Locked" },
-    { label: "Type", value: nodeKind(node) },
-    { label: "Prerequisites", value: String(node.parents.length) },
+    {
+      label: t("State"),
+      value: unlocked.has(node.id) ? t("Unlocked") : t("Locked"),
+    },
+    { label: t("Type"), value: nodeKind(node) },
+    { label: t("Prerequisites"), value: String(node.parents.length) },
     ...(requirementText(node)
-      ? [{ label: "Requirement", value: requirementText(node) }]
+      ? [{ label: t("Requirement"), value: requirementText(node) }]
       : []),
     ...(additionalEffectCount(node)
       ? [
           {
-            label: "Other game effects",
+            label: t("Other game effects"),
             value: String(additionalEffectCount(node)),
           },
         ]
@@ -143,7 +147,7 @@
           ] as const,
       )
       .filter(([, amount]) => amount > 0)
-      .map(([color, amount]) => `${amount} ${color}`)
+      .map(([color, amount]) => `${amount} ${t(color)}`)
       .join(", ");
 
   async function unlock(node: TechnologyNode) {
@@ -185,7 +189,12 @@
         },
       ]);
       if (spent)
-        notify(`Unlocked ${node.name}. Spent ${spent} technology points.`);
+        notify(
+          t("Unlocked {name}. Spent {points} technology points.", {
+            name: node.name,
+            points: spent,
+          }),
+        );
       await tick();
       if (treePanel) {
         treePanel.scrollLeft = scrollLeft;
@@ -203,7 +212,10 @@
     if (!unlocked.has(node.id) || !catalog || !snapshot || saving) return;
     if (node.availableAtStart) {
       notifyError(
-        `${node.name} is available from the start. The game unlocks it again when the save loads.`,
+        t(
+          "{name} is available from the start. The game unlocks it again when the save loads.",
+          { name: node.name },
+        ),
       );
       return;
     }
@@ -255,9 +267,18 @@
         notify(
           [
             removals.length > 1
-              ? `Locked ${node.name} and ${removals.length - 1} dependent technolog${removals.length === 2 ? "y" : "ies"}.`
-              : `Locked ${node.name}.`,
-            refunded ? `Refunded ${refunded} technology points.` : "",
+              ? removals.length === 2
+                ? t("Locked {name} and 1 dependent technology.", {
+                    name: node.name,
+                  })
+                : t("Locked {name} and {count} dependent technologies.", {
+                    name: node.name,
+                    count: removals.length - 1,
+                  })
+              : t("Locked {name}.", { name: node.name }),
+            refunded
+              ? t("Refunded {points} technology points.", { points: refunded })
+              : "",
           ]
             .filter(Boolean)
             .join(" "),
@@ -277,19 +298,17 @@
 
 <div class="section-intro">
   <div>
-    <h2>Technologies</h2>
+    <h2>{t("Technologies")}</h2>
     <p>
-      Hover for details. Selecting a locked technology unlocks it and all of its
-      prerequisites; selecting an unlocked technology locks it again, together
-      with technologies that depend on it. Technologies that were already
-      unlocked when the save was opened refund their technology points when
-      locked and cost them again when unlocked; everything else is free.
+      {t(
+        "Hover for details. Selecting a locked technology unlocks it and all of its prerequisites; selecting an unlocked technology locks it again, together with technologies that depend on it. Technologies that were already unlocked when the save was opened refund their technology points when locked and cost them again when unlocked; everything else is free.",
+      )}
     </p>
   </div>
 </div>
 {#if error}<p class="error-banner" role="alert">{error}</p>{/if}
 {#if catalog && snapshot}
-  <nav class="branch-tabs" aria-label="Technology trees">
+  <nav class="branch-tabs" aria-label={t("Technology trees")}>
     {#each catalog.technology.tabs as item}
       <button
         class:active={tab === item.id}
@@ -306,7 +325,7 @@
     <section
       bind:this={treePanel}
       class="tree-panel panel"
-      aria-label={`${tab} technology tree`}
+      aria-label={t("{tab} technology tree", { tab })}
     >
       <div
         class="tree-canvas"
@@ -381,7 +400,8 @@
                     /></InfoPopover
                   >{/each}</span
               >
-              {#if unlocked.has(node.id)}<span class="status">✓ Unlocked</span
+              {#if unlocked.has(node.id)}<span class="status"
+                  >✓ {t("Unlocked")}</span
                 >{:else}<span class="prices"
                   >{#each Object.entries(node.price).filter(([, v]) => v > 0) as [kind, value]}<span
                       ><ProgressionIcon name={kind} kind="font" />{value}</span
@@ -400,30 +420,38 @@
               <LocalizedText text={selected.description} />
             </p>{/if}
           <p class="state">
-            <strong>{unlocked.has(selected.id) ? "Unlocked" : "Locked"}</strong>
+            <strong
+              >{unlocked.has(selected.id) ? t("Unlocked") : t("Locked")}</strong
+            >
           </p>
           {#if selected.type && selected.type !== "Common"}<p class="muted">
-              This is a {nodeKind(selected).toLowerCase()} gate. Unlocking it bypasses
-              that requirement without changing quests or reputation.
+              {t(
+                "This is a {kind} gate. Unlocking it bypasses that requirement without changing quests or reputation.",
+                { kind: nodeKind(selected).toLowerCase() },
+              )}
             </p>{:else if selected.hiddenAtStart}<p class="muted">
-              The game normally reveals this technology through game or quest
-              progress. Unlocking it does not mark that quest as completed.
+              {t(
+                "The game normally reveals this technology through game or quest progress. Unlocking it does not mark that quest as completed.",
+              )}
             </p>{/if}
           {#if additionalEffectCount(selected)}<p class="warning">
-              The game normally applies {additionalEffectCount(selected)} additional
-              side effect{additionalEffectCount(selected) === 1 ? "" : "s"} when this
-              technology unlocks. The editor preserves story state and does not execute
-              game scripts, so locking it again does not reverse effects the game
-              already applied.
+              {additionalEffectCount(selected) === 1
+                ? t(
+                    "The game normally applies 1 additional side effect when this technology unlocks. The editor preserves story state and does not execute game scripts, so locking it again does not reverse effects the game already applied.",
+                  )
+                : t(
+                    "The game normally applies {count} additional side effects when this technology unlocks. The editor preserves story state and does not execute game scripts, so locking it again does not reverse effects the game already applied.",
+                    { count: additionalEffectCount(selected) },
+                  )}
             </p>{/if}
-          {#if selected.parents.length}<h4>Prerequisites</h4>
+          {#if selected.parents.length}<h4>{t("Prerequisites")}</h4>
             <ul>
               {#each selected.parents as id}<li>
                   {catalog.technology.nodes.find((n) => n.id === id)?.name ??
                     id}
                 </li>{/each}
             </ul>{/if}
-          {#if selected.rewards.length}<h4>Unlocks</h4>
+          {#if selected.rewards.length}<h4>{t("Unlocks")}</h4>
             <div class="reward-list">
               {#each selected.rewards as reward}<div>
                   <InfoPopover
@@ -441,7 +469,9 @@
                   ><span
                     ><strong>{rewardName(reward)}</strong
                     >{#if reward.craftedAt?.length}<small
-                        >Crafted at: {reward.craftedAt.join(", ")}</small
+                        >{t("Crafted at: {list}", {
+                          list: reward.craftedAt.join(", "),
+                        })}</small
                       >{/if}{#if localized(reward.description, `${reward.id}_d`)}<small
                         ><LocalizedText text={reward.description} /></small
                       >{/if}</span
@@ -452,29 +482,31 @@
               class="primary wide"
               disabled={saving}
               onclick={() => void unlock(selected!)}
-              >Unlock with prerequisites</button
+              >{t("Unlock with prerequisites")}</button
             >
           {:else if selected.availableAtStart}<p class="muted">
-              Available from the start. The game unlocks it again when the save
-              loads, so it cannot be locked.
+              {t(
+                "Available from the start. The game unlocks it again when the save loads, so it cannot be locked.",
+              )}
             </p>
           {:else}<button
               class="wide"
               disabled={saving}
               onclick={() => void lock(selected!)}
-              >Lock with dependent technologies</button
+              >{t("Lock with dependent technologies")}</button
             >{/if}
         </div>
       {:else}<div class="details-body muted">
           <p>
-            Select a technology to see its description, prerequisites and
-            rewards.
+            {t(
+              "Select a technology to see its description, prerequisites and rewards.",
+            )}
           </p>
         </div>{/if}
     </aside>
   </div>
 {:else}<LoadingIndicator
-    label="Loading technology definitions and save state…"
+    label={t("Loading technology definitions and save state…")}
   />{/if}
 
 <style>

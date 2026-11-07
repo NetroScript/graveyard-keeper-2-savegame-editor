@@ -5,6 +5,7 @@
   import type { DropSnapshot, WorldDrop } from "../drops";
   import DropCleanupDialog from "./DropCleanupDialog.svelte";
   import { notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let { doc }: { doc: SaveDocument } = $props();
   let fields = $state<GeneralField[]>([]);
   let drafts = $state<Record<string, string>>({});
@@ -100,7 +101,7 @@
     if (valid) invalid.delete(key);
     else invalid.add(key);
     doc.invalidGeneralDraft = invalid.size > 0;
-    message = invalid.size ? "Enter valid values before saving." : "";
+    message = invalid.size ? t("Enter valid values before saving.") : "";
     if (!valid) {
       delete pending[key];
       return;
@@ -182,8 +183,8 @@
 
 <div class="section-intro">
   <div>
-    <h2>General</h2>
-    <p>Edit player status and resources.</p>
+    <h2>{t("General")}</h2>
+    <p>{t("Edit player status and resources.")}</p>
   </div>
 </div>
 <div class="general-sections">
@@ -194,7 +195,7 @@
         e.preventDefault();
       }}
     >
-      <h3 class="strip">{group.name}</h3>
+      <h3 class="strip">{t(group.name)}</h3>
       <div class="general-section-body">
         <div class="general-fields">
           {#each group.keys as key}
@@ -210,9 +211,11 @@
                             src={icons[part]}
                             alt=""
                             class="general-resource-icon"
-                          />{/if}{part[0].toUpperCase() + part.slice(1)}</span
+                          />{/if}{t(part[0].toUpperCase() + part.slice(1))}</span
                       ><input
-                        aria-label={`${part[0].toUpperCase() + part.slice(1)} coins`}
+                        aria-label={t(
+                          `${part[0].toUpperCase() + part.slice(1)} coins`,
+                        )}
                         type="number"
                         required
                         min="0"
@@ -235,9 +238,9 @@
                         src={icons[key]}
                         alt=""
                         class="general-resource-icon"
-                      />{/if}{labels[key]}</span
+                      />{/if}{t(labels[key])}</span
                   ><input
-                    aria-label={labels[key]}
+                    aria-label={t(labels[key])}
                     type="number"
                     step={key === "hp" ||
                     key === "max_hp" ||
@@ -259,7 +262,7 @@
               {#if field?.error}<p class="hint warning">{field.error}</p>{/if}
             </div>
           {/each}
-          {#if group.hint}<p class="hint group-hint">{group.hint}</p>{/if}
+          {#if group.hint}<p class="hint group-hint">{t(group.hint)}</p>{/if}
         </div>
         {#if group.name === "Vitals"}<div class="form-actions">
             <button
@@ -270,20 +273,21 @@
               onclick={() => {
                 const max = fields.find((f) => f.key === "max_hp");
                 if (max?.value) edit("hp", max.value, true);
-              }}>Restore Health</button
+              }}>{t("Restore Health")}</button
             >
           </div>{/if}
       </div>
     </form>
   {/each}
   <section class="general-section panel">
-    <h3 class="strip">Save utilities</h3>
+    <h3 class="strip">{t("Save utilities")}</h3>
     <div class="utility-body">
       <div>
-        <h4>Dropped items</h4>
+        <h4>{t("Dropped items")}</h4>
         <p>
-          Remove item drops that have accumulated in the world. You can review
-          their type, ID and location before deleting them.
+          {t(
+            "Remove item drops that have accumulated in the world. You can review their type, ID and location before deleting them.",
+          )}
         </p>
         {#if dropError}<p class="hint warning" role="alert">{dropError}</p>{/if}
       </div>
@@ -295,22 +299,24 @@
           doc.pendingGeneralEdits}
         onclick={() => (cleanupOpen = true)}
         >{dropsLoading
-          ? "Finding drops…"
+          ? t("Finding drops…")
           : drops.length
-            ? `Delete drops (${drops.length})`
-            : "No drops found"}</button
+            ? t("Delete drops ({count})", { count: drops.length })
+            : t("No drops found")}</button
       >
       <p class="technology-note">
-        Technology point trivia: current versions of the game already collect
-        stranded points through their collect-all routine, including points that
-        have no visible world object.
+        {t(
+          "Technology point trivia: current versions of the game already collect stranded points through their collect-all routine, including points that have no visible world object.",
+        )}
       </p>
     </div>
   </section>
 </div>
 <p class="hint" role="status">
   {message ||
-    "Changes remain in memory until the save file is written. Resource values use the game’s float32 precision."}
+    t(
+      "Changes remain in memory until the save file is written. Resource values use the game’s float32 precision.",
+    )}
 </p>
 
 {#if cleanupOpen}

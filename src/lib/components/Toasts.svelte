@@ -12,6 +12,7 @@
     toastState,
     toasts,
   } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
 
   let pointerInside = false;
   let focusInside = false;
@@ -86,7 +87,7 @@
 <section
   class="toasts"
   class:paused={toastState.paused}
-  aria-label="Notifications"
+  aria-label={t("Notifications")}
   onpointerenter={() => {
     pointerInside = true;
     update();
@@ -116,7 +117,7 @@
       <p>{toast.message}</p>
       <button
         class="dismiss"
-        aria-label="Dismiss notification"
+        aria-label={t("Dismiss notification")}
         onclick={() => dismiss(toast.id)}><X /></button
       >
       <span

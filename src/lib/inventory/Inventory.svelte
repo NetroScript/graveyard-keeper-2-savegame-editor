@@ -17,6 +17,7 @@
   import ItemDialog from "./ItemDialog.svelte";
   import LoadingIndicator from "../components/LoadingIndicator.svelte";
   import { notifyError } from "../toasts.svelte";
+  import { t } from "$lib/i18n.svelte";
   let {
     doc,
     settings,
@@ -311,36 +312,45 @@
 
 <div class="section-intro">
   <div>
-    <h2>Inventory</h2>
+    <h2>{t("Inventory")}</h2>
     <p>
-      Edit items in the player inventory, tool belt, bags and world containers.
+      {t(
+        "Edit items in the player inventory, tool belt, bags and world containers.",
+      )}
     </p>
   </div>
 </div>
 {#if error}<p role="alert" class="error-banner">{error}</p>{/if}
-{#if loading}<LoadingIndicator label="Loading inventories…" />{:else if catalog}
+{#if loading}<LoadingIndicator label={t("Loading inventories…")} />{:else if catalog}
   <div class="inventory-tools panel">
     <label class="inventory-search">
-      <span>Search containers and items</span>
+      <span>{t("Search containers and items")}</span>
       <span class="search-field"
         ><MagnifyingGlass /><input
           type="search"
-          placeholder="Place, container or item"
+          placeholder={t("Place, container or item")}
           bind:value={search}
         /></span
       >
     </label>
     <label class="empty-toggle"
-      ><input type="checkbox" bind:checked={hideEmpty} />Hide empty containers</label
+      ><input type="checkbox" bind:checked={hideEmpty} />{t(
+        "Hide empty containers",
+      )}</label
     >
-    <nav class="category-jump" aria-label="Inventory categories">
-      <span>Jump to category</span>
+    <nav class="category-jump" aria-label={t("Inventory categories")}>
+      <span>{t("Jump to category")}</span>
       <div class="category-links">
         {#each groups as group, index (group.label)}
           {@const shortcut = categoryShortcut(index)}
           <button
             type="button"
-            aria-label={`${group.label}: ${group.inventories.length} ${group.inventories.length === 1 ? "container" : "containers"}${shortcut ? `; shortcut ${shortcut}` : ""}`}
+            aria-label={t(
+              group.inventories.length === 1
+                ? "{label}: {count} container"
+                : "{label}: {count} containers",
+              { label: group.label, count: group.inventories.length },
+            ) + (shortcut ? t("; shortcut {key}", { key: shortcut }) : "")}
             onclick={() => jumpToCategory(group.id)}
             >{#if shortcut}<kbd>{shortcut}</kbd>{/if}<span>{group.label}</span
             ><small>{group.inventories.length}</small></button
@@ -360,10 +370,12 @@
           <header class="category-heading">
             <h3 id={`${group.id}-title`}>{group.label}</h3>
             <span
-              >{group.inventories.length}
-              {group.inventories.length === 1
-                ? "container"
-                : "containers"}</span
+              >{t(
+                group.inventories.length === 1
+                  ? "{count} container"
+                  : "{count} containers",
+                { count: group.inventories.length },
+              )}</span
             >
           </header>
           <div class="inventories">
@@ -384,9 +396,9 @@
                 class:nested={!!inventory.displayDepth}
                 style:--bag-depth={inventory.displayDepth ?? 0}
                 aria-label={inventory.kind === "Player"
-                  ? "Player inventory"
+                  ? t("Player inventory")
                   : inventory.kind === "Tool belt"
-                    ? "Player tool belt"
+                    ? t("Player tool belt")
                     : `${inventory.kind}: ${inventory.title}`}
               >
                 <header class="strip inventory-heading">
@@ -399,8 +411,10 @@
                       >{/if}
                   </h3>
                   <label
-                    >Capacity {#if settings.outOfBoundsEdits}<input
-                        aria-label={`Capacity: ${inventory.title}`}
+                    >{t("Capacity")} {#if settings.outOfBoundsEdits}<input
+                        aria-label={t("Capacity: {title}", {
+                          title: inventory.title,
+                        })}
                         type="number"
                         min={inventory.items.length}
                         max="2147483647"
@@ -433,8 +447,35 @@
                       {#if item}
                         <button
                           class="slot-content"
-                          aria-label={`Edit ${plainText(catalog.items[item.id]?.name || item.id)}, amount ${item.count}${item.durability === null ? "" : `, durability ${Math.round(Number(item.durability) * 100)}%`}`}
-                          title={`${plainText(catalog.items[item.id]?.name || item.id)}${item.durability === null ? "" : ` · ${Math.round(Number(item.durability) * 100)}% durability`}`}
+                          aria-label={item.durability === null
+                            ? t("Edit {name}, amount {amount}", {
+                                name: plainText(
+                                  catalog.items[item.id]?.name || item.id,
+                                ),
+                                amount: item.count,
+                              })
+                            : t(
+                                "Edit {name}, amount {amount}, durability {durability}%",
+                                {
+                                  name: plainText(
+                                    catalog.items[item.id]?.name || item.id,
+                                  ),
+                                  amount: item.count,
+                                  durability: Math.round(
+                                    Number(item.durability) * 100,
+                                  ),
+                                },
+                              )}
+                          title={item.durability === null
+                            ? plainText(catalog.items[item.id]?.name || item.id)
+                            : t("{name} · {durability}% durability", {
+                                name: plainText(
+                                  catalog.items[item.id]?.name || item.id,
+                                ),
+                                durability: Math.round(
+                                  Number(item.durability) * 100,
+                                ),
+                              })}
                           disabled={doc.busy}
                           onclick={() =>
                             (editing = { inventory, existing: item })}
@@ -447,7 +488,11 @@
                         >
                         <button
                           class="remove-item"
-                          aria-label={`Remove ${plainText(catalog.items[item.id]?.name || item.id)}`}
+                          aria-label={t("Remove {name}", {
+                            name: plainText(
+                              catalog.items[item.id]?.name || item.id,
+                            ),
+                          })}
                           disabled={doc.busy}
                           onclick={() =>
                             edit(inventory, {
@@ -457,7 +502,9 @@
                         >
                       {:else if index === inventory.items.length}<button
                           class="slot-content add-item"
-                          aria-label={`Add item to ${inventory.title}`}
+                          aria-label={t("Add item to {title}", {
+                            title: inventory.title,
+                          })}
                           disabled={doc.busy ||
                             !!rule?.error ||
                             !rule?.allowed.length}
@@ -471,16 +518,17 @@
                     <button
                       disabled={page === 0}
                       onclick={() => (pages[inventory.node] = page - 1)}
-                      >Previous slots</button
+                      >{t("Previous slots")}</button
                     ><span
-                      >{page * pageSize + 1}–{Math.min(
-                        size,
-                        (page + 1) * pageSize,
-                      )} of {size}</span
+                      >{t("{start}–{end} of {total}", {
+                        start: page * pageSize + 1,
+                        end: Math.min(size, (page + 1) * pageSize),
+                        total: size,
+                      })}</span
                     ><button
                       disabled={(page + 1) * pageSize >= size}
                       onclick={() => (pages[inventory.node] = page + 1)}
-                      >Next slots</button
+                      >{t("Next slots")}</button
                     >
                   </div>{/if}
               </section>
@@ -490,8 +538,8 @@
       {/each}
     </div>{:else}<p class="inventory-empty">
       {inventories.length
-        ? "No containers match the current filters."
-        : "No supported inventories were found."}
+        ? t("No containers match the current filters.")
+        : t("No supported inventories were found.")}
     </p>{/if}
   {#if editing}<ItemDialog
       {doc}
@@ -499,7 +547,7 @@
       inventory={editing.inventory}
       rule={rules[editing.inventory.ruleId] ?? {
         allowed: [],
-        error: "Inventory rules unavailable",
+        error: t("Inventory rules unavailable"),
       }}
       existing={editing.existing}
       outOfBounds={settings.outOfBoundsEdits}

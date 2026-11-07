@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { WidgetProps } from "./index";
+  import { t } from "$lib/i18n.svelte";
 
   const guidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -40,22 +41,22 @@
 >
   <h3>SGuid</h3>
   <label class="field stacked"
-    >GUID<input
-      aria-label="GUID"
+    >{t("GUID")}<input
+      aria-label={t("GUID")}
       autocomplete="off"
       spellcheck="false"
       bind:value={draft}
     /></label
   >
   {#if draft && !valid}<p class="warning" role="status">
-      Enter a GUID in the form 00000000-0000-0000-0000-000000000000.
+      {t("Enter a GUID in the form 00000000-0000-0000-0000-000000000000.")}
     </p>{/if}
   <button
     type="button"
     class="primary"
     disabled={!valid ||
       draft.trim().toLowerCase() === field.value?.toLowerCase()}
-    onclick={() => void apply()}>Apply GUID</button
+    onclick={() => void apply()}>{t("Apply GUID")}</button
   >
   {#if error}<p class="warning" role="alert">{error}</p>{/if}
 </form>

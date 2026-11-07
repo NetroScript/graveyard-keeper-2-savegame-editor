@@ -5,6 +5,7 @@
   import ItemImage from "../inventory/ItemImage.svelte";
   import type { ZombieBodyItem } from "./catalog";
   import SkullValue from "./SkullValue.svelte";
+  import { t } from "$lib/i18n.svelte";
 
   let {
     catalog,
@@ -35,7 +36,9 @@
     <button
       type="button"
       class="slot-content"
-      aria-label={item ? `Change ${label}: ${name}` : `Add ${label}`}
+      aria-label={item
+        ? t("Change {label}: {name}", { label, name })
+        : t("Add {label}", { label })}
       title={item ? `${label}: ${name}` : label}
       {disabled}
       {onclick}
@@ -49,8 +52,8 @@
     {#if item && onremove}<button
         type="button"
         class="remove"
-        aria-label={`Clear ${label}`}
-        title={`Clear ${label}`}
+        aria-label={t("Clear {label}", { label })}
+        title={t("Clear {label}", { label })}
         {disabled}
         onclick={onremove}><X /></button
       >{/if}

@@ -31,6 +31,8 @@ pub struct Settings {
     pub interface_scale: f64,
     pub update_check_interval: Option<UpdateCheckInterval>,
     pub last_update_check: Option<u64>,
+    /// Interface language tag such as "pt-BR"; `None` follows the system language.
+    pub language: Option<String>,
 }
 impl Default for Settings {
     fn default() -> Self {
@@ -41,6 +43,7 @@ impl Default for Settings {
             interface_scale: 1.0,
             update_check_interval: None,
             last_update_check: None,
+            language: None,
         }
     }
 }
@@ -49,6 +52,7 @@ impl Settings {
         if self.backup_retention > 50
             || !self.interface_scale.is_finite()
             || !(0.75..=1.5).contains(&self.interface_scale)
+            || !matches!(self.language.as_deref(), None | Some("en") | Some("pt-BR"))
         {
             return Err("Invalid settings".into());
         }
