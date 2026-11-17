@@ -594,6 +594,7 @@ fn role(value: i32) -> &'static str {
         6 => "Gardener",
         7 => "Conveyor transporter",
         8 => "Fighter",
+        9 => "Quarryman",
         _ => "Unknown",
     }
 }

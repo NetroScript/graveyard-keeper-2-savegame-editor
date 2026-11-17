@@ -110,6 +110,16 @@ created again.
 
 ## Installed and portable desktop builds
 
+Linux bundling runs `scripts/prepare-appimage.mjs` before Tauri packages the
+application. It verifies the official x86-64 AppRun launcher's checksum and sets
+its cached permissions to `0755`, preventing the `AppRun.wrapped: Permission
+denied` failure reported by the AppImage catalog. This uses Tauri's default
+`${XDG_CACHE_HOME:-$HOME/.cache}/tauri` tool cache; keep the hook in sync if
+enabling `bundle.useLocalToolsDir` or adding other Linux architectures.
+The Linux CI build wrapper extracts the resulting AppImage and checks public
+file read permissions and executable launchers with
+`scripts/verify-appimage.mjs` before returning to the release action for upload.
+
 The workflow publishes the following user-facing formats:
 
 | Platform            | Installed format | Portable format               |

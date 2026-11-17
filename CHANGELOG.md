@@ -3,6 +3,12 @@
 This file contains the user-facing notes for each Graveyard Keeper 2 Save Editor
 release. GitHub Releases use the matching version section automatically.
 
+## [0.3.2] - Game data update
+
+- Updated the bundled game data for Graveyard Keeper 2 version 1.012.7, including nine new items, updated bag rules, technologies, inspiration goals, and zombie talent costs and recipes.
+- Recognize the new Quarryman zombie role in the zombie editor.
+- Fixed AppImage launcher permissions so users other than the build owner can start the application. Release builds now check permissions inside the packaged AppImage.
+
 ## [0.3.1] - Faith and science
 
 - Added faith and science to the General view. The game stores them as items: faith in the player inventory, including bags, and science in the study table. The new fields are a shortcut for editing those item stacks, which can still be edited in the Inventory view. The editor shows each total and updates, adds or removes stacks of up to 999 to match the entered amount, as long as the inventory has free slots.

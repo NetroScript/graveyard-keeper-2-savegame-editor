@@ -142,11 +142,16 @@ jobs:
         shell: bash
         run: node scripts/release-notes.mjs --tag "$RELEASE_TAG" --repository "$GITHUB_REPOSITORY" --github-output "$GITHUB_OUTPUT"
       - name: Build desktop bundles
-        if: env.RELEASE_BUILD != 'true'
+        if: env.RELEASE_BUILD != 'true' && runner.os != 'Linux'
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           APPLE_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && '-' || '' }}
         run: pnpm tauri build ${{ matrix.args }}
+      - name: Build and verify Linux bundles
+        if: env.RELEASE_BUILD != 'true' && runner.os == 'Linux'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: node scripts/build-linux-release.mjs build ${{ matrix.args }}
       - name: Build and publish desktop bundles
         if: env.RELEASE_BUILD == 'true'
         uses: tauri-apps/tauri-action@v1
@@ -160,6 +165,7 @@ jobs:
           releaseBody: ${{ steps.release-notes.outputs.body }}
           releaseDraft: false
           prerelease: false
+          tauriScript: ${{ runner.os == 'Linux' && 'node scripts/build-linux-release.mjs' || '' }}
           args: ${{ matrix.args }}
       - name: Stage portable Windows executable
         if: runner.os == 'Windows'

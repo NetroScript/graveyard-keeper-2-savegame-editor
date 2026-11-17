@@ -66,10 +66,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ]));
         let old_id = player["items"][0]["id"].as_str().unwrap();
         if catalog["items"].get(old_id).is_some() {
+            let count = player["items"][0]["count"]
+                .as_str()
+                .unwrap()
+                .parse::<i32>()?;
+            let count = if count == 1 { 2 } else { 1 };
             scenarios.push((
                 "Item count",
                 vec![inventory(
-                    json!({"kind":"put","node":item,"item":old_id,"count":"2","guid":"unused"}),
+                    json!({"kind":"put","node":item,"item":old_id,"count":count.to_string(),"guid":"unused"}),
                 )],
             ));
         }
